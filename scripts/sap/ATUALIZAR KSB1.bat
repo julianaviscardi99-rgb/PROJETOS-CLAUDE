@@ -17,4 +17,5 @@ if errorlevel 1 (
     python -m pip install --quiet pywin32
 )
 
-python "%~dp0atualizar_ksb1_gui.py"
+start "" pythonw "%~dp0atualizar_ksb1_gui.py"
+exit /b 0

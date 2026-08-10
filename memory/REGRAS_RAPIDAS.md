@@ -12,6 +12,7 @@
 8. `BRIEFING.md`: manter máximo 2 sessões inline — sessões mais antigas vão para `long_term/`.
 9. Commit sempre seguido de push imediato no mesmo momento.
 10. Antes de qualquer script novo: verificar se o conhecimento já existe nas ontologias.
+11. Comandos, status e perguntas para a usuária sempre em português (pedido explícito, 2026-08-10).
 
 ---
 

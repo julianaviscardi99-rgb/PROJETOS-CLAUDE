@@ -10,15 +10,20 @@ escreve ontologia). Pode ser copiado sozinho para a area de rede.
 Pre-requisitos na maquina de quem for rodar:
 - Python 3 com pywin32 instalado (pip install pywin32)
 - SAP GUI Scripting habilitado (Alt+F12 > Opcoes > Acessibilidade e Scripting > Scripting)
-- SAP GUI aberto, logada, com a transacao KSB1 aberta na tela de selecao
+- SAP GUI aberto e logada (nao precisa estar na KSB1, o script abre a transacao sozinho)
 """
-import shutil
 import tkinter as tk
 from datetime import datetime
 from pathlib import Path
 from tkinter import messagebox, ttk
 
 import win32com.client
+
+# Logo da Pirelli embutido (base64) para o script continuar autossuficiente
+# (nao depender de arquivo de imagem separado ao copiar para a rede).
+LOGO_PIRELLI_B64 = (
+    "iVBORw0KGgoAAAANSUhEUgAAAJsAAAAvCAYAAAD0OrjvAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAU4SURBVHhe7Zvri1VlFIcnm5qpbLLLt7KLlpk5Y4ZI6nwIDE0s8MOEgiRFN0UKTJQUu2AYo0KW1HRRpMuoYVaa1hBdUCu7Rx+ke/0rb8+PMweOb2vfztTrmWF9eEBnr7X23u969n735ey28HdbcJwUuGxOMlw2Jxkum5MMl81JhsvmJMNlc5LhsjnJcNmcZFSX7c2zQrjvvBD6upyxzLILQ3ikI4Q99PynyIEmqS7bdmS7iQ25/DJnLDMRrrs4hDmIt7YzhC8NFyrisjn5XAHTkW4js9nPhg8VSCPbVZeGsJSNffQcJxVr4EGYx7hbPamChFs0PoRDhg8VSCPb5EtCGDg3hB/Id9LxDbzaHsKNE+y+VGEWPd9BPcuJkqSR7Vpkex3ZrHrO/8vRcYjCWcnqSxXU836jfgXSyHYN0+gzyDZEvpOGD+EtWMVUqssYqy9VmEvPX6Ge5URJ0simOf8Gzm4zuNB00tENmlWsnlSlj55/bvhQgTSyOaOb3q4QdtH3Pw0fKuCyOdlM4qy45PwQ9tHz3wwXKpLumm1DRwiD5DqjgwPwGZyCPwwPmiCNbHr08Ro3CDoNO6OHv8ByoEnSyOaPPhw4s7I9BYv4+/xOm6Fx/87ZVJBThsXtIWykzteQdfTeRcxtRm5ZFsL+qKamo/2MnxUvFnCpsSrKyeIkLGd8rDribsbo4yjH4ivYkFNHbyE+inKa5MzKtpKLT02xVo54hx2Nc+6nzmRu6a34qkyfEMJBBtq6JrmZZXpkY+WV4WquU3dFNX+Hl1mfFS+uJGfx+NNzsjhGnbmMn1VH9F4UwvtGXsxxuIcxtWqIhfT6cJTTJGNPNj3AVKPr6P950sykKSfZp/gMVySbxFDtLLTPu6OaLpu9IJNWl63/7BD2ErdvmGdhNgOvn8xY8aKfxv1KXON6imR7gJjnctgJJ6CxpstmL8ik1WU7gmy6k2rM2Q5Tc3LupXGnopwi2V4gRtNvHvHZ0mWzF2TS6rK9i2z63ZXOVEL/fprGXJ+znhVNyLaenLdz0LXg91FNl81ekEmry/YYOc/TiJ3DPAkzcsTR3zcT80u0Hr9BqOGy5chWFb2w/pR9iqdel62Gy/YfyKbGzqTOAE2z3vsVyaZfVNySQy/5g1FNl81ekEmryzaLZfNo9DSYSPOsGDGNuD0Zooki2bYR810B8dTsstkLMml12Qa5QdDPoR+HvDtQPQsbIDZ+5FGnSLatxHxbgIRrlLmMbAsYW6tWnfpndUWyzUG2NxryYn4EbZvLNkwzstUffehV1Hy2Uw204sRsziJDxvWaKJLtDrZtZQEPt5/+rK1INq2vh/VatcRq6m1j/1SrSLap1Flq1KjzBHWOUcdlG2YksilWU52mSyuuzoqO2pFe9Q1CGSYheuNUViRbEbrp6LugVqtItiJu7QrhIHVaWrYdyKadnEITy9LDKX0vR2VcS19cd7PMyhGHjJzVCNjDQFnx4oMG2fSF0Z2cvXSUW7FCU+2L7FN87dbLIE/JyStDN/lHG2pKtt2sy4otg65Dl3fWah2njl6UW3FluJ1xeY86+qn3Q4ypFSOWIPcRYur7MAKqy6YN3ERD13A0lGUd0nzC4MS19O5Qy6wcccLI0UcXeTnxe05dt6xnMK3YOluIiS/mNc3o20srvizryG/8klwHgT5GsWLLsJZ6ehWmWjqQNrOvVlwZtjCGmuJV5yXOklaM2ErcF8PrHCHVZXOcJnHZnGS4bE4yXDYnGS6bkwyXzUmGy+Ykw2VzkuGyOclw2ZxEtIV/AAlejwcdSLwvAAAAAElFTkSuQmCC"
+)
 
 BU = {"nome": "Fitted Units", "kstgr": "0495", "disvar": "/DESPFITTED"}
 
@@ -134,28 +139,51 @@ def rodar(mes, ano, log_widget):
     messagebox.showinfo("Concluído", "Extração da KSB1 finalizada (Gestoriais + Sem Agrupamento).")
 
 
+AMARELO_PIRELLI = "#FFD400"
+VERMELHO_PIRELLI = "#DA291C"
+CINZA_TEXTO = "#555555"
+
+
 def main():
     root = tk.Tk()
     root.title("Atualizar KSB1 - Fitted Units")
-    root.geometry("420x320")
+    root.geometry("440x420")
+    root.resizable(False, False)
+    root.configure(bg="white")
 
-    frame = ttk.Frame(root, padding=16)
+    logo_img = tk.PhotoImage(data=LOGO_PIRELLI_B64)
+    root.iconphoto(True, logo_img)
+
+    header = tk.Frame(root, bg=AMARELO_PIRELLI, height=70)
+    header.pack(fill=tk.X, side=tk.TOP)
+    header.pack_propagate(False)
+    tk.Label(header, image=logo_img, bg=AMARELO_PIRELLI).pack(expand=True)
+
+    style = ttk.Style()
+    style.configure("Pirelli.TButton", font=("Segoe UI", 10, "bold"), foreground="black")
+    style.map(
+        "Pirelli.TButton",
+        background=[("!disabled", VERMELHO_PIRELLI), ("disabled", "#e0a29c")],
+        foreground=[("!disabled", "white"), ("disabled", "white")],
+    )
+
+    frame = ttk.Frame(root, padding=20)
     frame.pack(fill=tk.BOTH, expand=True)
 
-    ttk.Label(frame, text="Mês:").grid(row=0, column=0, sticky="w", pady=4)
+    ttk.Label(frame, text="Mês:", font=("Segoe UI", 10)).grid(row=0, column=0, sticky="w", pady=6)
     mes_var = tk.StringVar(value=MESES_NOMES[datetime.now().month])
     mes_combo = ttk.Combobox(frame, textvariable=mes_var, values=list(MESES_NOMES.values()), state="readonly")
-    mes_combo.grid(row=0, column=1, sticky="ew", pady=4)
+    mes_combo.grid(row=0, column=1, sticky="ew", pady=6)
 
-    ttk.Label(frame, text="Ano:").grid(row=1, column=0, sticky="w", pady=4)
+    ttk.Label(frame, text="Ano:", font=("Segoe UI", 10)).grid(row=1, column=0, sticky="w", pady=6)
     ano_var = tk.StringVar(value=str(datetime.now().year))
     ano_entry = ttk.Entry(frame, textvariable=ano_var)
-    ano_entry.grid(row=1, column=1, sticky="ew", pady=4)
+    ano_entry.grid(row=1, column=1, sticky="ew", pady=6)
 
     frame.columnconfigure(1, weight=1)
 
-    log_widget = tk.Text(frame, height=10, wrap="word")
-    log_widget.grid(row=3, column=0, columnspan=2, sticky="nsew", pady=(12, 0))
+    log_widget = tk.Text(frame, height=10, wrap="word", relief="solid", borderwidth=1)
+    log_widget.grid(row=3, column=0, columnspan=2, sticky="nsew", pady=(14, 0))
     frame.rowconfigure(3, weight=1)
 
     def ao_clicar_extrair():
@@ -172,15 +200,20 @@ def main():
         finally:
             extrair_btn.config(state="normal")
 
-    extrair_btn = ttk.Button(frame, text="Extrair KSB1 (Gestoriais + Sem Agrupamento)", command=ao_clicar_extrair)
-    extrair_btn.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(12, 0))
+    extrair_btn = ttk.Button(
+        frame,
+        text="Extrair KSB1 (Gestoriais + Sem Agrupamento)",
+        command=ao_clicar_extrair,
+        style="Pirelli.TButton",
+    )
+    extrair_btn.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(16, 0), ipady=4)
 
     ttk.Label(
         frame,
         text="Antes de clicar: deixe o SAP GUI aberto, logada, com a KSB1 na tela de seleção.",
         wraplength=380,
-        foreground="#555",
-    ).grid(row=4, column=0, columnspan=2, sticky="w", pady=(8, 0))
+        foreground=CINZA_TEXTO,
+    ).grid(row=4, column=0, columnspan=2, sticky="w", pady=(10, 0))
 
     root.mainloop()
 
