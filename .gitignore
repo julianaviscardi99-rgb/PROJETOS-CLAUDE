@@ -1,2 +1,9 @@
 *.lnk
 .claude/session_state/
+
+# Dados reais da Pirelli (financeiro/SAP) - nunca versionar
+data/raw/
+data/processed/
+*.xlsx
+*.XLSX
+*.csv

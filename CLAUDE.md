@@ -44,6 +44,11 @@ Automatizar com o Claude o que hoje é feito em Excel nessas frentes (especialme
 - Scripts devem funcionar em qualquer máquina com `pip install -r requirements.txt`
 - Todo output salvar em `data/processed/`, nunca sobrescrever arquivos originais
 
+## Segurança de dados
+
+- `data/raw/`, `data/processed/` e qualquer export financeiro (`.xlsx`, `.csv`) NUNCA vão para o Git — estão no `.gitignore`. São dados reais da Pirelli (financeiro/SAP), o repositório é privado mas mesmo assim não podem vazar.
+- Antes de qualquer `git add`/commit, checar `git status` e garantir que nenhum arquivo de dados real está sendo staged.
+
 ## Sessão longa
 
 Um hook (`scripts/check_session_length.py`, configurado em `.claude/settings.json`) conta as ações da sessão e, ao atingir 45, dispara automaticamente o backup/archive (`scripts/session_transition.py`) e envia um alerta.
