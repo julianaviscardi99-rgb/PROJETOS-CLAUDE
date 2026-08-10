@@ -164,7 +164,7 @@ def main():
     style.map(
         "Pirelli.TButton",
         background=[("!disabled", VERMELHO_PIRELLI), ("disabled", "#e0a29c")],
-        foreground=[("!disabled", "white"), ("disabled", "white")],
+        foreground=[("!disabled", "black"), ("disabled", "black")],
     )
 
     frame = ttk.Frame(root, padding=20)

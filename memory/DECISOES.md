@@ -56,8 +56,10 @@
 
 ## 2026-08-10 — Atalho "ATUALIZAR KSB1.bat" na área de rede
 
-**Decisão:** criado `ATUALIZAR KSB1.bat` direto em `...\00.Extração Base KSB1\` na rede. Ao dar duplo clique, ele entra em `C:\Users\silveju001\Projetos Claude` (caminho fixo, local do computador da Juliana) e roda `scripts\sap\extrair_ksb1.py`.
+**Decisão:** criado `ATUALIZAR KSB1.bat` direto em `...\00.Extração Base KSB1\` na rede. Ao dar duplo clique, ele entra em `C:\Users\silveju001\Projetos Claude` (caminho fixo, local do computador da Juliana) e abre `scripts\sap\atualizar_ksb1_gui.py` via `pythonw` (sem console preto).
 
 **Motivo:** pedido da usuária, pra não precisar abrir o Claude Code/terminal toda vez que for atualizar a KSB1 — só clicar no atalho a partir da pasta de rede que ela já acessa.
 
 **Limitação:** esse `.bat` só funciona no computador da Juliana (caminho local hardcoded), e o `.bat` em si não é versionado no Git (vive na rede, fora do repositório). Se ela trocar de máquina ou o projeto mudar de pasta, o atalho precisa ser recriado com o novo caminho.
+
+**Atualização 2026-08-10 (mesma sessão):** o `.bat` da rede estava desatualizado — era uma versão antiga que chamava `python` (bloqueante, console preto) direto no `extrair_ksb1.py`, sem passar pela GUI nova. Corrigido para usar `cd /d` fixo + `start "" pythonw scripts\sap\atualizar_ksb1_gui.py` + `exit /b 0`, igual à versão local em `scripts/sap/ATUALIZAR KSB1.bat` (que usa `%~dp0`, só funciona por ser copiada, não porque roda direto no repo). Testado com sucesso pela usuária. Importante: a `atualizar_ksb1_gui.py` fica só local (`C:\Users\silveju001\Projetos Claude\scripts\sap\`) — não precisa copiar o `.py` para a rede, só o `.bat` de disparo.
