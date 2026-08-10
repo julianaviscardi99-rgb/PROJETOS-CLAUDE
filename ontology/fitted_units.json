@@ -60,8 +60,8 @@
         "transacao": "KSB1",
         "uso": "Extração de todas as informações de despesas.",
         "detalhe": "Baixada com o agrupamento 'gestoriais' e também sem agrupamento, para checar se todas as contas contábeis estão atreladas a um gestorial.",
-        "parametros_observados_em_2026-08-10": {
-          "area_contab_custos": "0580",
+        "parametros_fixos_confirmados_pela_usuaria": {
+          "area_contab_custos": "0580 (SEMPRE fixo para Fitted Units, confirmado pela Juliana em 2026-08-10 — precisa ser preenchido pelo script, o campo não vem preenchido por padrão numa KSB1 recém-aberta)",
           "grupo_de_centros_de_custo": "0495",
           "grupo_de_classes_de_custo": "gestoriais",
           "variante_de_exibicao": "/DESPFITTED (\"Fitted - Ordenação Classe de Custo\")"

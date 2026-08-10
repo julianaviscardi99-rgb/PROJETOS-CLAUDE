@@ -118,6 +118,7 @@ def garantir_parametros_bu(bu):
 def preencher_e_executar(session, bu, data_de, data_ate, koagr):
     wnd = session.FindById("wnd[0]")
 
+    wnd.FindById("usr/ctxtP_KOKRS").Text = "0580"
     if wnd.FindById("usr/ctxtKSTGR", False) is not None:
         wnd.FindById("usr/ctxtKSTGR").Text = bu["kstgr"]
 
@@ -192,8 +193,13 @@ def main():
         sys.exit(1)
 
     if session.Info.Transaction != "KSB1":
-        print(f"A transacao atual e '{session.Info.Transaction}', nao KSB1.")
-        print("Abra a KSB1 (tela de selecao) no SAP e rode o script de novo.")
+        print("Abrindo a transacao KSB1...")
+        session.FindById("wnd[0]/tbar[0]/okcd").Text = "/nKSB1"
+        session.FindById("wnd[0]").SendVKey(0)  # Enter
+
+    if session.Info.Transaction != "KSB1":
+        print(f"Nao consegui abrir a KSB1 (tela atual: '{session.Info.Transaction}').")
+        print("Confirme se seu usuario tem acesso a transacao KSB1 e tente de novo.")
         sys.exit(1)
 
     bu = perguntar_bu()
