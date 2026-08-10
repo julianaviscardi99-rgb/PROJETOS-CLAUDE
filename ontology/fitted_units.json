@@ -52,7 +52,14 @@
       {
         "transacao": "KSB1",
         "uso": "Extração de todas as informações de despesas.",
-        "detalhe": "Baixada com o agrupamento 'gestoriais' e também sem agrupamento, para checar se todas as contas contábeis estão atreladas a um gestorial."
+        "detalhe": "Baixada com o agrupamento 'gestoriais' e também sem agrupamento, para checar se todas as contas contábeis estão atreladas a um gestorial.",
+        "parametros_observados_em_2026-08-10": {
+          "area_contab_custos": "0580",
+          "grupo_de_centros_de_custo": "0495",
+          "grupo_de_classes_de_custo": "gestoriais",
+          "variante_de_exibicao": "/DESPFITTED (\"Fitted - Ordenação Classe de Custo\")"
+        },
+        "campos_tecnicos": "Ver ontology/shared_entities.json → sap_ksb1_campos_tecnicos (mapeamento genérico dos IDs de campo, válido para qualquer BU)."
       },
       {
         "transacao": "ZLFIB",

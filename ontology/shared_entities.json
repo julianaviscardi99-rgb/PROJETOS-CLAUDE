@@ -1,0 +1,25 @@
+{
+  "descricao": "Conceitos e mapeamentos tecnicos compartilhados entre os projetos/BUs (nao especificos de um dominio).",
+  "sap_ksb1_campos_tecnicos": {
+    "transacao": "KSB1",
+    "descricao": "Mapeamento dos IDs tecnicos dos campos da tela de selecao da KSB1, obtido via SAP GUI Scripting (scripts/sap/inspecionar_tela.py) em 2026-08-10. Usar esses IDs em qualquer script que preencha essa tela, independente da BU.",
+    "campos": {
+      "area_contab_custos": "ctxtP_KOKRS",
+      "centro_de_custo_de": "ctxtKOSTL-LOW",
+      "centro_de_custo_ate": "ctxtKOSTL-HIGH",
+      "grupo_de_centros_de_custo": "ctxtKSTGR",
+      "classe_de_custo_de": "ctxtKSTAR-LOW",
+      "classe_de_custo_ate": "ctxtKSTAR-HIGH",
+      "grupo_de_classes_de_custo": "ctxtKOAGR",
+      "data_lancamento_de": "ctxtR_BUDAT-LOW",
+      "data_lancamento_ate": "ctxtR_BUDAT-HIGH",
+      "variante_de_exibicao": "ctxtP_DISVAR"
+    },
+    "observacao_importante": "'Gestoriais' (o agrupamento que a Juliana usa para classificar despesas) e o VALOR preenchido no campo 'grupo_de_classes_de_custo' (ctxtKOAGR), nao um conceito separado do SAP. Para baixar 'sem agrupamento' (conforme o processo recorrente), basta deixar ctxtKOAGR vazio."
+  },
+  "conexao_sap_gui_scripting": {
+    "descricao": "Como qualquer script Python se conecta a uma sessao SAP ja aberta e logada. Ver detalhes tecnicos em memory/learnings/2026-08-10_sap_gui_scripting.md.",
+    "pre_requisito": "SAP GUI aberto e logado antes de rodar o script (o script nao faz login sozinho).",
+    "biblioteca": "pywin32 (win32com.client)"
+  }
+}
