@@ -12,6 +12,7 @@ Pre-requisitos na maquina de quem for rodar:
 - SAP GUI Scripting habilitado (Alt+F12 > Opcoes > Acessibilidade e Scripting > Scripting)
 - SAP GUI aberto e logada (nao precisa estar na KSB1, o script abre a transacao sozinho)
 """
+import time
 import tkinter as tk
 from datetime import datetime
 from pathlib import Path
@@ -128,13 +129,17 @@ def extrair_um(session, mes, ano, koagr, agrup_label, log):
     wnd1.FindById("usr/ctxtDY_FILENAME").Text = nome_arquivo
     wnd1.FindById("tbar[0]/btn[0]").Press()  # Gerar
 
-    messagebox.showinfo(
-        "Confirme no SAP",
-        f"Se aparecer o popup 'Segurança SAPGUI' pedindo autorização, clique em 'Permitir' "
-        f"na tela do SAP.\n\nDepois clique OK aqui para continuar.",
-    )
-
+    # As notificacoes de seguranca de scripting ja ficam desativadas nas
+    # opcoes do SAP GUI (Acessibilidade & scripting > Scripting), entao o
+    # popup "Seguranca SAPGUI" nao aparece de fato. Em vez de travar a
+    # extracao esperando confirmacao manual, so aguarda alguns instantes
+    # para o SAP terminar de escrever o arquivo na rede.
     arquivo_final = pasta_rede / nome_arquivo
+    for _ in range(20):
+        if arquivo_final.exists():
+            break
+        time.sleep(0.5)
+
     if arquivo_final.exists():
         log(f"{agrup_label}: salvo em {arquivo_final}")
     else:
