@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python scripts/check_session_length.py 2>/dev/null || true",
+            "timeout": 30,
+            "statusMessage": "Checando duração da sessão..."
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -43,3 +43,10 @@ Automatizar com o Claude o que hoje é feito em Excel nessas frentes (especialme
 - Nunca hardcodar caminhos absolutos do usuário nos scripts
 - Scripts devem funcionar em qualquer máquina com `pip install -r requirements.txt`
 - Todo output salvar em `data/processed/`, nunca sobrescrever arquivos originais
+
+## Sessão longa
+
+Um hook (`scripts/check_session_length.py`, configurado em `.claude/settings.json`) conta as ações da sessão e, ao atingir 45, dispara automaticamente o backup/archive (`scripts/session_transition.py`) e envia um alerta.
+
+- Ao receber o alerta de sessão longa: atualizar `memory/BRIEFING.md` com o progresso da sessão atual imediatamente.
+- Informar a usuária que ela pode encerrar esta janela e abrir uma nova para continuar — o contexto já foi salvo (BRIEFING.md + snapshot em `memory/long_term/` + push no GitHub).
