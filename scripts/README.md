@@ -22,6 +22,6 @@
 |---|---|
 | `sap/test_conexao_sap.py` | Testa a conexão via SAP GUI Scripting com a sessão SAP já aberta e logada. Pré-requisito para qualquer automação de SAP. |
 | `sap/inspecionar_tela.py` | Lista os IDs técnicos e textos de todos os campos da tela atual do SAP (não clica em nada) — usado para mapear telas novas. |
-| `sap/extrair_ksb1.py` | Preenche os filtros da KSB1 (BU, período, agrupamento gestoriais), executa e exporta o resultado para `.xlsx` em `data/raw/`. Só leitura/exportação, nada que altere dados no SAP. |
+| `sap/extrair_ksb1.py` | Preenche os filtros da KSB1 (BU, período, agrupamento gestoriais), executa e exporta o resultado para `.xlsx` em `data/raw/`. Para Fitted Units, também copia o arquivo para a área de rede da Pirelli (pasta do mês correspondente). Só leitura/exportação, nada que altere dados no SAP. |
 
 Sempre que criarmos um novo script, adicionar aqui antes de encerrar a sessão.

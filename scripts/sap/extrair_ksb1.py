@@ -8,6 +8,7 @@ selecao (1a tela) antes de rodar este script.
 """
 import calendar
 import json
+import shutil
 import sys
 from pathlib import Path
 
@@ -15,6 +16,18 @@ import win32com.client
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 ONTOLOGY_DIR = PROJECT_ROOT / "ontology"
+
+# Area de rede da Pirelli onde a Juliana quer uma copia dos exports brutos da
+# KSB1 (apenas Fitted Units por enquanto). Nao e um caminho pessoal do
+# usuario, e um recurso corporativo compartilhado - por isso fica fixo aqui.
+REDE_FITTED_BASE = Path(
+    r"\\FSS024-01BR.group.pirelli.com\GFU_DAC\Custos Fitted Units\Resultados Fitted"
+)
+MESES_PASTA = {
+    1: "01 - Jan", 2: "02 - Feb", 3: "03 - Mar", 4: "04 - Apr",
+    5: "05 - May", 6: "06 - Jun", 7: "07 - Jul", 8: "08 - Aug",
+    9: "09 - Sep", 10: "10 - Oct", 11: "11 - Nov", 12: "12 - Dec",
+}
 
 # Valores conhecidos por BU (grupo de centro de custo e variante de exibicao).
 # None = ainda nao mapeado; o script pergunta e oferece salvar para a proxima vez.
@@ -143,9 +156,33 @@ def exportar_para_excel(session, bu, mes, ano, koagr):
     wnd1.FindById("usr/ctxtDY_FILENAME").Text = nome_arquivo
     wnd1.FindById("tbar[0]/btn[0]").Press()  # botao "Gerar"
 
-    print(f"\nExportacao solicitada: {pasta_saida / nome_arquivo}")
+    arquivo_local = pasta_saida / nome_arquivo
+    print(f"\nExportacao solicitada: {arquivo_local}")
     print("Se aparecer um popup 'Seguranca SAPGUI' pedindo autorizacao para criar o arquivo,")
     print("clique em 'Permitir' na tela do SAP para concluir a exportacao.")
+    input("Depois de confirmar no SAP (e o arquivo aparecer salvo), aperte Enter aqui... ")
+
+    copiar_para_rede(bu, mes, ano, arquivo_local)
+
+
+def copiar_para_rede(bu, mes, ano, arquivo_local):
+    if bu["nome"] != "Fitted Units":
+        print(f"Copia para a rede ainda nao configurada para {bu['nome']}. Pulando.")
+        return
+
+    if not arquivo_local.exists():
+        print(f"AVISO: {arquivo_local} nao foi encontrado, nao copiei para a rede.")
+        print("Confirme se a exportacao no SAP realmente terminou e rode a copia manualmente se precisar.")
+        return
+
+    pasta_rede = REDE_FITTED_BASE / str(ano) / "00.Extração Base KSB1" / MESES_PASTA[mes]
+    try:
+        pasta_rede.mkdir(parents=True, exist_ok=True)
+        destino = pasta_rede / arquivo_local.name
+        shutil.copy2(arquivo_local, destino)
+        print(f"Copiado para a rede: {destino}")
+    except OSError as e:
+        print(f"AVISO: nao consegui copiar para a rede ({e}). O arquivo local em data/raw/ esta ok.")
 
 
 def main():
