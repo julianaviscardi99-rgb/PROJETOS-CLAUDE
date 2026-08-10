@@ -3,28 +3,28 @@
 > Manter apenas as últimas 2 sessões inline — sessões mais antigas vão para long_term/.
 
 ---
-## Sessão atual
+## Sessão atual (continuação)
 - Data: 2026-08-10
+- Contexto: sessão retomada após o erro do KOKRS vazio (já corrigido e commitado antes desta continuação, ver `memory/errors/2026-08-10_ksb1_kokrs_vazio.md`).
 - O que foi feito:
-  - Confirmado que a estrutura de pastas da Fase 2 já existia (`memory/`, `ontology/`, `data/raw`, `data/processed`, `scripts/`) e que o repositório Git já estava conectado ao GitHub (origin: `julianaviscardi99-rgb/PROJETOS-CLAUDE`).
-  - Coletado o contexto pessoal da usuária (cargo, empresa, objetivo do projeto).
-  - Criado `CLAUDE.md` na raiz com identidade da usuária, contexto de negócio e as regras de carga de contexto / registro de conhecimento / autonomia / qualidade.
-  - Criado `memory/REGRAS_RAPIDAS.md` (Fase 4) com as 10 regras críticas + gate pré-execução.
-  - Confirmada Fase 1 (instalação/ambiente) como concluída.
-  - Criadas as ontologias `ontology/fitted_units.json` e `ontology/circuito_panamericano.json` (unidades, sistemas SAP — KSB1/ZLFIB/FBL5N, classificação de despesas por gestoriais, processo recorrente Flash/Actual). Original Equipment fica para depois.
-  - Feito o primeiro commit + push de tudo (branch `main` agora rastreia `origin/main`).
-  - Criado `Auto_Backup_GitHub.bat` (add + commit + push automático) e agendada task diária no Windows (`Backup_Projeto_Claude`, 18h).
+  - Corrigido o `ATUALIZAR KSB1.bat`: antes ficava com um console preto aberto atrás da GUI porque chamava `python` (bloqueante) em vez de `pythonw`. Agora usa `start "" pythonw ...` + `exit /b 0`, então o console fecha assim que a janela abre.
+  - Descoberto e registrado (`memory/errors/2026-08-10_rede_pirelli_inacessivel_do_bash.md`): o Bash tool não consegue acessar a área de rede da Pirelli (`\\FSS024-01BR...`) mesmo com a rede ok do lado da usuária — parece não herdar a sessão SMB autenticada. Contorno: usuária copia arquivos manualmente via Explorer quando necessário.
+  - Adicionado logo da Pirelli (embutido em base64 dentro do próprio script, para manter `atualizar_ksb1_gui.py` autossuficiente) e visual com as cores da marca (faixa amarela no topo com o logo, botão vermelho) em `scripts/sap/atualizar_ksb1_gui.py`.
+  - Corrigido o texto de instrução da janela: antes dizia para deixar a KSB1 já aberta na tela de seleção; corrigido para dizer que basta estar logada na tela inicial do SAP (o script já navega sozinho até a KSB1).
+  - Nova regra registrada em `memory/REGRAS_RAPIDAS.md` (#11): comandos, status e perguntas ao usuário sempre em português (pedido explícito da usuária).
+  - Removido `scratch_logo_b64.txt` (arquivo temporário que foi parar na raiz do projeto por engano e acabou versionado pelo auto-commit da sessão longa — não deveria ter sido criado fora da pasta de scratchpad).
 
 ---
 ## Próximos passos
-- Testar o `Auto_Backup_GitHub.bat` manualmente (duplo-clique) para confirmar que roda certo fora deste chat.
-- Criar `ontology/shared_entities.json` (conceitos comuns às BUs: gestoriais, Flash/Actual, KSB1, FBL5N).
-- Detalhar Original Equipment quando a usuária quiser.
-- Entender o processo atual em Excel (Fitted Units e Circuito Panamericano: faturamento, despesas, EBIT, P&L mensal) para planejar a automação.
-- Preencher `memory/PROJECT_MAP.md` (ainda vazio).
+- Confirmar visualmente com a usuária que a janela atualizada (logo + texto corrigido) está como ela quer.
+- Testar o atalho `ATUALIZAR KSB1.bat` direto da rede (duplo-clique) para confirmar que não abre mais tela preta.
+- Copiar o `atualizar_ksb1_gui.py` atualizado (com logo) para a área de rede, substituindo a versão antiga.
+- Quando a extração da KSB1 estiver validada de ponta a ponta, avançar para a próxima etapa da automação: montar a base intermediária / rateio da Gerência a partir do arquivo exportado.
+- Preencher `memory/PROJECT_MAP.md` (Original Equipment ainda não detalhado).
 
 ---
 ## Contexto permanente do projeto
 - Esta pasta (`C:\Users\silveju001\Projetos Claude`) está estruturada seguindo o "Guia de Onboarding — Como Trabalhar com o Claude de Forma Profissional" (maio 2026, baseado no projeto Cockpit Ind — Pirelli Planning & Control).
 - Objetivo real deste projeto: automatizar controladoria (Fitted Units e Circuito Panamericano) hoje feita em Excel — resultado, despesas, faturamento, EBIT, P&L mensal. Detalhes completos em `CLAUDE.md`.
 - Repositório Git já configurado com backup remoto no GitHub.
+- GUI compartilhável da KSB1 (`scripts/sap/atualizar_ksb1_gui.py` + atalho `ATUALIZAR KSB1.bat` na rede) já em uso; ver `memory/DECISOES.md` para o histórico completo de decisões sobre ela.

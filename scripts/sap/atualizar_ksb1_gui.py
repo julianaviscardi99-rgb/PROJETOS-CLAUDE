@@ -210,7 +210,7 @@ def main():
 
     ttk.Label(
         frame,
-        text="Antes de clicar: deixe o SAP GUI aberto, logada, com a KSB1 na tela de seleção.",
+        text="Antes de clicar: deixe o SAP GUI aberto e logada na tela inicial (não precisa abrir a KSB1, o script faz isso sozinho).",
         wraplength=380,
         foreground=CINZA_TEXTO,
     ).grid(row=4, column=0, columnspan=2, sticky="w", pady=(10, 0))
