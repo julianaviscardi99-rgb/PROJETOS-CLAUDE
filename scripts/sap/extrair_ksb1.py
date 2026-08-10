@@ -146,9 +146,8 @@ def exportar_para_excel(session, bu, mes, ano, koagr):
     pasta_saida = PROJECT_ROOT / "data" / "raw"
     pasta_saida.mkdir(parents=True, exist_ok=True)
 
-    bu_slug = bu["nome"].lower().replace(" ", "_")
-    agrup_slug = "gestoriais" if koagr else "sem_agrupamento"
-    nome_arquivo = f"KSB1_{bu_slug}_{ano}{mes:02d}_{agrup_slug}.XLSX"
+    agrup_label = "Gestoriais" if koagr else "Sem Agrupamento"
+    nome_arquivo = f"KSB1 - {bu['nome']} {mes:02d}.{ano} - {agrup_label}.XLSX"
 
     session.FindById("wnd[0]/mbar/menu[0]/menu[3]/menu[1]").Select()
     wnd1 = session.FindById("wnd[1]")
