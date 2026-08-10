@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """
-Janela grafica para extrair a KSB1 da Fitted Units (Gestoriais + Sem Agrupamento)
-e salvar os arquivos na area de rede. Feito para qualquer pessoa com acesso a
-rede usar, sem precisar de terminal nem conhecer o projeto.
+Janela grafica para extrair a KSB1 da Fitted Units (Gestoriais + Sem Agrupamento),
+salvar os arquivos na area de rede e conferir o agrupamento gestorial.
 
-Script autossuficiente: nao depende de outros arquivos do projeto (nao le/
-escreve ontologia). Pode ser copiado sozinho para a area de rede.
+Rodado sempre localmente (nao precisa ser copiado para a rede — so o atalho/
+.bat na rede que aponta pra ca). Depende de check_agrupamentos_ksb1.py, na
+mesma pasta, pro botao "Gerar Check de Agrupamentos".
 
 Pre-requisitos na maquina de quem for rodar:
-- Python 3 com pywin32 instalado (pip install pywin32)
+- Python 3 com pywin32 e openpyxl instalados (pip install -r requirements.txt)
 - SAP GUI Scripting habilitado (Alt+F12 > Opcoes > Acessibilidade e Scripting > Scripting)
 - SAP GUI aberto e logada (nao precisa estar na KSB1, o script abre a transacao sozinho)
 """
@@ -196,7 +196,7 @@ CINZA_TEXTO = "#555555"
 def main():
     root = tk.Tk()
     root.title("Atualizar KSB1 - Fitted Units")
-    root.geometry("440x420")
+    root.geometry("440x470")
     root.resizable(False, False)
     root.configure(bg="white")
 
@@ -241,22 +241,56 @@ def main():
     frame.columnconfigure(1, weight=1)
 
     log_widget = tk.Text(frame, height=10, wrap="word", relief="solid", borderwidth=1)
-    log_widget.grid(row=3, column=0, columnspan=2, sticky="nsew", pady=(14, 0))
-    frame.rowconfigure(3, weight=1)
+    log_widget.grid(row=4, column=0, columnspan=2, sticky="nsew", pady=(14, 0))
+    frame.rowconfigure(4, weight=1)
 
-    def ao_clicar_extrair():
+    def ler_mes_ano():
         nome_para_numero = {v: k for k, v in MESES_NOMES.items()}
         mes = nome_para_numero[mes_var.get()]
         try:
             ano = int(ano_var.get())
         except ValueError:
             messagebox.showerror("Ano inválido", "Digite um ano válido, ex: 2026.")
+            return None
+        return mes, ano
+
+    def ao_clicar_extrair():
+        mes_ano = ler_mes_ano()
+        if mes_ano is None:
             return
+        mes, ano = mes_ano
         extrair_btn.config(state="disabled")
+        check_btn.config(state="disabled")
         try:
             rodar(mes, ano, log_widget)
         finally:
             extrair_btn.config(state="normal")
+            check_btn.config(state="normal")
+
+    def ao_clicar_check():
+        from check_agrupamentos_ksb1 import gerar_check
+
+        mes_ano = ler_mes_ano()
+        if mes_ano is None:
+            return
+        mes, ano = mes_ano
+
+        def log(msg):
+            log_widget.insert(tk.END, msg + "\n")
+            log_widget.see(tk.END)
+            log_widget.update()
+
+        log_widget.delete("1.0", tk.END)
+        extrair_btn.config(state="disabled")
+        check_btn.config(state="disabled")
+        try:
+            caminho = gerar_check(mes, ano, log=log)
+            messagebox.showinfo("Concluído", f"Check de agrupamentos gerado:\n{caminho}")
+        except Exception as e:
+            messagebox.showerror("Erro ao gerar o check", str(e))
+        finally:
+            extrair_btn.config(state="normal")
+            check_btn.config(state="normal")
 
     extrair_btn = ttk.Button(
         frame,
@@ -266,12 +300,20 @@ def main():
     )
     extrair_btn.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(16, 0), ipady=4)
 
+    check_btn = ttk.Button(
+        frame,
+        text="Gerar Check de Agrupamentos",
+        command=ao_clicar_check,
+        style="Pirelli.TButton",
+    )
+    check_btn.grid(row=3, column=0, columnspan=2, sticky="ew", pady=(8, 0), ipady=4)
+
     ttk.Label(
         frame,
-        text="Antes de clicar: deixe o SAP GUI aberto e logada na tela inicial (não precisa abrir a KSB1, o script faz isso sozinho).",
+        text="Antes de clicar em Extrair: deixe o SAP GUI aberto e logada na tela inicial (não precisa abrir a KSB1, o script faz isso sozinho). O Check de Agrupamentos usa os arquivos já extraídos na rede.",
         wraplength=380,
         foreground=CINZA_TEXTO,
-    ).grid(row=4, column=0, columnspan=2, sticky="w", pady=(10, 0))
+    ).grid(row=5, column=0, columnspan=2, sticky="w", pady=(10, 0))
 
     root.mainloop()
 
