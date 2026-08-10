@@ -91,12 +91,11 @@ def gerar_check(mes: int, ano: int, log=print) -> Path:
     linhas_gest = ler_linhas_detalhe(arquivo_gest)
     contas_gest = {conta for conta, _ in linhas_gest}
 
-    soma_ignorada_por_conta = {}
+    soma_por_conta_sem = {}
     linhas_filtradas = []
     for conta, valor in linhas_sem:
-        if eh_conta_ignorada(conta):
-            soma_ignorada_por_conta[conta] = soma_ignorada_por_conta.get(conta, 0.0) + valor
-        else:
+        soma_por_conta_sem[conta] = soma_por_conta_sem.get(conta, 0.0) + valor
+        if not eh_conta_ignorada(conta):
             linhas_filtradas.append((conta, valor))
 
     contas_faltando = {}
@@ -108,31 +107,40 @@ def gerar_check(mes: int, ano: int, log=print) -> Path:
     total_gest = sum(v for _, v in linhas_gest)
     diferenca = total_sem_filtrado - total_gest
 
+    # Check 1 sempre lista as contas fixas pedidas pela usuaria, mesmo que
+    # nao apareçam no mes (valor 0), mais qualquer conta comecando com "B"
+    # que de fato apareceu no arquivo (essa parte da regra e um padrao, nao
+    # uma lista fechada de contas).
+    contas_b_encontradas = sorted(
+        c for c in soma_por_conta_sem if c not in IGNORAR_EXATAS and c.upper().startswith("B")
+    )
+
     wb_out = Workbook()
+    ws = wb_out.active
+    ws.title = f"Check {mes:02d}.{ano}"[:31]
 
-    ws1 = wb_out.active
-    ws1.title = "Check 1 - Ignoradas"
-    ws1.append(["Check 1: contas ignoradas do Sem Agrupamento (nunca têm agrupamento gestorial)"])
-    ws1.append(["Conta contábil", "Valor total ignorado"])
-    for conta, valor in sorted(soma_ignorada_por_conta.items()):
-        ws1.append([conta, valor])
+    ws.append(["Check 1: contas ignoradas (nunca têm agrupamento gestorial)"])
+    ws.append(["Conta contábil", "Valor no Sem Agrupamento"])
+    for conta in sorted(IGNORAR_EXATAS):
+        ws.append([conta, soma_por_conta_sem.get(conta, 0.0)])
+    for conta in contas_b_encontradas:
+        ws.append([conta, soma_por_conta_sem[conta]])
 
-    ws2 = wb_out.create_sheet("Check 2 - Sem vínculo")
+    ws.append([])
     if contas_faltando:
-        ws2.append(["Check 2: contas contábeis SEM vínculo no agrupamento gestorial — enviar para a controladoria central"])
-        ws2.append(["Conta contábil", "Valor total"])
+        ws.append(["Check 2: contas contábeis SEM vínculo no agrupamento gestorial — enviar para a controladoria central"])
+        ws.append(["Conta contábil", "Valor total"])
         for conta, valor in sorted(contas_faltando.items()):
-            ws2.append([conta, valor])
+            ws.append([conta, valor])
     else:
-        ws2.append(["Check 2: todas as contas contábeis do Sem Agrupamento (após o Check 1) estão no agrupamento gestorial."])
+        ws.append(["Check 2: todas as contas contábeis do Sem Agrupamento (após o Check 1) estão no agrupamento gestorial."])
 
-    ws3 = wb_out.create_sheet("Resumo")
-    ws3.append(["Resumo da conferência", f"{mes:02d}.{ano}"])
-    ws3.append([])
-    ws3.append(["Total Sem Agrupamento (excluindo contas do Check 1)", total_sem_filtrado])
-    ws3.append(["Total Gestoriais", total_gest])
-    ws3.append(["Diferença", diferenca])
-    ws3.append([
+    ws.append([])
+    ws.append(["Resumo da conferência", f"{mes:02d}.{ano}"])
+    ws.append(["Total Sem Agrupamento (excluindo contas do Check 1)", total_sem_filtrado])
+    ws.append(["Total Gestoriais", total_gest])
+    ws.append(["Diferença", diferenca])
+    ws.append([
         "Situação",
         "OK - valores batem" if abs(diferenca) < 0.01 else "ATENÇÃO - valores não batem, ver Check 2",
     ])
@@ -145,7 +153,7 @@ def gerar_check(mes: int, ano: int, log=print) -> Path:
     log(f"Total Gestoriais: {total_gest:,.2f}")
     log(f"Diferença: {diferenca:,.2f}")
     if contas_faltando:
-        log(f"AVISO: {len(contas_faltando)} conta(s) sem vínculo no gestorial (ver aba 'Check 2 - Sem vínculo').")
+        log(f"AVISO: {len(contas_faltando)} conta(s) sem vínculo no gestorial (ver Check 2 no arquivo).")
     return caminho_saida
 
 
