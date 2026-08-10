@@ -50,6 +50,18 @@ def connect_session():
     return connection.Children(0)
 
 
+def abrir_ksb1(session, log):
+    if session.Info.Transaction != "KSB1":
+        log("Abrindo a transação KSB1...")
+        session.FindById("wnd[0]/tbar[0]/okcd").Text = "/nKSB1"
+        session.FindById("wnd[0]").SendVKey(0)  # Enter
+
+    if session.Info.Transaction != "KSB1":
+        raise RuntimeError(
+            f"Não consegui abrir a KSB1 (tela atual: '{session.Info.Transaction}')."
+        )
+
+
 def extrair_um(session, mes, ano, koagr, agrup_label, log):
     import calendar
 
@@ -91,8 +103,11 @@ def extrair_um(session, mes, ano, koagr, agrup_label, log):
     else:
         log(f"AVISO: não encontrei o arquivo de {agrup_label} na pasta esperada. Confira manualmente.")
 
-    # Volta para a tela de selecao para a proxima extracao (ou deixa limpo no final)
-    session.FindById("wnd[0]").SendVKey(3)
+    # Reabre a KSB1 do zero para a proxima extracao. Mais confiavel do que
+    # tentar voltar com F3 (SendVKey(3)): se a tela atual nao tiver essa
+    # tecla habilitada (ex: logo apos o dialogo de exportacao), o F3 falha
+    # com "The virtual key is not enabled" e trava a segunda extracao.
+    abrir_ksb1(session, log)
 
 
 def rodar(mes, ano, log_widget):
