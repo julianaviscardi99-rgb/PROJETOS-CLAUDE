@@ -50,6 +50,8 @@
   - Regra de negócio registrada em `ontology/fitted_units.json` → `classificacao_despesas.check_de_agrupamentos`.
 - **Ainda não testado pela usuária com os arquivos reais dela na rede** (só testado localmente com os arquivos de exemplo em `data/raw/`, que são de meses diferentes entre si — então a soma comparativa não bateu no teste, mas isso é esperado, não é bug; a mecânica (Check 1, Check 2, geração do arquivo) funcionou certinho).
 - **Próximo passo imediato:** usuária rodar o botão novo com um mês real (mesmos Gestoriais + Sem Agrupamento) e conferir se o resultado bate com a expectativa dela.
+- Usuária não achou o botão novo na janela (provavelmente estava com o app já aberto de antes, versão antiga em memória) e pediu um atalho separado na rede, com o mesmo ícone de pneu. Criado `scripts/sap/criar_atalho_check_agrupamentos.ps1` (mesmo padrão do `criar_atalho_ksb1.ps1`) e rodado — atalho `GERAR CHECK DE AGRUPAMENTOS.lnk` criado em `.../00.Extração Base KSB1/`. Importante: aponta pro mesmo `atualizar_ksb1_launcher.vbs`/`atualizar_ksb1_gui.py` do atalho de extração — os dois atalhos abrem a mesma janela com os dois botões, não são apps separados. Expliquei isso pra usuária.
+- **Ainda não commitado**: `scripts/sap/criar_atalho_check_agrupamentos.ps1`.
 
 ---
 ## Próximos passos
