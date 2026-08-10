@@ -50,7 +50,8 @@
     "descricao": "Area de rede da Pirelli onde a Juliana quer uma copia dos exports brutos da KSB1 de Fitted Units.",
     "caminho_base": "\\\\FSS024-01BR.group.pirelli.com\\GFU_DAC\\Custos Fitted Units\\Resultados Fitted",
     "estrutura": "<caminho_base>/<ano>/00.Extração Base KSB1/<MM - Abreviação em inglês>/ (ex: 08 - Aug). Pastas de 01 a 12 já criadas para 2026.",
-    "automatizado_por": "scripts/sap/extrair_ksb1.py (função copiar_para_rede), só para Fitted Units por enquanto."
+    "automatizado_por": "scripts/sap/extrair_ksb1.py (função copiar_para_rede), só para Fitted Units por enquanto.",
+    "atalho": "\"ATUALIZAR KSB1.bat\" na raiz de <caminho_base>/2026/00.Extração Base KSB1/ — duplo clique roda scripts/sap/extrair_ksb1.py (caminho local fixo: C:\\Users\\silveju001\\Projetos Claude). Pré-requisito: SAP GUI aberto na tela de seleção da KSB1."
   },
   "sistemas": {
     "ferramentas": ["SAP", "Excel"],
