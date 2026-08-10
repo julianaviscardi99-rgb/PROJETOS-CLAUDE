@@ -1,0 +1,98 @@
+{
+  "dominio": "Fitted Units",
+  "descricao": "Business da Pirelli onde ocorre a montagem e sequenciamento de pneus e rodas, com envio do conjunto montado para o cliente. A unidade geralmente fica fisicamente dentro da planta montadora do cliente, para otimizar transporte e tempo.",
+  "responsavel": "Juliana (Controller)",
+  "unidades": [
+    {
+      "codigo": "SJP",
+      "nome": "São José dos Pinhais",
+      "status": "ativa",
+      "observacao": "Fica dentro do complexo da Volkswagen."
+    },
+    {
+      "codigo": "GOI",
+      "nome": "Goiana",
+      "status": "ativa",
+      "observacao": "Fica dentro do complexo da Jeep."
+    },
+    {
+      "codigo": "IBI",
+      "nome": "Ibirité",
+      "status": "ativa",
+      "observacao": "Não fica dentro de montadora; atende CNH, Iveco e Fiat."
+    },
+    {
+      "codigo": "RES",
+      "nome": "Resende",
+      "status": "ativa",
+      "observacao": "Fica dentro do complexo Nissan."
+    },
+    {
+      "codigo": "GER",
+      "nome": "Gerência",
+      "status": "ativa",
+      "observacao": "Canal onde ficam alocados os custos do corporativo, posteriormente rateados no custo fixo das demais operações (unidades)."
+    },
+    {
+      "codigo": "ITA",
+      "nome": "Itaiaia",
+      "status": "encerrada",
+      "observacao": "Unidade encerrada, mas ainda pode aparecer custo residual."
+    },
+    {
+      "codigo": "SOR",
+      "nome": "Sorocaba",
+      "status": "encerrada",
+      "observacao": "Unidade encerrada, mas ainda pode aparecer custo residual."
+    }
+  ],
+  "sistemas": {
+    "ferramentas": ["SAP", "Excel"],
+    "transacoes_sap": [
+      {
+        "transacao": "KSB1",
+        "uso": "Extração de todas as informações de despesas.",
+        "detalhe": "Baixada com o agrupamento 'gestoriais' e também sem agrupamento, para checar se todas as contas contábeis estão atreladas a um gestorial."
+      },
+      {
+        "transacao": "ZLFIB",
+        "uso": "Extração de todas as informações de faturamento."
+      },
+      {
+        "transacao": "FBL5N",
+        "uso": "Conferência de lançamento — usada para checar se todas as notas faturadas foram contabilizadas corretamente."
+      }
+    ]
+  },
+  "classificacao_despesas": {
+    "conta_contabil": "Cada lançamento de despesa possui uma conta contábil no SAP.",
+    "gestoriais": "Agrupamento no SAP que classifica as contas contábeis. É a base da classificação de despesas usada pelo controller (ex: para conciliar variável vs. fixo, rateios etc.)."
+  },
+  "processo_recorrente": {
+    "frequencia": "2x por mês (Flash e Actual)",
+    "etapas": [
+      "1. Baixar KSB1 com agrupamento 'gestoriais' e sem agrupamento.",
+      "2. Checar se todas as contas contábeis estão atreladas a um gestorial.",
+      "3. Carregar as informações da KSB1 em Excel para formar a base intermediária.",
+      "4. Carregar a base intermediária no arquivo de rateio das despesas da Gerência (GER) para as demais unidades.",
+      "5. Carregar a base intermediária (já rateada) no arquivo de P&L, em formato já conhecido pela gerência."
+    ],
+    "resumo": "Extrair tudo do SAP e carregar em Excel, em formatos já conhecidos pela gerência (base intermediária → rateio → P&L)."
+  },
+  "ciclos": {
+    "flash": {
+      "descricao": "Prévia do fechamento.",
+      "quando": "Primeiro dia útil do mês."
+    },
+    "actual": {
+      "descricao": "Fechamento efetivo. Precisa integrar todos os impostos, cálculo de diferença de estoque, etc.",
+      "quando": "Por volta do dia 5 de cada mês."
+    }
+  },
+  "conhecimento_necessario": [
+    "Despesas (variável vs. fixo)",
+    "Rateios",
+    "Conciliação contábil",
+    "Visão de controller"
+  ]
+}

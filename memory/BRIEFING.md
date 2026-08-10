@@ -4,24 +4,22 @@
 
 ---
 ## Sessão atual
-- Data: 2026-08-07
+- Data: 2026-08-10
 - O que foi feito:
-  - Lido e analisado o arquivo `Guia_Claude_Para_Iniciantes 1.docx` (guia de onboarding para trabalhar com Claude de forma profissional).
-  - Criada a estrutura de pastas/arquivos da Fase 2 do guia em `C:\Users\silveju001\Projetos Claude`:
-    - `memory/learnings/`, `memory/errors/`, `memory/long_term/`, `ontology/`, `data/raw/`, `data/processed/`, `scripts/`
-    - Arquivos vazios: `memory/BRIEFING.md`, `memory/DECISOES.md`, `memory/PROJECT_MAP.md`, `scripts/README.md`
-  - Usuária pediu para seguir as regras do guia dora em diante (tratá-lo como base para o `CLAUDE.md`).
-  - Comecei a Fase 3 (criar `CLAUDE.md`) e pedi contexto pessoal (cargo/empresa/objetivo do projeto) — usuária ainda não respondeu, precisou sair.
+  - Confirmado que a estrutura de pastas da Fase 2 já existia (`memory/`, `ontology/`, `data/raw`, `data/processed`, `scripts/`) e que o repositório Git já estava conectado ao GitHub (origin: `julianaviscardi99-rgb/PROJETOS-CLAUDE`).
+  - Coletado o contexto pessoal da usuária (cargo, empresa, objetivo do projeto).
+  - Criado `CLAUDE.md` na raiz com identidade da usuária, contexto de negócio e as regras de carga de contexto / registro de conhecimento / autonomia / qualidade.
 
 ---
 ## Próximos passos
-- Perguntar à usuária: cargo, empresa, e o que este projeto faz (para preencher o `CLAUDE.md` — Fase 3 do guia).
-- Criar `CLAUDE.md` com as regras do guia + contexto pessoal.
-- Criar `memory/REGRAS_RAPIDAS.md` (Fase 4).
-- Configurar Git + backup automático no GitHub (Fase 9) — ainda não existe repositório configurado nesta pasta.
-- Seguir para as demais fases do guia conforme a usuária desejar (PROJECT_MAP, ontologia, índice de scripts).
+- Criar `memory/REGRAS_RAPIDAS.md` (Fase 4 — top 10 regras críticas, leitura de 60 segundos).
+- Criar `ontology/shared_entities.json` e os `ontology/<dominio>.json` (Fitted Units, Circuito Panamericano, Original Equipment).
+- Criar `Auto_Backup_GitHub.bat` para backup automático (o repositório já existe e está conectado ao GitHub, falta só o script de automação).
+- Entender o processo atual em Excel (Fitted Units e Circuito Panamericano: faturamento, despesas, EBIT, P&L mensal) para planejar a automação.
+- Preencher `memory/PROJECT_MAP.md` (ainda vazio) e começar a registrar decisões em `memory/DECISOES.md` (ainda vazio).
 
 ---
 ## Contexto permanente do projeto
-- Esta pasta (`C:\Users\silveju001\Projetos Claude`) está sendo estruturada seguindo o "Guia de Onboarding — Como Trabalhar com o Claude de Forma Profissional" (maio 2026, baseado no projeto Cockpit Ind — Pirelli Planning & Control).
-- Ainda não é um repositório git; sem backup automático configurado.
+- Esta pasta (`C:\Users\silveju001\Projetos Claude`) está estruturada seguindo o "Guia de Onboarding — Como Trabalhar com o Claude de Forma Profissional" (maio 2026, baseado no projeto Cockpit Ind — Pirelli Planning & Control).
+- Objetivo real deste projeto: automatizar controladoria (Fitted Units e Circuito Panamericano) hoje feita em Excel — resultado, despesas, faturamento, EBIT, P&L mensal. Detalhes completos em `CLAUDE.md`.
+- Repositório Git já configurado com backup remoto no GitHub.

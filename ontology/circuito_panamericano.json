@@ -1,0 +1,59 @@
+{
+  "dominio": "Circuito Panamericano",
+  "descricao": "Maior complexo de testes da América Latina, operado pela Pirelli. Modelo de negócio baseado em aluguel de espaço, tanto para a Pirelli R&D quanto para clientes terceiros.",
+  "responsavel": "Juliana (Controller)",
+  "unidades": [
+    {
+      "codigo": null,
+      "nome": "Elias Fausto",
+      "status": "ativa",
+      "observacao": "Única unidade do Circuito Panamericano."
+    }
+  ],
+  "modelo_de_negocio": "Aluguel de espaço do complexo de testes, para a Pirelli R&D (interno) e para clientes terceiros (externo).",
+  "sistemas": {
+    "ferramentas": ["SAP", "Excel"],
+    "transacoes_sap": [
+      {
+        "transacao": "KSB1",
+        "uso": "Extração de despesas.",
+        "detalhe": "Idêntico à Fitted Units — mesma forma de extração (com e sem agrupamento gestoriais, checagem de contas atreladas)."
+      },
+      {
+        "transacao": "FBL5N",
+        "uso": "Conferência de lançamento (mesma lógica da Fitted Units — a confirmar se aplica igual aqui)."
+      }
+    ],
+    "faturamento": "Diferente da Fitted Units: aqui o faturamento é recebido já fechado (não é extraído via ZLFIB pela Juliana)."
+  },
+  "classificacao_despesas": {
+    "conta_contabil": "Cada lançamento de despesa possui uma conta contábil no SAP.",
+    "gestoriais": "Mesmo conceito da Fitted Units — agrupamento no SAP que classifica as contas contábeis."
+  },
+  "processo_recorrente": {
+    "frequencia": "2x por mês (Flash e Actual) — mesmo ciclo da Fitted Units.",
+    "etapas": [
+      "1. Baixar KSB1 com agrupamento 'gestoriais' e sem agrupamento (processo idêntico à Fitted Units).",
+      "2. Checar se todas as contas contábeis estão atreladas a um gestorial.",
+      "3. Carregar as informações da KSB1 em Excel para formar a base intermediária.",
+      "4. Carregar a base intermediária diretamente no arquivo de P&L (sem etapa de rateio da Gerência)."
+    ],
+    "observacao": "Diferença em relação à Fitted Units: não existe etapa de rateio da Gerência — a base intermediária vai direto para o P&L. Além disso, o faturamento já chega fechado (não é extraído/apurado pela Juliana)."
+  },
+  "ciclos": {
+    "flash": {
+      "descricao": "Prévia do fechamento.",
+      "quando": "Primeiro dia útil do mês."
+    },
+    "actual": {
+      "descricao": "Fechamento efetivo. Precisa integrar todos os impostos, cálculo de diferença de estoque, etc.",
+      "quando": "Por volta do dia 5 de cada mês."
+    }
+  },
+  "conhecimento_necessario": [
+    "Despesas (variável vs. fixo)",
+    "Rateios",
+    "Conciliação contábil",
+    "Visão de controller"
+  ]
+}
