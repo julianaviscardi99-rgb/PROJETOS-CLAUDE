@@ -28,6 +28,24 @@
   - Pediu para remover o popup manual "Confirme no SAP" (o `messagebox.showinfo` que pedia pra clicar OK depois de cada exportação, avisando sobre um possível popup de segurança do SAP). Verificamos juntas nas opções do SAP GUI (Acessibilidade & scripting > Scripting) que as notificações "Notificar se um script se vincular a um SAP GUI" e "Notificar quando um script abre uma ligação" já estavam desmarcadas — ou seja, o popup nativo do SAP não aparece de fato; o aviso era só uma precaução nossa que virou uma interrupção manual desnecessária a cada extração. Removido o `messagebox` em `extrair_um()`; substituído por um loop curto (`time.sleep`, até 10s) esperando o arquivo aparecer na rede antes de seguir. **Ainda não testado pela usuária.**
 
 ---
+## Sessão atual (nova tarefa iniciada, ainda em andamento)
+- Data: 2026-08-10
+- Contexto: com a extração da KSB1 validada (Gestoriais + Sem Agrupamento funcionando, popup manual removido), a usuária pediu uma nova automação: um script de conferência ("Check de agrupamentos") que compara os dois arquivos exportados.
+- **Regra de negócio explicada pela usuária (registrar em `ontology/` quando o script for feito):**
+  - Arquivo "Sem Agrupamento" traz TODAS as contas contábeis da empresa 0580 nos centros de custo selecionados. Arquivo "Gestoriais" traz só as contas já cadastradas num agrupamento gestorial.
+  - **Check 1:** no arquivo "Sem Agrupamento", ignorar as contas: `C23020JJ15`, `K610100000`, `M120400001`, `M12040J001`, `M130120110`, `B220400000`, e **todas as contas que começam com a letra "B"**.
+  - **Check 2:** das contas que sobraram (Sem Agrupamento menos as ignoradas), verificar se todas aparecem no arquivo "Gestoriais". Se alguma não aparecer, listar — ela precisa mandar pro time de controladoria central pra vincularem essa conta ao agrupamento gestorial.
+  - **Soma final:** valor total do Sem Agrupamento (excluindo as contas do Check 1) deve bater com o valor total do Gestoriais, se tudo estiver vinculado corretamente. **Ignorar linhas amarelas de subtotal** ao somar (não somar duas vezes).
+  - **Output:** gerar um arquivo dentro da pasta do mês (mesma pasta de rede da extração, `00.Extração Base KSB1/<mês>`), nome `Check de agrupamentos - MM.YYYY.xlsx` (mês/ano do arquivo sendo checado), contendo: resultado do Check 1 (lista de contas ignoradas), resultado do Check 2 (contas sem vínculo, se houver), e a soma comparativa das duas bases.
+- **Investigação já feita (arquivos de exemplo em `data/raw/`, não versionados — reais, ignorados pelo Git):**
+  - `data/raw/KSB1 - Fitted Units 07.2026 - Gestoriais.XLSX` e `data/raw/KSB1_fitted_units_202608_sem_agrupamento.XLSX` — usados como amostra pra entender a estrutura.
+  - Colunas confirmadas (mesmo cabeçalho nos dois arquivos, 19 colunas, linha 1 = header): coluna D = "Classe de custo" (é a conta contábil — no arquivo Sem Agrupamento aparecem valores como `M12040J001`, que bate com uma das contas da lista de exclusão da usuária). Coluna Q (17ª) = "Valor/MR" (valor a somar).
+  - **Ponto em aberto / possível bloqueio:** no arquivo Gestoriais de amostra, a coluna "Classe de custo" aparece com valores tipo `4200000_HR`, `4200110_HR` (parecem códigos de rateio de HR, não contas contábeis "cruas" como no Sem Agrupamento). Preciso confirmar com a usuária se a comparação do Check 2 deve ser feita por essa mesma coluna (e nesse caso o formato pode não bater direto, exigindo lógica adicional) ou se existe outra coluna/lógica de vínculo entre os dois arquivos.
+  - Ainda não explorado: onde ficam as linhas de subtotal "amarelas" no arquivo Sem Agrupamento (não apareceram nas primeiras ~19 linhas nas duas amostras) — falta rodar `openpyxl` com `data_only=True` e inspecionar `cell.fill.fgColor` ao longo do arquivo pra achar o padrão de cor e a estrutura dessas linhas de subtotal.
+- **Próximo passo imediato ao retomar:** inspecionar mais linhas dos dois arquivos de amostra (cor de preenchimento das células pra achar subtotais amarelos; range completo pra achar todas as contas começando com "B"; confirmar layout da coluna "Classe de custo" no Gestoriais) e então perguntar à usuária sobre o ponto em aberto acima antes de escrever o script de comparação.
+- **Nada foi commitado ainda desta nova tarefa** (só exploração/leitura dos arquivos de exemplo, nenhum código escrito).
+
+---
 ## Próximos passos
 - Usuária precisa testar a extração de novo (atalho `.lnk` na rede) e confirmar se agora gera os dois arquivos (Gestoriais + Sem Agrupamento) sem o erro "virtual key is not enabled".
 - Se confirmado, commitar a correção do bug (`scripts/sap/atualizar_ksb1_gui.py` ainda não commitada nesta sessão) e also commitar os arquivos novos do atalho (`scripts/sap/atualizar_ksb1_launcher.vbs`, `scripts/sap/criar_atalho_ksb1.ps1`, `scripts/sap/assets/pirelli_tire.ico`).
