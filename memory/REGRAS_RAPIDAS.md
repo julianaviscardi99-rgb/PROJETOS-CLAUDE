@@ -13,6 +13,7 @@
 9. Commit sempre seguido de push imediato no mesmo momento.
 10. Antes de qualquer script novo: verificar se o conhecimento já existe nas ontologias.
 11. Comandos, status e perguntas para a usuária sempre em português (pedido explícito, 2026-08-10).
+12. Ao salvar qualquer arquivo em uma pasta que já tem um arquivo com o mesmo nome, nunca sobrescrever: salvar como "_v2"; se "_v2" já existir, "_v3", e assim por diante (pedido explícito, 2026-08-10).
 
 ---
 

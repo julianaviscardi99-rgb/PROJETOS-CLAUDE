@@ -51,15 +51,50 @@ def connect_session():
 
 
 def abrir_ksb1(session, log):
-    if session.Info.Transaction != "KSB1":
-        log("Abrindo a transação KSB1...")
-        session.FindById("wnd[0]/tbar[0]/okcd").Text = "/nKSB1"
-        session.FindById("wnd[0]").SendVKey(0)  # Enter
+    # Sempre reenviamos /nKSB1, mesmo se a transacao atual ja for "KSB1":
+    # a transacao permanece "KSB1" tanto na tela de selecao quanto na tela
+    # de resultados apos rodar o relatorio, entao checar so o nome da
+    # transacao nao garante que estamos na tela de selecao (isso causava
+    # "The control could not be found by id" na segunda extracao).
+    log("Abrindo a transação KSB1...")
+    session.FindById("wnd[0]/tbar[0]/okcd").Text = "/nKSB1"
+    session.FindById("wnd[0]").SendVKey(0)  # Enter
 
     if session.Info.Transaction != "KSB1":
         raise RuntimeError(
             f"Não consegui abrir a KSB1 (tela atual: '{session.Info.Transaction}')."
         )
+
+
+def voltar_para_selecao(session, log):
+    # Clica no botao "Voltar" (seta verde) em vez de SendVKey(3): o SendVKey
+    # simula a tecla F3, que o SAP pode reportar como desabilitada dependendo
+    # do estado da tela ("The virtual key is not enabled"), mesmo com o botao
+    # visualmente clicavel. Pressionar o botao direto evita esse problema e
+    # mantem os campos da tela de selecao preenchidos (diferente de reabrir a
+    # transacao do zero com /nKSB1, que limpa tudo).
+    log("Voltando para a tela de seleção...")
+    wnd = session.FindById("wnd[0]")
+    wnd.FindById("tbar[0]/btn[3]").Press()
+
+    if wnd.FindById("usr/ctxtP_KOKRS", False) is None:
+        # Nao caiu na tela de selecao esperada: reabre a transacao do zero
+        # como rede de seguranca.
+        abrir_ksb1(session, log)
+
+
+def nome_com_versao(pasta: Path, nome_base: str) -> str:
+    # Nunca sobrescrever um arquivo ja existente na pasta: se ja existe um
+    # arquivo com esse nome, salva como "_v2", se "_v2" tambem ja existir,
+    # "_v3", e assim por diante.
+    base = Path(nome_base)
+    stem, ext = base.stem, base.suffix
+    candidato = pasta / nome_base
+    versao = 2
+    while candidato.exists():
+        candidato = pasta / f"{stem}_v{versao}{ext}"
+        versao += 1
+    return candidato.name
 
 
 def extrair_um(session, mes, ano, koagr, agrup_label, log):
@@ -83,7 +118,9 @@ def extrair_um(session, mes, ano, koagr, agrup_label, log):
 
     pasta_rede = REDE_BASE / str(ano) / "00.Extração Base KSB1" / MESES_PASTA[mes]
     pasta_rede.mkdir(parents=True, exist_ok=True)
-    nome_arquivo = f"KSB1 - {BU['nome']} {mes:02d}.{ano} - {agrup_label}.XLSX"
+    nome_arquivo = nome_com_versao(
+        pasta_rede, f"KSB1 - {BU['nome']} {mes:02d}.{ano} - {agrup_label}.XLSX"
+    )
 
     session.FindById("wnd[0]/mbar/menu[0]/menu[3]/menu[1]").Select()
     wnd1 = session.FindById("wnd[1]")
@@ -103,11 +140,7 @@ def extrair_um(session, mes, ano, koagr, agrup_label, log):
     else:
         log(f"AVISO: não encontrei o arquivo de {agrup_label} na pasta esperada. Confira manualmente.")
 
-    # Reabre a KSB1 do zero para a proxima extracao. Mais confiavel do que
-    # tentar voltar com F3 (SendVKey(3)): se a tela atual nao tiver essa
-    # tecla habilitada (ex: logo apos o dialogo de exportacao), o F3 falha
-    # com "The virtual key is not enabled" e trava a segunda extracao.
-    abrir_ksb1(session, log)
+    voltar_para_selecao(session, log)
 
 
 def rodar(mes, ano, log_widget):
@@ -181,13 +214,22 @@ def main():
     frame = ttk.Frame(root, padding=20)
     frame.pack(fill=tk.BOTH, expand=True)
 
+    # Sugestao padrao: mes anterior ao atual (o fechamento mensal so fica
+    # pronto depois que o mes termina), com o ano ajustado se o mes atual
+    # for janeiro (mes anterior cai em dezembro do ano passado).
+    hoje = datetime.now()
+    if hoje.month == 1:
+        mes_padrao, ano_padrao = 12, hoje.year - 1
+    else:
+        mes_padrao, ano_padrao = hoje.month - 1, hoje.year
+
     ttk.Label(frame, text="Mês:", font=("Segoe UI", 10)).grid(row=0, column=0, sticky="w", pady=6)
-    mes_var = tk.StringVar(value=MESES_NOMES[datetime.now().month])
+    mes_var = tk.StringVar(value=MESES_NOMES[mes_padrao])
     mes_combo = ttk.Combobox(frame, textvariable=mes_var, values=list(MESES_NOMES.values()), state="readonly")
     mes_combo.grid(row=0, column=1, sticky="ew", pady=6)
 
     ttk.Label(frame, text="Ano:", font=("Segoe UI", 10)).grid(row=1, column=0, sticky="w", pady=6)
-    ano_var = tk.StringVar(value=str(datetime.now().year))
+    ano_var = tk.StringVar(value=str(ano_padrao))
     ano_entry = ttk.Entry(frame, textvariable=ano_var)
     ano_entry.grid(row=1, column=1, sticky="ew", pady=6)
 
