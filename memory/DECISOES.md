@@ -73,3 +73,13 @@
 **Decisão:** não mexer. Perguntei à usuária se ela queria renomear a descrição da variante direto no SAP (o que mudaria a exibição para todo mundo que usa essa mesma variante, não só ela) ou deixar como está; ela escolheu deixar como está.
 
 **Motivo:** é só texto informativo, não afeta o resultado da extração nem aparece nos arquivos gerados; renomear seria uma mudança em objeto compartilhado do SAP sem ganho real.
+
+---
+
+## 2026-08-10 — Nome do sub-projeto: "Fitted Units Despesas"
+
+**Decisão:** todo o trabalho feito nesta sessão (extração da KSB1 via GUI + check de agrupamentos gestoriais) fica identificado como o sub-projeto **"Fitted Units Despesas"**, dentro do domínio maior Fitted Units (que também inclui faturamento, EBIT e P&L, ainda não automatizados).
+
+**Motivo:** pedido explícito da usuária, para deixar claro que essa frente pertence à Fitted Units especificamente na parte de despesas.
+
+**Como foi aplicado:** só a nível de documentação/memória (`memory/PROJECT_MAP.md`) — não houve renomeação de pastas ou arquivos físicos, para não quebrar os caminhos já usados pelos scripts (`REDE_BASE`, caminho local do projeto, etc.).
