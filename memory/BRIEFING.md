@@ -17,8 +17,15 @@
   - Ao testar o atalho da rede, apareceu console preto antigo (texto "Antes de continuar..."): o `.bat` na rede estava com uma versão bem mais antiga (chamava `python extrair_ksb1.py` direto, bloqueante). Corrigido — ver `memory/DECISOES.md` (atualização na entrada do atalho da rede). Usuária testou de novo e confirmou que abriu a GUI certa.
   - Corrigido bug de contraste: no botão vermelho "Extrair KSB1", o texto estava branco sobre fundo que o tema ttk do Windows não pinta de vermelho de forma confiável, ficando invisível. Trocado `foreground` de `white` para `black` no style `Pirelli.TButton` em `atualizar_ksb1_gui.py`. Usuária confirmou que ficou legível.
 
+  - Criado atalho `.lnk` (com ícone de pneu Pirelli, `scripts/sap/assets/pirelli_tire.ico`) na pasta de rede, apontando via `wscript.exe` para `scripts/sap/atualizar_ksb1_launcher.vbs`, que roda `pythonw atualizar_ksb1_gui.py` sem abrir nenhum console (resolve o pedido da usuária de eliminar a "telinha preta" que ainda piscava com o `.bat`). Script `scripts/sap/criar_atalho_ksb1.ps1` criado para regenerar esse atalho se precisar (acha a pasta de rede por wildcard porque `Extração` com acento quebra ao passar path literal pelo PowerShell via Bash). Usuária confirmou que funcionou, sem tela preta.
+  - **Pendência:** ainda existe o `ATUALIZAR KSB1.bat` antigo na mesma pasta de rede, ao lado do novo `.lnk`. Perguntei se podia apagar, mas a conversa seguiu para o bug abaixo antes de confirmar — falta apagar o `.bat` antigo quando a usuária confirmar.
+  - **Bug encontrado e corrigido:** a extração só gerava o arquivo "Gestoriais", nunca o "Sem Agrupamento". Causa: no fim de `extrair_um()`, o código tentava voltar pra tela de seleção com `SendVKey(3)` (F3), que falhava com erro do SAP `"The virtual key is not enabled"` (F3 nem sempre está habilitado na tela pós-exportação) — isso interrompia a extração antes da segunda rodada. Corrigido em `scripts/sap/atualizar_ksb1_gui.py`: criada função `abrir_ksb1(session, log)` que reabre a KSB1 do zero via `/nKSB1` (mesmo padrão robusto já usado no início do script) em vez de depender de F3; usada tanto no início de `rodar()` quanto no fim de cada `extrair_um()`. **Ainda não testado pela usuária** (a sessão bateu o limite de 45 ações logo após a correção).
+
 ---
 ## Próximos passos
+- Usuária precisa testar a extração de novo (atalho `.lnk` na rede) e confirmar se agora gera os dois arquivos (Gestoriais + Sem Agrupamento) sem o erro "virtual key is not enabled".
+- Se confirmado, commitar a correção do bug (`scripts/sap/atualizar_ksb1_gui.py` ainda não commitada nesta sessão) e also commitar os arquivos novos do atalho (`scripts/sap/atualizar_ksb1_launcher.vbs`, `scripts/sap/criar_atalho_ksb1.ps1`, `scripts/sap/assets/pirelli_tire.ico`).
+- Perguntar/confirmar se pode apagar o `ATUALIZAR KSB1.bat` antigo da pasta de rede (ficou duplicado com o novo atalho `.lnk`).
 - Quando a extração da KSB1 estiver validada de ponta a ponta, avançar para a próxima etapa da automação: montar a base intermediária / rateio da Gerência a partir do arquivo exportado.
 - Preencher `memory/PROJECT_MAP.md` (Original Equipment ainda não detalhado).
 

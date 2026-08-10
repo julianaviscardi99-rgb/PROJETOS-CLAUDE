@@ -129,16 +129,12 @@ def rodar(mes, ano, log_widget):
         )
         return
 
-    if session.Info.Transaction != "KSB1":
-        log("Abrindo a transação KSB1...")
-        session.FindById("wnd[0]/tbar[0]/okcd").Text = "/nKSB1"
-        session.FindById("wnd[0]").SendVKey(0)  # Enter
-
-    if session.Info.Transaction != "KSB1":
+    try:
+        abrir_ksb1(session, log)
+    except RuntimeError as e:
         messagebox.showerror(
             "Não consegui abrir a KSB1",
-            f"Tentei abrir a transação KSB1, mas a tela atual é '{session.Info.Transaction}'.\n\n"
-            "Confirme se seu usuário tem acesso à transação KSB1 e tente de novo.",
+            f"{e}\n\nConfirme se seu usuário tem acesso à transação KSB1 e tente de novo.",
         )
         return
 

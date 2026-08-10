@@ -1,0 +1,7 @@
+# Aprendizado: SAP GUI Scripting — evitar SendVKey para navegação "voltar"
+
+**O que aconteceu:** em `atualizar_ksb1_gui.py`, depois de exportar um arquivo da KSB1, o script tentava voltar para a tela de seleção com `session.FindById("wnd[0]").SendVKey(3)` (F3). Isso falhava intermitentemente com o erro do SAP `(-2147352567, 'Exception occurred.', (617, 'SAP Frontend Server', 'The virtual key is not enabled.', ...))`, porque nem toda tela tem a tecla F3 habilitada no momento exato em que o script tenta usá-la (ex: logo após fechar um diálogo de exportação). Isso travava a extração no meio de um loop com múltiplas extrações sequenciais (Gestoriais + Sem Agrupamento) — só a primeira rodava.
+
+**Correção:** em vez de `SendVKey` para navegação, reabrir a transação do zero via `session.FindById("wnd[0]/tbar[0]/okcd").Text = "/nKSB1"` + `SendVKey(0)` (Enter). Esse padrão (`/n<transação>` pelo campo de comando) é muito mais robusto porque não depende do estado/tecla habilitada da tela atual.
+
+**Regra geral para scripts de SAP GUI Scripting neste projeto:** sempre que precisar voltar/resetar a tela entre passos de um script (especialmente em loops com múltiplas execuções), preferir reabrir a transação via `/n<transação>` no campo de comando em vez de `SendVKey` de navegação (F3/F12/Back). `SendVKey` de execução (F8 = Executar, Enter = 0) direto na tela de seleção continua ok, o risco é especificamente em teclas de navegação/retorno que podem não estar habilitadas dependendo do estado da tela.
