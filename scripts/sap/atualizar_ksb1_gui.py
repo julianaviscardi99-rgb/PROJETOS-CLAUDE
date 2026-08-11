@@ -51,6 +51,57 @@ def connect_session():
     return connection.Children(0)
 
 
+def _buscar_campo_editavel(elemento):
+    # Busca recursiva pelo primeiro campo de valor editavel (GuiCTextField).
+    # Necessario porque no popup "Definir área contab.custos" o campo fica
+    # dentro de um subscreen (usr/sub:SAPLSPO4:0300/ctxtSVALD-VALUE),
+    # nao direto em usr — descoberto rodando diagnosticar_popup.py (ver
+    # memory/errors/2026-08-11_popup_area_contabil_ao_reentrar_sap.md).
+    try:
+        if elemento.Type == "GuiCTextField":
+            return elemento
+    except Exception:
+        pass
+    try:
+        filhos = elemento.Children
+    except Exception:
+        return None
+    for filho in filhos:
+        achado = _buscar_campo_editavel(filho)
+        if achado is not None:
+            return achado
+    return None
+
+
+def tratar_popup_area_contabil(session, log):
+    # Ao sair e voltar a entrar no SAP (nova sessao), a primeira transacao
+    # do dia costuma abrir um popup modal "Definir área contab.custos"
+    # pedindo a area contabil de custos antes de liberar a tela principal.
+    # Se nao for fechado, os campos da tela de selecao da KSB1 (wnd[0])
+    # ficam inacessiveis. Preenche com "0580" (fixo para Fitted Units, ver
+    # memory/errors/2026-08-10_ksb1_kokrs_vazio.md) e confirma na seta verde.
+    wnd1 = session.FindById("wnd[1]", False)
+    if wnd1 is None:
+        return
+
+    log("Popup 'Definir área contab.custos' detectado, preenchendo 0580...")
+    campo = _buscar_campo_editavel(wnd1.FindById("usr"))
+
+    if campo is None:
+        # Nao adivinha: clicar em "confirmar" sem preencher o campo faz o
+        # proprio SAP abrir "Preencher todos os campos obrigatorios" e deixa
+        # a sessao com popups empilhados (foi o que aconteceu em
+        # memory/errors/2026-08-11_popup_area_contabil_ao_reentrar_sap.md).
+        raise RuntimeError(
+            "Não consegui identificar o campo do popup 'Definir área contab.custos' "
+            "automaticamente. Feche os popups no SAP, abra o popup de novo e rode "
+            "scripts/sap/diagnosticar_popup.py para descobrir o Id exato do campo."
+        )
+
+    campo.Text = "0580"
+    wnd1.FindById("tbar[0]/btn[0]").Press()  # seta verde (confirmar)
+
+
 def abrir_ksb1(session, log):
     # Sempre reenviamos /nKSB1, mesmo se a transacao atual ja for "KSB1":
     # a transacao permanece "KSB1" tanto na tela de selecao quanto na tela
@@ -60,6 +111,8 @@ def abrir_ksb1(session, log):
     log("Abrindo a transação KSB1...")
     session.FindById("wnd[0]/tbar[0]/okcd").Text = "/nKSB1"
     session.FindById("wnd[0]").SendVKey(0)  # Enter
+
+    tratar_popup_area_contabil(session, log)
 
     if session.Info.Transaction != "KSB1":
         raise RuntimeError(
