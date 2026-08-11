@@ -21,6 +21,17 @@
 
 ---
 
+### Sub-projeto: Fitted Recuperação
+> Nome dado pela usuária em 2026-08-11. Objetivo: detectar lançamento/pagamento a fornecedor em duplicidade na KSB1 (Fitted Units), período 01.01.2026 a 31.07.2026, excluindo documentos estornados.
+- **Scripts (fora do fluxo mensal recorrente, específicos deste estudo):**
+  - `scripts/sap/extrair_ksb1_periodo.py` — extrai a KSB1 (Sem Agrupamento) para um período arbitrário (não só um mês). Salva em `\\FSS024-01BR.group.pirelli.com\GFU_DAC\Custos Fitted Units\Estudos\Estudo Duplicidade Pagamento\`.
+  - `scripts/sap/analisar_duplicidade_pagamento.py` — identifica pares de estorno (mesmo fornecedor/valor com sinal oposto) e aplica os critérios de duplicidade, gerando `Análise Duplicidade Pagamento.xlsx` na mesma pasta.
+- **Critérios de duplicidade confirmados pela usuária:** Fornecedor+Valor+Documento de compras, e Fornecedor+Valor+Data de lançamento.
+- **Resultado da primeira rodada (01.01-31.07.2026):** 175.310 linhas no extrato, 7.147 com fornecedor, 50 pares de estorno excluídos. 228 grupos duplicados por Documento (R$ 823.535,87) e 649 grupos por Data (R$ 1.533.184,43) — triagem heurística, precisa revisão manual.
+- **Tentativa de refinar com Nº de NF — NÃO deu certo, não repetir sem novo dado:** a coluna "Nº doc.de referência" da KSB1 não é a Nota Fiscal (confirmado pela usuária). Tentei cruzar esse número na transação ZLFIB (tem campos "Nr Documento" e "Nota Fiscal" de verdade), mas nenhuma busca (por número de documento, nem por fornecedor+período) trouxe resultado confiável — a própria usuária confirmou que não sabe como esse cruzamento funcionaria. **Pausado até alguém do time funcional/TI do SAP confirmar como ligar o documento de referência da KSB1 a uma Nota Fiscal na ZLFIB.** Não tentar de novo por tentativa e erro sem essa confirmação.
+
+---
+
 ## Projeto 2: Circuito Panamericano — Automação de Controladoria
 - **Domínio:** complexo de testes (Elias Fausto), modelo de aluguel de espaço (Pirelli R&D e terceiros). Controladoria: despesas, EBIT, P&L mensal (Flash e Actual). Mesmo processo de KSB1 da Fitted Units, sem etapa de rateio da Gerência; faturamento recebido já fechado.
 - **Scripts principais:** ainda não criados.
