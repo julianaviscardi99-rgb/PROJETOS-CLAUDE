@@ -3,6 +3,19 @@
 > Manter apenas as últimas 2 sessões inline — sessões mais antigas vão para long_term/.
 
 ---
+## Resumo do dia 2026-08-11 — Fitted Units Despesas (popup SAP + estrutura de pastas + regra da Base Intermediária)
+- **Popup "Definir área contab.custos" do SAP:** usuária relatou que, ao sair/voltar a entrar no SAP, um popup pede a área contábil (0580) antes de liberar qualquer transação. Primeira tentativa de fechar automaticamente adivinhou o campo errado e causou erro em cascata no SAP. Criado `scripts/sap/diagnosticar_popup.py` (+ atalho `DIAGNOSTICAR POPUP.bat`) pra inspecionar o popup ao vivo; descobriu-se que o campo fica dentro de um subscreen (`usr/sub:SAPLSPO4:0300/ctxtSVALD-VALUE`), não direto em `usr`. Corrigido com busca recursiva por `GuiCTextField` em `atualizar_ksb1_gui.py` e `extrair_ksb1.py`. **Testado pela usuária e funcionando.** Detalhe completo em `memory/errors/2026-08-11_popup_area_contabil_ao_reentrar_sap.md`.
+- **Regra de negócio confirmada — passo 3 do processo (montar a base intermediária):**
+  - Depois de extrair a KSB1 (Gestoriais + Sem Agrupamento) e rodar o Check: se o total do Gestoriais bate com o Sem Agrupamento, usa-se o Gestoriais; se não bater (porque existem contas fora do agrupamento gestorial), usa-se o Sem Agrupamento, mas ainda excluindo as contas do Check 1 (fixas + qualquer conta iniciada em "B", que são bens de investimento e nunca entram como despesa).
+  - Isso acontece 2x/mês (Flash e Actual). Forecast existe mas está **fora do escopo por enquanto**.
+  - Cada fechamento parte do arquivo do Actual do mês anterior (que já acumula o efetivo histórico) — ex: fechando julho, parte-se do arquivo "June Actual" e inserem-se as linhas de julho nele, sem apagar os meses anteriores.
+  - Estrutura descoberta nos arquivos de referência (`.../2026/<mês>/<ciclo>/`): `KSB1 <Mês> <Ciclo> <Ano>.xlsx` → aba `BASE_KSB1` (tabela acumulada com todos os meses, colunas derivadas como Gestorial/MF/DG-MO são fórmulas que a usuária arrasta) → aba `Pivot_Inter.` alimenta `Base Intermediária Fitted <Mês> <Ciclo> <Ano>.xlsx` (matriz Conta Gestorial × mês, com Total Ano).
+  - **Ainda não implementado em script** — só a regra de negócio foi confirmada e documentada. Automatizar esse passo é o próximo trabalho pesado.
+- **Reorganização de pastas na rede** (`\\FSS024-01BR.group.pirelli.com\GFU_DAC\Custos Fitted Units\Resultados Fitted\2026\`): antes cada ciclo ficava solto na raiz (`01_Jan_Actual`, `01_Jan_Flash`...); agora cada mês tem sua pasta própria (`01 - Jan` a `12 - Dec`, mesmo padrão já usado em `00.Extração Base KSB1`) com Actual/Flash/Forecast dentro. Jan-Jul: pastas movidas sem alterar nenhum arquivo (uma pasta de julho — Forecast — ficou presa por um arquivo aberto no Excel, resolvido depois que a usuária fechou o arquivo). Ago-Dez: subpastas Actual/Flash/Forecast já criadas vazias, prontas pro uso.
+- Pendente registrar formalmente em `ontology/fitted_units.json` a nova estrutura de pastas e a regra da base intermediária (só ficou no BRIEFING por enquanto — fazer isso na próxima sessão antes de começar a programar o passo 3).
+- **Ajuste final da reorganização de pastas (mesma sessão, depois do alerta de sessão longa):** as subpastas de Ago-Dez tinham ficado só como `Actual`/`Flash`/`Forecast` (sem prefixo). Usuária pediu para seguir o mesmo padrão dos meses já usados (`MM_Mon_Ciclo`, ex: `07_Jul_Actual`). Renomeadas para `08_Aug_Actual/Flash/Forecast`, `09_Sep_...`, `10_Oct_...`, `11_Nov_...`, `12_Dec_...` — dentro das pastas `08 - Aug` a `12 - Dec`. Estrutura de pastas de 2026 agora está 100% padronizada e completa.
+
+---
 ## Resumo do dia 2026-08-10 — Fitted Units Despesas (KSB1)
 - **Instrução da usuária para as próximas sessões:** focar só em Fitted Units por enquanto. Circuito Panamericano fica pausado até ela pedir de novo — não avançar nele sem ela pedir.
 - **O que foi entregue e validado hoje** (sub-projeto batizado por ela de "Fitted Units Despesas" — ver `memory/PROJECT_MAP.md`):
@@ -15,12 +28,14 @@
 - Tudo commitado e sincronizado com o GitHub (branch `main`, sem pendência de commit/push).
 
 ---
-## Próximos passos (retomar amanhã — só Fitted Units)
-- Usuária ainda precisa rodar "Gerar Check de Agrupamentos" com um mês real (Gestoriais + Sem Agrupamento do mesmo mês) pela primeira vez desde o último ajuste (aba única + Check 1 sempre listando as 6 contas fixas) e confirmar se bate com o esperado.
-- **2026-08-11:** corrigido (ainda não testado ao vivo) o popup "Definir área contab.custos" que aparece ao sair/voltar a entrar no SAP — `atualizar_ksb1_gui.py` e `extrair_ksb1.py` agora tentam fechá-lo sozinhos preenchendo 0580. Usuária precisa confirmar que funciona na próxima vez que sair/voltar a entrar no SAP antes de rodar o script (detalhe em `memory/errors/2026-08-11_popup_area_contabil_ao_reentrar_sap.md`).
-- Próxima etapa do processo de despesas da Fitted Units (ver `ontology/fitted_units.json` → `processo_recorrente`, passos 3-5): montar a base intermediária a partir da KSB1 já extraída, depois o rateio dos custos da Gerência (GER) pras demais unidades, depois carregar no arquivo de P&L.
+## Próximos passos (retomar — só Fitted Units)
+- **Prioridade:** registrar em `ontology/fitted_units.json` a regra de negócio da base intermediária e a nova estrutura de pastas (ver resumo de 2026-08-11 acima) — ainda não formalizado lá, só no BRIEFING.
+- Depois disso, começar a automatizar o passo 3 do processo (`ontology/fitted_units.json` → `processo_recorrente`): montar/atualizar a `BASE_KSB1` acumulada com as linhas do mês fechado (Gestoriais quando bate, Sem Agrupamento filtrado quando não bate), a partir do arquivo do Actual do mês anterior copiado.
+- Depois: passos 4-5 do processo — rateio dos custos da Gerência (GER) pras demais unidades, depois carregar no arquivo de P&L.
+- Usuária ainda precisa rodar "Gerar Check de Agrupamentos" com um mês real (Gestoriais + Sem Agrupamento do mesmo mês) pela primeira vez desde o último ajuste (aba única + Check 1 sempre listando as 6 contas fixas) e confirmar se bate com o esperado — se isso já rolou informalmente durante as extrações desta sessão, confirmar com a usuária antes de assumir que ainda está pendente.
 - `memory/PROJECT_MAP.md`: Original Equipment ainda não detalhado (fora do escopo por ora, já que o foco agora é só Fitted Units).
 - Circuito Panamericano: não mexer até a usuária pedir explicitamente.
+- Forecast: fora do escopo por enquanto (confirmado pela usuária em 2026-08-11), mas as pastas de rede já foram deixadas prontas pra quando for retomado.
 
 ---
 ## Contexto permanente do projeto
