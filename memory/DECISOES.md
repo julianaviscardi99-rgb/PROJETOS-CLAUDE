@@ -83,3 +83,19 @@
 **Motivo:** pedido explícito da usuária, para deixar claro que essa frente pertence à Fitted Units especificamente na parte de despesas.
 
 **Como foi aplicado:** só a nível de documentação/memória (`memory/PROJECT_MAP.md`) — não houve renomeação de pastas ou arquivos físicos, para não quebrar os caminhos já usados pelos scripts (`REDE_BASE`, caminho local do projeto, etc.).
+
+---
+
+## 2026-08-11 — Automatizar a Base Intermediária direto da KSB1, sem passar pelo BASE_KSB1 acumulado
+
+**Decisão:** o passo 3 do processo (`scripts/sap/gerar_base_intermediaria.py`) soma o `Valor/MR` do extrato bruto do mês (Gestoriais ou Sem Agrupamento, mesma regra do check de agrupamentos) agrupado por `(Centro de Custo, Conta Fiscal)` e cola direto na aba `Intermediária` do arquivo `Base Intermediária Fitted <Mês> <Ciclo> <Ano>.xlsx`. **Não abre nem cresce** o arquivo acumulado `BASE_KSB1` (~45 mil linhas, com Tabelas Dinâmicas nativas `Pivot_Inter.`/`Pivot_Detalhes`).
+
+**Motivo:** a Juliana levantou a preocupação de que o BASE_KSB1 é onde a classificação Fixo/Variável é feita corretamente contra a base de contas, e perguntou se dava pra pular esse arquivo. Confirmado com ela que o BASE_KSB1 só tem 2 usos: alimentar a Base Intermediária e fazer o "check do agrupamento" — e o segundo já é feito hoje direto dos extratos brutos por `check_agrupamentos_ksb1.py`, sem depender do BASE_KSB1. A classificação Fixo/Variável de cada `(Conta Fiscal, Centro de Custo)` já está gravada na própria aba `Intermediária` (coluna H), não precisa ser recalculada. Evita abrir/gravar um arquivo de 45 mil linhas e evita automatizar refresh de Tabela Dinâmica nativa via COM do Excel (frágil e sem necessidade real).
+
+**Trava de qualidade:** o script exige que o "Check de Agrupamentos" do mês já exista (gera se não existir) antes de somar qualquer valor — é essa checagem que garante o vínculo/classificação de cada conta, papel que antes dependia do BASE_KSB1.
+
+**Validação:** rodado contra junho/2026 Actual real (extratos antigos em `Bases SAP/`, fora do fluxo automatizado, usado só como teste de leitura — nada foi sobrescrito). De 440 combinações `(Centro, Conta)`, 409 bateram exatamente com o valor já colado manualmente na coluna June. As 31 restantes: 16 eram linhas que a `Intermediária` tinha zeradas mas deveriam ter valor (a automação teria acertado — não é erro da lógica), 14 eram combinações com **linha duplicada** na `Intermediária` (problema estrutural conhecido da planilha, corretamente reportado como pendência em vez de preenchido às cegas) e 1 batia exatamente com uma reclassificação que a própria usuária já tinha anotado manualmente na planilha ("REVISAR TODOS OS MESES, TROCAR DE 8297 PARA CC FIXO 8295").
+
+**Como funciona:** nunca sobrescreve o arquivo de trabalho — sempre salva uma cópia nova versionada (`... - gerado.xlsx`, mesmo padrão `nome_com_versao`) com os valores preenchidos e uma aba extra `Pendências` (combinações sem linha correspondente ou com chave ambígua). Botão "Atualizar KSB1 Pivot" na GUI (`scripts/sap/atualizar_ksb1_gui.py`), que ganhou também um seletor de Ciclo (Actual/Flash).
+
+**Link externo conhecido como lixo:** o BASE_KSB1 tem um link externo para `RHFitted <Mês> Actual <Ano>_.xlsx` que fica desatualizado (em junho/2026 ainda apontava fevereiro). A usuária confirmou que não usa esse link pra nada — ignorar, não tentar corrigir.

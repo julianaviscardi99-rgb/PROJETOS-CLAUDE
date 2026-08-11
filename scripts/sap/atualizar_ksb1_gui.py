@@ -249,7 +249,7 @@ CINZA_TEXTO = "#555555"
 def main():
     root = tk.Tk()
     root.title("Atualizar KSB1 - Fitted Units")
-    root.geometry("440x470")
+    root.geometry("440x560")
     root.resizable(False, False)
     root.configure(bg="white")
 
@@ -291,11 +291,16 @@ def main():
     ano_entry = ttk.Entry(frame, textvariable=ano_var)
     ano_entry.grid(row=1, column=1, sticky="ew", pady=6)
 
+    ttk.Label(frame, text="Ciclo:", font=("Segoe UI", 10)).grid(row=2, column=0, sticky="w", pady=6)
+    ciclo_var = tk.StringVar(value="Actual")
+    ciclo_combo = ttk.Combobox(frame, textvariable=ciclo_var, values=["Actual", "Flash"], state="readonly")
+    ciclo_combo.grid(row=2, column=1, sticky="ew", pady=6)
+
     frame.columnconfigure(1, weight=1)
 
     log_widget = tk.Text(frame, height=10, wrap="word", relief="solid", borderwidth=1)
-    log_widget.grid(row=4, column=0, columnspan=2, sticky="nsew", pady=(14, 0))
-    frame.rowconfigure(4, weight=1)
+    log_widget.grid(row=6, column=0, columnspan=2, sticky="nsew", pady=(14, 0))
+    frame.rowconfigure(6, weight=1)
 
     def ler_mes_ano():
         nome_para_numero = {v: k for k, v in MESES_NOMES.items()}
@@ -307,18 +312,21 @@ def main():
             return None
         return mes, ano
 
+    def _todos_botoes(estado):
+        extrair_btn.config(state=estado)
+        check_btn.config(state=estado)
+        pivot_btn.config(state=estado)
+
     def ao_clicar_extrair():
         mes_ano = ler_mes_ano()
         if mes_ano is None:
             return
         mes, ano = mes_ano
-        extrair_btn.config(state="disabled")
-        check_btn.config(state="disabled")
+        _todos_botoes("disabled")
         try:
             rodar(mes, ano, log_widget)
         finally:
-            extrair_btn.config(state="normal")
-            check_btn.config(state="normal")
+            _todos_botoes("normal")
 
     def ao_clicar_check():
         from check_agrupamentos_ksb1 import gerar_check
@@ -334,16 +342,41 @@ def main():
             log_widget.update()
 
         log_widget.delete("1.0", tk.END)
-        extrair_btn.config(state="disabled")
-        check_btn.config(state="disabled")
+        _todos_botoes("disabled")
         try:
             caminho = gerar_check(mes, ano, log=log)
             messagebox.showinfo("Concluído", f"Check de agrupamentos gerado:\n{caminho}")
         except Exception as e:
             messagebox.showerror("Erro ao gerar o check", str(e))
         finally:
-            extrair_btn.config(state="normal")
-            check_btn.config(state="normal")
+            _todos_botoes("normal")
+
+    def ao_clicar_pivot():
+        from gerar_base_intermediaria import atualizar_base_intermediaria
+
+        mes_ano = ler_mes_ano()
+        if mes_ano is None:
+            return
+        mes, ano = mes_ano
+        ciclo = ciclo_var.get()
+
+        def log(msg):
+            log_widget.insert(tk.END, msg + "\n")
+            log_widget.see(tk.END)
+            log_widget.update()
+
+        log_widget.delete("1.0", tk.END)
+        _todos_botoes("disabled")
+        try:
+            caminho = atualizar_base_intermediaria(mes, ano, ciclo, log=log)
+            messagebox.showinfo(
+                "Concluído",
+                f"Base Intermediária gerada:\n{caminho}\n\nConfira a aba 'Pendências' antes de colar no arquivo de trabalho.",
+            )
+        except Exception as e:
+            messagebox.showerror("Erro ao atualizar a Base Intermediária", str(e))
+        finally:
+            _todos_botoes("normal")
 
     extrair_btn = ttk.Button(
         frame,
@@ -351,7 +384,7 @@ def main():
         command=ao_clicar_extrair,
         style="Pirelli.TButton",
     )
-    extrair_btn.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(16, 0), ipady=4)
+    extrair_btn.grid(row=3, column=0, columnspan=2, sticky="ew", pady=(16, 0), ipady=4)
 
     check_btn = ttk.Button(
         frame,
@@ -359,14 +392,22 @@ def main():
         command=ao_clicar_check,
         style="Pirelli.TButton",
     )
-    check_btn.grid(row=3, column=0, columnspan=2, sticky="ew", pady=(8, 0), ipady=4)
+    check_btn.grid(row=4, column=0, columnspan=2, sticky="ew", pady=(8, 0), ipady=4)
+
+    pivot_btn = ttk.Button(
+        frame,
+        text="Atualizar KSB1 Pivot",
+        command=ao_clicar_pivot,
+        style="Pirelli.TButton",
+    )
+    pivot_btn.grid(row=5, column=0, columnspan=2, sticky="ew", pady=(8, 0), ipady=4)
 
     ttk.Label(
         frame,
-        text="Antes de clicar em Extrair: deixe o SAP GUI aberto e logada na tela inicial (não precisa abrir a KSB1, o script faz isso sozinho). O Check de Agrupamentos usa os arquivos já extraídos na rede.",
+        text="Antes de clicar em Extrair: deixe o SAP GUI aberto e logada na tela inicial (não precisa abrir a KSB1, o script faz isso sozinho). O Check de Agrupamentos e o Atualizar KSB1 Pivot usam os arquivos já extraídos na rede.",
         wraplength=380,
         foreground=CINZA_TEXTO,
-    ).grid(row=5, column=0, columnspan=2, sticky="w", pady=(10, 0))
+    ).grid(row=7, column=0, columnspan=2, sticky="w", pady=(10, 0))
 
     root.mainloop()
 

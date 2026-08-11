@@ -104,6 +104,29 @@
     ],
     "resumo": "Extrair tudo do SAP e carregar em Excel, em formatos já conhecidos pela gerência (base intermediária → rateio → P&L)."
   },
+  "estrutura_pastas_rede_2026": {
+    "descricao": "Estrutura de pastas de Resultados Fitted na rede, padronizada em 2026-08-11 (antes cada ciclo ficava solto na raiz).",
+    "padrao": "<area_de_rede.caminho_base>/2026/<MM - Mês em inglês, ex: '06 - Jun'>/<MM>_<Mês3>_<Ciclo, ex: '06_Jun_Actual'>/",
+    "ciclos_com_pasta": ["Actual", "Flash", "Forecast"],
+    "observacao": "Forecast fora do escopo da automação por enquanto (confirmado pela usuária em 2026-08-11), mas as pastas já foram deixadas prontas para os 12 meses de 2026."
+  },
+  "base_intermediaria": {
+    "descricao": "Regra de negócio do passo 3 do processo recorrente, confirmada com a usuária em 2026-08-11.",
+    "arquivo_ksb1_mensal": {
+      "nome": "KSB1 <Mês> <Ciclo> <Ano>.xlsx, na pasta do ciclo (ver estrutura_pastas_rede_2026).",
+      "aba_BASE_KSB1": "Tabela acumulada com todas as linhas de todos os meses do ano (colunas A-R = dados brutos colados da KSB1; colunas S em diante = fórmulas arrastadas, classificação Gestorial/MF/DG-MO/Variabilidade via VLOOKUP em arquivos externos).",
+      "abas_pivot_nativas": "'Pivot_Inter.' e 'Pivot_Detalhes' são Tabelas Dinâmicas nativas do Excel (não fórmulas), alimentadas pelo BASE_KSB1.",
+      "link_externo_rh_conhecido_como_lixo": "O BASE_KSB1 tem um link externo para um arquivo 'RHFitted <Mês> Actual <Ano>_.xlsx' que fica desatualizado (ex: em junho/2026 ainda apontava para fevereiro). Confirmado pela usuária em 2026-08-11: é um link errado, sem uso real — ignorar, não tentar corrigir."
+    },
+    "arquivo_base_intermediaria": {
+      "nome": "Base Intermediária Fitted <Mês> <Ciclo> <Ano>.xlsx, na mesma pasta do ciclo.",
+      "aba": "Intermediária",
+      "estrutura": "753 linhas fixas (uma por combinação Conta Fiscal + Centro de Custo). Colunas A-H são estáticas/pré-classificadas (Conta Gestorial, Descrição, Conta Fiscal = Classe de custo do SAP, Descrição, Centro de Custo, Mini-Fábrica, Descrição, Tp.Custo Fixo/Variável). Colunas I-T = valores mensais (January..December), colados manualmente todo mês (não são fórmula).",
+      "chave_de_casamento": "(Conta Fiscal, Centro de Custo) identifica a linha onde o valor do mês deve entrar. Existem ~15 combinações com linha duplicada na planilha (problema estrutural conhecido, não um padrão de negócio) — nesses casos não dá pra decidir automaticamente qual linha preencher."
+    },
+    "decisao_de_arquitetura_2026-08-11": "Não é necessário abrir/crescer o BASE_KSB1 (~45 mil linhas) nem automatizar refresh de Tabela Dinâmica via COM do Excel para alimentar a Base Intermediária. O BASE_KSB1 só tem 2 usos: alimentar a Base Intermediária e fazer o 'check do agrupamento' — e o segundo já é feito direto dos extratos brutos por scripts/sap/check_agrupamentos_ksb1.py, sem depender do BASE_KSB1. A classificação Fixo/Variável de cada linha já está fixada na própria Intermediária (coluna H). Basta somar o Valor/MR do extrato bruto do mês (Gestoriais ou Sem Agrupamento, mesma regra do check_de_agrupamentos), agrupado por (Centro de Custo, Conta Fiscal), e casar com a linha única correspondente. Implementado em scripts/sap/gerar_base_intermediaria.py, botão 'Atualizar KSB1 Pivot' na GUI. Validado contra junho/2026 Actual real: 409 de 440 combinações bateram exatamente; as 31 restantes eram problemas já conhecidos/estruturais da planilha manual (linhas duplicadas, uma reclassificação já anotada manualmente pela usuária), não erros da lógica.",
+    "regra_gestoriais_vs_sem_agrupamento": "Mesma regra do check_de_agrupamentos: se o total do Gestoriais bate com o Sem Agrupamento (já filtrado pelo Check 1), usa-se o Gestoriais; senão usa-se o Sem Agrupamento, excluindo as contas do Check 1 (fixas + contas iniciadas em 'B', que são bens de investimento e nunca entram como despesa)."
+  },
   "ciclos": {
     "flash": {
       "descricao": "Prévia do fechamento.",
