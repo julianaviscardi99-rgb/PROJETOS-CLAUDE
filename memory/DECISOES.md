@@ -99,3 +99,21 @@
 **Como funciona:** nunca sobrescreve o arquivo de trabalho — sempre salva uma cópia nova versionada (`... - gerado.xlsx`, mesmo padrão `nome_com_versao`) com os valores preenchidos e uma aba extra `Pendências` (combinações sem linha correspondente ou com chave ambígua). Botão "Atualizar KSB1 Pivot" na GUI (`scripts/sap/atualizar_ksb1_gui.py`), que ganhou também um seletor de Ciclo (Actual/Flash).
 
 **Link externo conhecido como lixo:** o BASE_KSB1 tem um link externo para `RHFitted <Mês> Actual <Ano>_.xlsx` que fica desatualizado (em junho/2026 ainda apontava fevereiro). A usuária confirmou que não usa esse link pra nada — ignorar, não tentar corrigir.
+
+---
+
+## 2026-08-11 (retomada à tarde) — Reversão: voltar a alimentar via BASE_KSB1 + Pivot nativo, em vez do atalho direto do extrato
+
+**Decisão:** revertida a decisão acima. O passo 3 agora vai replicar o processo manual real, e não mais pular o `BASE_KSB1`:
+1. Copiar o `KSB1 <mês anterior> Actual <ano>.xlsx` (já acumulado) → nova cópia versionada `KSB1 <mês> <ciclo> <ano>.xlsx`.
+2. Colar as linhas novas do extrato bruto do mês (mesma regra Gestoriais vs. Sem Agrupamento) no fim da aba `BASE_KSB1` (colunas A-R, mapeamento 1:1 confirmado) e replicar as fórmulas das colunas S-AI pra essas linhas novas.
+3. Dar refresh nas Pivot Tables nativas (`Pivot_Inter.`, `Pivot_Detalhes`) via automação COM do Excel (`win32com`, já em `requirements.txt`).
+4. Ler o `Pivot_Inter.` já atualizado (chave Centro custo + Classe de custo, igual à `Intermediária`) e colar o valor do mês na aba `Intermediária` — **esse último passo (5) ainda não foi fechado com a usuária**, ficou pendente porque ela interrompeu pra explicar a lógica das linhas coloridas (ver `memory/BRIEFING.md`).
+
+**Motivo:** pedido explícito da usuária ("vamos voltar atrás") — não foi pra resolver o problema das linhas duplicadas especificamente (ela confirmou isso quando perguntado), e sim porque prefere que a automação **fique fiel ao processo manual atual** (BASE_KSB1 → Pivot_Inter. → Intermediária), mesmo topando com mais trabalho técnico (automação de refresh de Tabela Dinâmica via COM, que a decisão anterior evitava de propósito por ser mais frágil).
+
+**Investigação feita antes de reverter o código:** estrutura real do `BASE_KSB1` e das Pivot Tables inspecionada ao vivo no arquivo `KSB1 June Actual 2026.xlsx` (só leitura) — detalhes completos em `memory/learnings/2026-08-11_estrutura_real_base_ksb1_e_pivot.md`. Achados chave: BASE_KSB1 não é Tabela do Excel; colunas 1-18 batem 1:1 com o extrato bruto; colunas 19-35 são fórmulas replicáveis por padrão de linha; o range de origem das duas pivots já cobre até a última linha do Excel (não precisa reajustar range, só refresh); `Pivot_Inter.` já sai agrupado pela mesma chave da `Intermediária`.
+
+**Ainda não implementado em código** — só a investigação e o plano foram fechados nesta sessão. `scripts/sap/gerar_base_intermediaria.py` (o atalho antigo) continua no repositório, mas será substituído/reescrito pra seguir o novo plano.
+
+**Status:** implementação pausada — usuária encerrou a sessão por cansaço, retoma amanhã. Ver `memory/BRIEFING.md` pra pendências detalhadas, incluindo um tema novo (linhas coloridas na `Intermediária`, só no Flash) que surgiu no meio da explicação do passo 5 e ainda não foi totalmente ensinado.
