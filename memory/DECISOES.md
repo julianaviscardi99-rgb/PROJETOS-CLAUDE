@@ -117,3 +117,37 @@
 **Ainda não implementado em código** — só a investigação e o plano foram fechados nesta sessão. `scripts/sap/gerar_base_intermediaria.py` (o atalho antigo) continua no repositório, mas será substituído/reescrito pra seguir o novo plano.
 
 **Status:** implementação pausada — usuária encerrou a sessão por cansaço, retoma amanhã. Ver `memory/BRIEFING.md` pra pendências detalhadas, incluindo um tema novo (linhas coloridas na `Intermediária`, só no Flash) que surgiu no meio da explicação do passo 5 e ainda não foi totalmente ensinado.
+
+---
+
+## 2026-08-13 — ZLFIB: exportar pra arquivo em vez de ler grid via COM
+
+**Decisão:** `scripts/sap/analisar_zlfib_duplicidade.py` passou a exportar a grade de resultado da ZLFIB pra um arquivo `.xlsx` temporário via menu nativo do SAP (Lista > Exportar > Planilha eletrônica) e ler esse arquivo com `openpyxl`, em vez de ler célula a célula via `grid.GetCellValue()` (COM/GUI Scripting).
+
+**Motivo:** `GetCellValue` em loop se mostrou não confiável em grades grandes. Comparando duas consultas onde uma deveria ser subconjunto da outra (SJP com filtro de Direção=Entrada vs. sem filtro), a leitura por COM devolveu MENOS notas únicas na consulta filtrada (38) do que na maior (27 — que deveria ser o total, mas ficou menor ainda, inconsistência dupla) — matematicamente impossível se a leitura fosse confiável. Exportando a mesma consulta pra arquivo, o número real de SJP filtrado é 565 notas únicas, não 38. Detalhe completo em `memory/errors/2026-08-13_zlfib_getcellvalue_dados_incorretos.md`.
+
+**Lição geral pra outros scripts SAP GUI Scripting deste projeto:** `GetCellValue` em loop não é confiável pra grades com mais de ~1.000 linhas (provavelmente por virtualização da grid ALV — só as linhas renderizadas na tela ficam com valor correto e acessível via COM). Preferir sempre exportação nativa (arquivo) quando o volume não for pequeno, mesmo que isso exija negociar um popup de "Salvar como" (mesmo padrão já usado em `atualizar_ksb1_gui.py` pra KSB1).
+
+---
+
+## 2026-08-13 — ZLFIB: excluir Tipo NF 'R8' (transferência de material) da análise de duplicidade
+
+**Decisão:** `analisar_zlfib_duplicidade.py` exclui notas com `NFTYPE == 'R8'` antes de procurar duplicidade (constante `NFTYPE_EXCLUIDOS`).
+
+**Motivo:** rodando SOR+GOI (jan-jul/2026), o script encontrou 2 grupos "duplicados" por Chave de Acesso — mas com inspeção, eram pares de notas com a mesma chave de acesso e mesma Nota Fiscal, tipo 'R8', sempre com o parceiro FIAT AUTOMOVEIS S/A (uma montadora cliente, não um fornecedor comum) e valores diferentes entre as duas linhas do par. A usuária confirmou que isso é transferência de material, não duplicidade de pagamento a fornecedor — "pode ignorar estes". Pode ser relacionado ao conceito de "operação A24"/campo "OPERA" que ela mencionou antes (não confirmado 100%, mas o padrão bate: transferência, tipo específico de NF).
+
+**Como aplicar:** se aparecer um novo caso de "duplicidade" envolvendo Tipo NF diferente de R8 mas ainda parecendo transferência entre plantas/cliente, perguntar à usuária antes de assumir que é outro falso positivo do mesmo tipo — a lista `NFTYPE_EXCLUIDOS` só tem R8 confirmado até agora.
+
+---
+
+## 2026-08-13 — Checagem mensal de duplicidade ZLFIB: automação com envio automático de e-mail
+
+**Decisão:** nova automação (`scripts/sap/verificacao_mensal_zlfib.py` + `watcher_mensal_zlfib.bat`) que roda de hora em hora (via Agendador de Tarefas do Windows, ainda não registrado — ver `memory/BRIEFING.md`), checando no primeiro dia útil de cada mês se o SAP já está logado. Assim que achar, roda a checagem de duplicidade ZLFIB do mês anterior (4 filiais, Direção=Entrada, exclui R8) e, se achar duplicidade real, **envia automaticamente** (não como rascunho) um e-mail pra `juliana.silveira@pirelli.com` com o Excel de duplicidade em anexo. Se não achar duplicidade, não notifica. Se passar das 18h no primeiro dia útil sem achar o SAP logado, manda um e-mail de aviso (sem anexo) uma única vez por mês.
+
+**Motivo:** pedido explícito da usuária, com as decisões de envio automático (vs. rascunho) e do aviso de indisponibilidade do SAP confirmadas via pergunta direta antes de implementar — envio de e-mail é ação irreversível (regra do `CLAUDE.md` → Autonomia), então confirmei antes de automatizar o envio recorrente sem supervisão.
+
+**Por que polling de hora em hora, e não um gatilho direto no login do SAP:** não existe um jeito de "escutar" o evento de login do SAP GUI de fora via Scripting — a automação também não pode abrir/logar no SAP sozinha (não tem a senha da usuária). A alternativa viável é checar periodicamente se já existe uma sessão do SAP GUI aberta e logada (heurística validada ao vivo: `session.Info.User` vem preenchido só depois do login). A usuária pediu explicitamente de hora em hora (sugeri 15 em 15 min inicialmente).
+
+**Limitação aceita:** "primeiro dia útil do mês" considera só segunda-sexta, sem calendário de feriados nacionais/municipais — se o dia 1 útil "de calendário" cair num feriado, a rotina roda mesmo assim nesse dia.
+
+**Pendência:** a tarefa ainda não foi registrada no Agendador de Tarefas do Windows — esbarrei num problema de compatibilidade do Git Bash com `schtasks` (mangling de argumentos tipo `/create`). Ver `memory/BRIEFING.md` pra alternativas a tentar na próxima sessão.
