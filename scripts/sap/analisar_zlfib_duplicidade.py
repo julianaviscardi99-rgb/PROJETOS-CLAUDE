@@ -28,10 +28,25 @@ Regras adicionadas em 2026-08-13:
   analisar_duplicidade_pagamento.py): os fornecedores que já apareceram
   como duplicados na KSB1 (por Documento de compras ou por Data) são
   marcados nas notas da ZLFIB, como sinal cruzado de confiança.
-
-Lê a grid ALV direto via COM (GetCellValue) em vez de exportar para Excel —
-mais rápido e mais simples que negociar o menu de exportação dessa tela.
+- CORREÇÃO IMPORTANTE (2026-08-13): a versão original lia a grid célula a
+  célula via COM (`grid.GetCellValue`), que se mostrou pouco confiável em
+  grades grandes (testado: SJP com 1.348 linhas — a leitura por COM achou
+  só 38 números de documento únicos; exportando a mesma consulta pra
+  arquivo, o número real era 565). Ver memory/errors/2026-08-13_zlfib_
+  getcellvalue_dados_incorretos.md. Agora o script exporta a grade pra um
+  arquivo temporário via menu nativo do SAP (Lista > Exportar > Planilha
+  eletrônica — mesmo mecanismo já usado em atualizar_ksb1_gui.py pra KSB1)
+  e lê o arquivo com openpyxl, em vez de usar GetCellValue.
+- Tipo NF 'R8' = transferência de material (confirmado pela Juliana em
+  2026-08-13, com exemplo real: duas notas da FIAT AUTOMOVEIS S/A em GOI,
+  mesma chave de acesso, valores diferentes — não é duplicidade de
+  pagamento a fornecedor, é movimento de transferência). Excluído da
+  análise de duplicidade a partir de agora.
+- SOR e GOI são plantas diferentes (Sorocaba e Goiana) — nunca tratar como
+  uma coisa só na análise ou no texto de resultado, mesmo quando rodadas
+  juntas no mesmo lote por conveniência (a coluna "Filial" já distingue).
 """
+import tempfile
 import time
 from collections import defaultdict
 from pathlib import Path
@@ -45,8 +60,7 @@ FILIAIS = {"0031": "SJP", "0032": "IBI", "0053": "SOR", "0054": "GOI"}
 DATA_DE = "01.01.2026"
 DATA_ATE = "31.07.2026"
 DIRECAO_ENTRADA = "1"
-
-COLS = ["BRANCH", "DOCNUM", "NFNUM", "SERIES", "NFTYPE", "PSTDAT", "DOCDAT", "PARID", "NAME1", "NFTOT", "ACKEY"]
+NFTYPE_EXCLUIDOS = {"R8"}  # transferencia de material, nao e' duplicidade de pagamento
 
 PASTA_DESTINO = Path(
     r"\\FSS024-01BR.group.pirelli.com\GFU_DAC\Custos Fitted Units\Estudos\Estudo Duplicidade Pagamento"
@@ -87,45 +101,83 @@ def abrir_zlfib(session, log):
         raise RuntimeError(f"Não consegui abrir a ZLFIB (tela atual: '{session.Info.Transaction}').")
 
 
-def buscar_filial(session, filial: str, log):
+def buscar_filial(session, filial: str, data_de: str, data_ate: str, log):
     wnd = session.FindById("wnd[0]")
     wnd.FindById("usr/ctxtP_BUKRS").Text = "0580"
     wnd.FindById("usr/ctxtS_BRANCH-LOW").Text = filial
-    wnd.FindById("usr/ctxtS_PSTDAT-LOW").Text = DATA_DE
-    wnd.FindById("usr/ctxtS_PSTDAT-HIGH").Text = DATA_ATE
+    wnd.FindById("usr/ctxtS_PSTDAT-LOW").Text = data_de
+    wnd.FindById("usr/ctxtS_PSTDAT-HIGH").Text = data_ate
     wnd.FindById("usr/ctxtS_DIRECT-LOW").Text = DIRECAO_ENTRADA
     wnd.FindById("usr/radP_ITEM").Select()
     wnd.FindById("usr/chkP_ACKEY").Selected = True
-    log(f"Executando ZLFIB — Filial {filial} ({FILIAIS[filial]}), só Entradas...")
+    log(f"Executando ZLFIB — Filial {filial} ({FILIAIS[filial]}), só Entradas, {data_de} a {data_ate}...")
     wnd.SendVKey(8)
     time.sleep(2)
 
 
-def ler_grid(session, filial: str, log):
-    grid = session.FindById("wnd[0]/usr/cntlGRID1/shellcont/shell/shellcont[1]/shell")
-    total = grid.RowCount
-    log(f"  {total} linha(s) de item na grid, lendo...")
+# Colunas do arquivo exportado (Lista > Exportar > Planilha eletrônica),
+# na ordem em que a ZLFIB as gera — checado ao vivo em 2026-08-13.
+COLUNAS_EXPORT = [
+    "BRANCH", "DOCNUM", "NFNUM", "SERIES", "NFTYPE", "PSTDAT", "DOCDAT",
+    "PARID", "CGC", "NAME1", "BRGEW", "REGIOD", "NFTOT", "IPIBASE",
+    "ICMSBASE", "ICMSVAL", "OBSERVAT", "ACKEY", "CRENAM", "NRO_NOTA",
+]
+
+
+def exportar_grid_para_arquivo(session, filial: str, pasta_tmp: Path, log) -> Path:
+    """Exporta a grade de resultado pra um .xlsx via menu nativo do SAP
+    (Lista > Exportar > Planilha eletrônica) — mais confiável que ler célula
+    a célula via COM em grades grandes (ver nota no topo do arquivo)."""
+    nome_arquivo = f"_tmp_zlfib_{filial}.xlsx"
+    caminho = pasta_tmp / nome_arquivo
+    if caminho.exists():
+        caminho.unlink()
+
+    session.FindById("wnd[0]/mbar/menu[0]/menu[3]/menu[1]").Select()
+    time.sleep(1)
+    wnd1 = session.FindById("wnd[1]")
+    wnd1.FindById("usr/ctxtDY_PATH").Text = str(pasta_tmp)
+    wnd1.FindById("usr/ctxtDY_FILENAME").Text = nome_arquivo
+    wnd1.FindById("tbar[0]/btn[0]").Press()
+
+    for _ in range(40):
+        if caminho.exists():
+            break
+        time.sleep(0.5)
+    if not caminho.exists():
+        raise RuntimeError(f"Exportação da ZLFIB (filial {filial}) não gerou o arquivo esperado em {caminho}.")
+    return caminho
+
+
+def ler_arquivo_exportado(caminho: Path, log) -> list:
+    wb = load_workbook(caminho, data_only=True, read_only=True)
+    ws = wb.active
     linhas = []
-    for r in range(total):
-        valores = [grid.GetCellValue(r, c) for c in COLS]
-        linhas.append(dict(zip(COLS, valores)))
+    for i, row in enumerate(ws.iter_rows(values_only=True)):
+        if i == 0:
+            continue  # cabeçalho
+        linha = dict(zip(COLUNAS_EXPORT, row))
+        linha["NFTOT"] = float(linha["NFTOT"] or 0)
+        linha["ACKEY"] = str(linha["ACKEY"] or "").strip()
+        for campo in ("BRANCH", "DOCNUM", "NFNUM", "SERIES", "NFTYPE", "PARID", "NAME1"):
+            linha[campo] = str(linha[campo]).strip() if linha[campo] is not None else ""
+        linhas.append(linha)
+    wb.close()
+    log(f"  {len(linhas)} linha(s) de item lida(s) do arquivo exportado.")
     return linhas
 
 
-def parse_valor(txt: str) -> float:
-    if not txt:
-        return 0.0
-    return float(txt.replace(".", "").replace(",", "."))
-
-
-def coletar_todas_filiais(filiais: dict, log=print):
+def coletar_todas_filiais(filiais: dict, data_de: str, data_ate: str, log=print):
     session = connect_session()
     todas_linhas = []
-    for filial in filiais:
-        abrir_zlfib(session, log)
-        buscar_filial(session, filial, log)
-        linhas = ler_grid(session, filial, log)
-        todas_linhas.extend(linhas)
+    with tempfile.TemporaryDirectory(prefix="zlfib_export_", ignore_cleanup_errors=True) as pasta_tmp_str:
+        pasta_tmp = Path(pasta_tmp_str)
+        for filial in filiais:
+            abrir_zlfib(session, log)
+            buscar_filial(session, filial, data_de, data_ate, log)
+            caminho = exportar_grid_para_arquivo(session, filial, pasta_tmp, log)
+            linhas = ler_arquivo_exportado(caminho, log)
+            todas_linhas.extend(linhas)
     return todas_linhas
 
 
@@ -142,14 +194,20 @@ def colapsar_por_nf(linhas_item: list) -> list:
     for docnum, cab in por_doc.items():
         nota = dict(cab)
         nota["QTD_ITENS"] = qtd_itens[docnum]
-        nota["valor"] = parse_valor(cab["NFTOT"])
+        nota["valor"] = cab["NFTOT"]
         notas.append(nota)
     return notas
 
 
+TAMANHO_CHAVE_ACESSO_NFE = 44  # chave de acesso real da NFe tem sempre 44 digitos;
+# valores mais curtos (ex: "0000000084") sao lixo/campo em branco preenchido com
+# outro numero, nao uma chave de verdade — achado em 2026-08-13 (falso positivo
+# em SOR/GOI: duas notas de fornecedores diferentes "batendo" nesse valor curto).
+
+
 def encontrar_duplicidades(notas: list):
-    com_chave = [n for n in notas if n["ACKEY"]]
-    sem_chave = [n for n in notas if not n["ACKEY"]]
+    com_chave = [n for n in notas if len(n["ACKEY"]) == TAMANHO_CHAVE_ACESSO_NFE]
+    sem_chave = [n for n in notas if len(n["ACKEY"]) != TAMANHO_CHAVE_ACESSO_NFE]
 
     grupos_chave = defaultdict(list)
     for n in com_chave:
@@ -188,13 +246,19 @@ def montar_planilha(wb, titulo, grupos, fornecedores_ksb1, log=print):
     return ws
 
 
-def analisar(filiais: dict = None, log=print) -> Path:
+def analisar(filiais: dict = None, data_de: str = None, data_ate: str = None, log=print) -> dict:
     filiais = filiais or FILIAIS
+    data_de = data_de or DATA_DE
+    data_ate = data_ate or DATA_ATE
     fornecedores_ksb1 = carregar_fornecedores_duplicados_ksb1(log=log)
 
-    linhas_item = coletar_todas_filiais(filiais, log)
-    notas = colapsar_por_nf(linhas_item)
-    log(f"\n{len(linhas_item)} linha(s) de item no total -> {len(notas)} Nota(s) Fiscal(is) únicas (por Nr Documento).")
+    linhas_item = coletar_todas_filiais(filiais, data_de, data_ate, log)
+    notas_brutas = colapsar_por_nf(linhas_item)
+    notas = [n for n in notas_brutas if n["NFTYPE"] not in NFTYPE_EXCLUIDOS]
+    excluidas_transferencia = len(notas_brutas) - len(notas)
+    log(f"\n{len(linhas_item)} linha(s) de item no total -> {len(notas_brutas)} Nota(s) Fiscal(is) únicas "
+        f"({excluidas_transferencia} excluída(s) por ser transferência de material, tipo(s) {sorted(NFTYPE_EXCLUIDOS)}) "
+        f"-> {len(notas)} nota(s) analisada(s).")
 
     dup_chave, dup_sem_chave = encontrar_duplicidades(notas)
 
@@ -210,12 +274,14 @@ def analisar(filiais: dict = None, log=print) -> Path:
     ws_resumo.title = "Resumo"
     ws_resumo["A1"] = "Análise de Notas Fiscais duplicadas (ZLFIB) — Fitted Units"
     ws_resumo["A1"].font = Font(bold=True, size=13)
-    ws_resumo.append(["Período analisado", f"{DATA_DE} a {DATA_ATE}"])
+    ws_resumo.append(["Período analisado", f"{data_de} a {data_ate}"])
     ws_resumo.append(["Filiais", ", ".join(f"{k} ({v})" for k, v in filiais.items())])
     ws_resumo.append(["Direção", "Só Entradas (fornecedor)"])
     ws_resumo.append([])
     ws_resumo.append(["Linhas de item lidas", len(linhas_item)])
-    ws_resumo.append(["Notas Fiscais únicas (após agrupar por Nr Documento)", len(notas)])
+    ws_resumo.append(["Notas Fiscais únicas (após agrupar por Nr Documento)", len(notas_brutas)])
+    ws_resumo.append(["Excluídas por transferência de material (Tipo NF R8)", excluidas_transferencia])
+    ws_resumo.append(["Notas efetivamente analisadas", len(notas)])
     ws_resumo.append([])
     ws_resumo.append(["Duplicidade por Chave de acesso (notas de mercadoria — mais confiável)"])
     ws_resumo.append(["Grupos duplicados", len(dup_chave)])
@@ -242,7 +308,15 @@ def analisar(filiais: dict = None, log=print) -> Path:
         versao += 1
     wb.save(candidato)
     log(f"\nArquivo gerado: {candidato}")
-    return candidato
+
+    return {
+        "arquivo": candidato,
+        "tem_duplicidade": bool(dup_chave or dup_sem_chave),
+        "grupos_dup_chave": len(dup_chave),
+        "grupos_dup_sem_chave": len(dup_sem_chave),
+        "notas_envolvidas": sum(len(g) for g in dup_chave.values()) + sum(len(g) for g in dup_sem_chave.values()),
+        "valor_total": total_dup_chave + total_dup_sem_chave,
+    }
 
 
 if __name__ == "__main__":

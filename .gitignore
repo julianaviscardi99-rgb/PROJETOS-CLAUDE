@@ -2,6 +2,7 @@
 .claude/session_state/
 __pycache__/
 *.pyc
+logs/
 
 # Dados reais da Pirelli (financeiro/SAP) - nunca versionar
 data/raw/
