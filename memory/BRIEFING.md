@@ -3,6 +3,26 @@
 > Manter apenas as últimas 2 sessões inline — sessões mais antigas vão para long_term/.
 
 ---
+## Continuação 2026-08-13 (mais tarde) — Novo sub-projeto "Energia Elétrica Fitted"
+
+- **Escopo confirmado pela usuária:** dois objetivos —
+  1. Checar se todos os lançamentos de energia elétrica foram feitos corretamente (sem esquecimento, tudo lançado).
+  2. **Mais importante:** conferir se os créditos de PIS, COFINS e ICMS sobre energia elétrica estão sendo lançados (usuária acredita que não).
+- **Dados de partida que ela deu:** conta fiscal de referência `N17002S001` ("COM Fix"), e fornecedores por unidade (mesmo padrão de código de fornecedor da ZLFIB/KSB1, 10 dígitos):
+  - CEMIG DISTRIBUIÇÃO S/A — `4211308770` (provável IBI)
+  - COMPANHIA PAULISTA DE FORÇA E LUZ (CPFL) — `4211324097` (provável SJP)
+  - COPEL DISTRIBUIÇÃO S.A — `4211333301` (provável SOR ou outra — confirmar)
+  - FIAT AUTOMOVEIS S/A — `4211330756` — caso especial: a Fiat **revende** energia pra Goiana (GOI), em **duas notas**: uma de transmissão e uma de repasse.
+  - **Ignorar:** SERENA GERAÇÃO S.A — `4211333021` — é rateio, não entra nesta análise.
+  - **Ainda falta confirmar:** qual filial exatamente usa CEMIG vs CPFL vs COPEL (a usuária deu a lista mas não amarrou 1:1 com SJP/IBI/SOR ainda — não presumir, perguntar antes de aplicar).
+- **Dois problemas técnicos encontrados e resolvidos durante a exploração inicial na KSB1:**
+  1. **Erro "Selecionar uma das alternativas indicadas"** ao rodar a KSB1: a tela de seleção tinha `Centro de custo` (8204) e `Classe de custo` (N17002S000) preenchidos ao mesmo tempo que os campos de **grupo** (`Grupo de centros de custo`/`Grupo de classes de custo`) — são pares alternativos (rótulo "ou" entre eles no layout), o SAP não aceita os dois lados preenchidos. **Regra confirmada pela usuária: sempre usar o mesmo layout/parâmetros já mapeados (`BU['kstgr']`=0495, `BU['disvar']`='/DESPFITTED', `KOAGR` em branco ou "gestoriais") e nunca preencher Centro de custo/Classe de custo direto.** Script novo (`explorar_conta_energia.py`) já segue essa regra.
+  2. **Popup "Segurança SAPGUI"** pedindo autorização pra criar arquivo numa pasta nova — apareceu porque eu estava salvando exports de teste numa pasta temporária efêmera (muda a cada sessão do Claude Code). **Corrigido: passar a salvar sempre em `data/processed/`** (regra que já existia no `CLAUDE.md` e que eu não tinha seguido nesse caso específico). Cada pasta nova ainda pede aprovação uma vez (usuária marca "Memorizar minha decisão"), mas usando sempre a mesma pasta estável isso só acontece uma vez, não a cada sessão.
+- **Novo script:** `scripts/sap/fitted_units/energia_eletrica_fitted/explorar_conta_energia.py` — extrai KSB1 Sem Agrupamento de 2026 (01.01-31.07) pra `data/processed/energia_eletrica_fitted/`. Sub-projeto ainda não tem pasta própria documentada no `PROJECT_MAP.md` — fazer isso quando o escopo fechar mais.
+- **Status no fim da sessão:** rodando a extração pela primeira vez com o método corrigido — travou de novo esperando a usuária aprovar o popup de segurança da nova pasta `data/processed/energia_eletrica_fitted`. **Retomar confirmando se a extração terminou e o arquivo foi gerado**, depois abrir o Excel e localizar a conta `N17002S001` e os fornecedores de energia pra entender a estrutura antes de decidir a lógica de checagem (não foi definida ainda — só o objetivo de negócio).
+- **Pendente perguntar à usuária:** ela tem uma fatura de energia de exemplo pra mostrar (mencionou "tenho um exemplo sim" mas não chegou a enviar/descrever o conteúdo) — pedir de novo, ajuda a entender como PIS/COFINS/ICMS aparecem discriminados e se tem conta contábil própria pro crédito.
+
+---
 ## Fechamento da sessão 2026-08-13 (continuação final)
 - **Reorganização de pastas concluída:** `scripts/sap/` virou `scripts/sap/fitted_units/{_shared, fitted_units_despesas, fitted_recuperacao}/`, a pedido da usuária (queria os sub-projetos separados em pastas antes de mais sub-projetos, ex. Circuito Panamericano, serem criados). Detalhe técnico completo (o que moveu pra onde, imports corrigidos, pontos externos atualizados) em `memory/DECISOES.md` → "2026-08-13 — Reorganização de scripts/sap/". Estrutura nova também documentada em `memory/PROJECT_MAP.md`.
 - **Tudo testado depois da reorganização, nada ficou quebrado:** imports Python confirmados em runtime (não só sintaxe), tarefa agendada `Verificacao_ZLFIB_Duplicidade_Mensal` corrigida pro novo caminho (`schtasks /change`), atalho `ATUALIZAR KSB1.lnk` da rede regenerado (`criar_atalho_ksb1.ps1`) e conferido via PowerShell.
