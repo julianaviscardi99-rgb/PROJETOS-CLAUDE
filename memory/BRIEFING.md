@@ -63,15 +63,28 @@
 
 ---
 ## Resumo do dia 2026-08-10 — Fitted Units Despesas (KSB1)
-- **Instrução da usuária para as próximas sessões:** focar só em Fitted Units por enquanto. Circuito Panamericano fica pausado até ela pedir de novo — não avançar nele sem ela pedir.
-- **O que foi entregue e validado hoje** (sub-projeto batizado por ela de "Fitted Units Despesas" — ver `memory/PROJECT_MAP.md`):
-  1. `scripts/sap/atualizar_ksb1_gui.py` — GUI que extrai a KSB1 da Fitted Units (Gestoriais + Sem Agrupamento) direto do SAP via GUI Scripting e salva na área de rede. Nunca sobrescreve arquivo existente (versiona `_v2`, `_v3`...). Mês/ano padrão: ano atual dinâmico, mês = mês anterior ao atual. Navegação entre as duas extrações usa o botão "Voltar" da toolbar do SAP (mais robusto que F3). Sem popups manuais de confirmação (as notificações de segurança de scripting já estão desativadas no SAP GUI da usuária).
-  2. `scripts/sap/check_agrupamentos_ksb1.py` — conferência automática: Check 1 lista as contas contábeis sempre ignoradas (6 contas fixas, mesmo com valor 0, mais qualquer conta iniciada em "B" encontrada no mês); Check 2 lista contas do Sem Agrupamento sem vínculo no agrupamento gestorial (pra mandar pra controladoria central); Resumo compara o total das duas bases. Tudo numa aba só, arquivo `Check de agrupamentos - MM.YYYY.xlsx` salvo na pasta do mês.
-  3. As duas funções ficam na mesma janela/app, acessada por um único atalho na rede: `ATUALIZAR KSB1.lnk` (ícone de pneu Pirelli), com os botões "Extrair KSB1" e "Gerar Check de Agrupamentos".
-  4. Regras de negócio documentadas em `ontology/fitted_units.json` (→ `classificacao_despesas.check_de_agrupamentos`); decisões e motivos em `memory/DECISOES.md`; novas regras gerais em `memory/REGRAS_RAPIDAS.md` (#11 respostas em português, #12 nunca sobrescrever arquivo — versionar).
-  5. `requirements.txt` atualizado com `openpyxl` (necessário pro check).
-- Histórico detalhado passo a passo de hoje (todos os bugs e correções, em ordem cronológica): `memory/long_term/2026-08-10_*_briefing_snapshot.md`.
-- Tudo commitado e sincronizado com o GitHub (branch `main`, sem pendência de commit/push).
+> Detalhe completo arquivado em `memory/long_term/2026-08-10_*_briefing_snapshot.md`. Entregas principais: `scripts/sap/atualizar_ksb1_gui.py` (extração KSB1 Gestoriais+Sem Agrupamento via GUI Scripting) e `scripts/sap/check_agrupamentos_ksb1.py` (conferência de agrupamento gestorial), acessados por um atalho único na rede (`ATUALIZAR KSB1.lnk`). Regras em `ontology/fitted_units.json` → `classificacao_despesas.check_de_agrupamentos`.
+
+---
+
+## Continuação 2026-08-13 — Atalho "Conversar" + retomada do Fitted Recuperação (ZLFIB)
+
+- **Atalho de acesso rápido:** criado `Conversar.bat` na Área de Trabalho da usuária (`C:\Users\silveju001\Desktop\Conversar.bat`) — duplo clique entra na pasta do projeto e abre o Claude Code (`claude.cmd`, encontrado em `C:\Users\silveju001\node-v24.19.0-win-x64\`). Não versionado no Git (é local, específico da máquina dela).
+
+- **Retomada do sub-projeto Fitted Recuperação (ZLFIB), com novas regras de negócio da usuária:**
+  - **Regra nova confirmada:** só interessam notas de **Entrada** (fornecedor) — excluir Saída. Campo achado ao vivo no SAP: `S_DIRECT` (Direção do movimento de mercadorias), valores possíveis 1=Entrada, 2=Saída, 3=Devolução saída transf. estoque, 4=Devolução entrada transf. estoque. Aplicado como filtro na tela de seleção da ZLFIB. **Testado em SJP/jan-2026: reduz de 381 para 175 linhas de item (~46%)** — deve ajudar bastante o volume alto de IBI (~317 mil linhas) que tinha travado a sessão anterior.
+  - **Pedido NÃO resolvido — filtro "operação A24" (transferência de material):** a usuária queria excluir notas dessa operação, mas o código "A24" **não foi localizado** em nenhum campo de filtro da tela de seleção da ZLFIB testado ao vivo: Cfop (rejeita como código inválido) e Tipo NF/NFTYPE (campo de 2 caracteres só, valores reais amostrados são tipo R8/RF/YE/YS — nunca 3 dígitos). A usuária mencionou que normalmente vê esse código num "campo OPERA", mas não confirmou onde (perguntei e ela mudou de abordagem antes de responder — ver decisão abaixo). **Não tentar mais achar esse campo por tentativa e erro sem ela confirmar a tela/transação exata.**
+  - **Decisão da usuária (pedido explícito):** seguir por enquanto **sem** o filtro A24/OPERA, e em vez disso **cruzar o resultado da ZLFIB com os fornecedores já identificados como duplicados no estudo da KSB1** (`Análise Duplicidade Pagamento.xlsx`, gerado em 2026-08-11 por `analisar_duplicidade_pagamento.py`) — como sinal cruzado de confiança, já que os dois estudos usam o mesmo código de fornecedor (`PARID` na ZLFIB = `Fornecedor` na KSB1, confirmado formato idêntico ao amostrar os dois arquivos). Pediu pra rodar primeiro só a Filial 0031 (SJP), por ser menor e mais simples de validar antes de ir pras outras.
+  - **`scripts/sap/analisar_zlfib_duplicidade.py` reescrito:**
+    - Filtro `S_DIRECT-LOW = "1"` (só Entrada) adicionado em `buscar_filial`.
+    - `FILIAIS` deixou de ser fixo — `analisar()` agora aceita parâmetro `filiais` (dict), permitindo rodar um subconjunto (`__main__` agora chama só `{"0031": "SJP"}`).
+    - Nova função `carregar_fornecedores_duplicados_ksb1()` lê `Análise Duplicidade Pagamento.xlsx` (abas "Dup. por Documento" e "Dup. por Data") e monta o conjunto de códigos de fornecedor já duplicados na KSB1.
+    - Nas duas abas de duplicidade da ZLFIB, nova coluna "Fornecedor também duplicado na KSB1" (Sim/vazio, com destaque amarelo quando Sim) e no Resumo, contagem de quantos fornecedores duplicados na KSB1 também aparecem com NF duplicada na ZLFIB.
+  - **Resultado da primeira rodada (SJP, jan-jul/2026, só Entrada):** 1.348 linhas de item → 38 Notas Fiscais únicas. **0 duplicidades encontradas** (nem por Chave de Acesso, nem por Parceiro+NF+Série+Valor). Dos 65 fornecedores já duplicados no estudo da KSB1 (todas as filiais somadas), nenhum bateu com NF duplicada na ZLFIB de SJP especificamente — resultado plausível (SJP é a filial menor, e a duplicidade da KSB1 é sobre lançamento contábil, não necessariamente sobre a NF em si). Arquivo gerado: `Análise Duplicidade NF (ZLFIB).xlsx` na pasta do estudo.
+  - **Próximo passo, ainda não feito:** rodar as outras 3 filiais (0032=IBI, 0053=SOR, 0054=GOI) com o mesmo filtro de Entrada — IBI é a grande incógnita de volume (era ~317 mil linhas sem o filtro de Direção; o filtro deve reduzir bastante, mas ainda não testado nela). Rodar uma filial por vez e conferir o tempo/volume antes de emendar as outras, para não travar de novo. Considerar já juntar 0032/0053/0054 numa segunda rodada (`analisar(filiais={"0032": "IBI", "0053": "SOR", "0054": "GOI"})`) se o volume de IBI vier razoável desta vez.
+  - **Pendência em aberto, não esquecida:** o campo "OPERA"/código A24 continua sem localização confirmada — perguntar de novo à usuária quando ela puder checar no SAP (tela/transação exata), sem tentar mais adivinhar via automação.
+
+- **Nota:** nesta sessão não houve avanço no passo 3 do processo recorrente (BASE_KSB1 + Pivot nativo) nem na correção pontual das linhas coloridas do Flash — ambos continuam pendentes, ver resumo de 2026-08-11 acima.
 
 ---
 ## Próximos passos (retomar — só Fitted Units)

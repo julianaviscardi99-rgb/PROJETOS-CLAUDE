@@ -167,25 +167,32 @@ def encontrar_duplicidades(notas: list):
     return dup_chave, dup_sem_chave
 
 
-def montar_planilha(wb, titulo, grupos, log=print):
+def montar_planilha(wb, titulo, grupos, fornecedores_ksb1, log=print):
     ws = wb.create_sheet(titulo[:31])
     ws.append([
         "Filial", "Nr Documento", "Nota Fiscal", "Série", "Tipo NF", "Data lançamento",
         "Parceiro", "Nome", "Valor total NF", "Qtd. itens", "Chave de acesso",
+        "Fornecedor também duplicado na KSB1",
     ])
     for cell in ws[1]:
         cell.font = Font(bold=True)
     for chave, grupo in sorted(grupos.items(), key=lambda kv: -kv[1][0]["valor"] * len(kv[1])):
         for n in grupo:
+            tambem_ksb1 = "Sim" if n["PARID"] in fornecedores_ksb1 else ""
             ws.append([
                 n["BRANCH"], n["DOCNUM"], n["NFNUM"], n["SERIES"], n["NFTYPE"], n["PSTDAT"],
-                n["PARID"], n["NAME1"], n["valor"], n["QTD_ITENS"], n["ACKEY"],
+                n["PARID"], n["NAME1"], n["valor"], n["QTD_ITENS"], n["ACKEY"], tambem_ksb1,
             ])
+            if tambem_ksb1:
+                ws.cell(row=ws.max_row, column=12).fill = DESTAQUE_FORNECEDOR
     return ws
 
 
-def analisar(log=print) -> Path:
-    linhas_item = coletar_todas_filiais(log)
+def analisar(filiais: dict = None, log=print) -> Path:
+    filiais = filiais or FILIAIS
+    fornecedores_ksb1 = carregar_fornecedores_duplicados_ksb1(log=log)
+
+    linhas_item = coletar_todas_filiais(filiais, log)
     notas = colapsar_por_nf(linhas_item)
     log(f"\n{len(linhas_item)} linha(s) de item no total -> {len(notas)} Nota(s) Fiscal(is) únicas (por Nr Documento).")
 
@@ -194,15 +201,20 @@ def analisar(log=print) -> Path:
     total_dup_chave = sum(n["valor"] for g in dup_chave.values() for n in g)
     total_dup_sem_chave = sum(n["valor"] for g in dup_sem_chave.values() for n in g)
 
+    fornecedores_dup_zlfib = {n["PARID"] for g in dup_chave.values() for n in g}
+    fornecedores_dup_zlfib |= {n["PARID"] for g in dup_sem_chave.values() for n in g}
+    cruzamento = fornecedores_dup_zlfib & fornecedores_ksb1
+
     wb = Workbook()
     ws_resumo = wb.active
     ws_resumo.title = "Resumo"
     ws_resumo["A1"] = "Análise de Notas Fiscais duplicadas (ZLFIB) — Fitted Units"
     ws_resumo["A1"].font = Font(bold=True, size=13)
     ws_resumo.append(["Período analisado", f"{DATA_DE} a {DATA_ATE}"])
-    ws_resumo.append(["Filiais", ", ".join(f"{k} ({v})" for k, v in FILIAIS.items())])
+    ws_resumo.append(["Filiais", ", ".join(f"{k} ({v})" for k, v in filiais.items())])
+    ws_resumo.append(["Direção", "Só Entradas (fornecedor)"])
     ws_resumo.append([])
-    ws_resumo.append(["Linhas de item lidas (todas as filiais)", len(linhas_item)])
+    ws_resumo.append(["Linhas de item lidas", len(linhas_item)])
     ws_resumo.append(["Notas Fiscais únicas (após agrupar por Nr Documento)", len(notas)])
     ws_resumo.append([])
     ws_resumo.append(["Duplicidade por Chave de acesso (notas de mercadoria — mais confiável)"])
@@ -214,9 +226,13 @@ def analisar(log=print) -> Path:
     ws_resumo.append(["Grupos duplicados", len(dup_sem_chave)])
     ws_resumo.append(["Notas envolvidas", sum(len(g) for g in dup_sem_chave.values())])
     ws_resumo.append(["Valor total envolvido", total_dup_sem_chave])
+    ws_resumo.append([])
+    ws_resumo.append(["Cruzamento com o estudo de duplicidade da KSB1 (analisar_duplicidade_pagamento.py)"])
+    ws_resumo.append(["Fornecedores duplicados na KSB1 (Documento ou Data)", len(fornecedores_ksb1)])
+    ws_resumo.append(["Desses, também com NF duplicada na ZLFIB", len(cruzamento)])
 
-    montar_planilha(wb, "Dup. por Chave de Acesso", dup_chave, log)
-    montar_planilha(wb, "Dup. sem Chave (serviço)", dup_sem_chave, log)
+    montar_planilha(wb, "Dup. por Chave de Acesso", dup_chave, fornecedores_ksb1, log)
+    montar_planilha(wb, "Dup. sem Chave (serviço)", dup_sem_chave, fornecedores_ksb1, log)
 
     nome_base = "Análise Duplicidade NF (ZLFIB).xlsx"
     candidato = PASTA_DESTINO / nome_base
@@ -230,4 +246,4 @@ def analisar(log=print) -> Path:
 
 
 if __name__ == "__main__":
-    analisar()
+    analisar(filiais={"0031": "SJP"})
