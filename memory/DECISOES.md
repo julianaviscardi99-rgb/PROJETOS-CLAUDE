@@ -150,4 +150,23 @@
 
 **Limitação aceita:** "primeiro dia útil do mês" considera só segunda-sexta, sem calendário de feriados nacionais/municipais — se o dia 1 útil "de calendário" cair num feriado, a rotina roda mesmo assim nesse dia.
 
-**Pendência:** a tarefa ainda não foi registrada no Agendador de Tarefas do Windows — esbarrei num problema de compatibilidade do Git Bash com `schtasks` (mangling de argumentos tipo `/create`). Ver `memory/BRIEFING.md` pra alternativas a tentar na próxima sessão.
+**Atualização:** tarefa registrada com sucesso ainda nesta mesma sessão (ver entrada seguinte sobre a reorganização de pastas — o `schtasks` funcionou usando `MSYS2_ARG_CONV_EXCL="*"` antes do comando, pra evitar o mangling de argumentos do Git Bash).
+
+---
+
+## 2026-08-13 — Reorganização de `scripts/sap/` em pastas por sub-projeto
+
+**Decisão:** todos os scripts de Fitted Units (antes soltos numa pasta só, `scripts/sap/`) foram reorganizados em `scripts/sap/fitted_units/`, com uma subpasta por sub-projeto (`fitted_units_despesas/`, `fitted_recuperacao/`) e uma pasta `_shared/` (com `ksb1_core.py` — conexão/navegação SAP compartilhada — e `ferramentas/` — scripts de diagnóstico genéricos: `inspecionar_tela.py`, `test_conexao_sap.py`, `diagnosticar_popup.py`).
+
+**Motivo:** pedido explícito da usuária — ela notou que, conforme mais sub-projetos forem criados (Circuito Panamericano em breve), tudo ficaria misturado numa pasta só sem separação. Pediu especificamente que os projetos de Fitted Units (Despesas e Recuperação) ficassem organizados como sub-projetos dentro de uma pasta "Fitted Units".
+
+**Como foi feito:** `git mv` (preserva histórico) pra cada arquivo; extraído o código compartilhado (`connect_session`, navegação da KSB1, `nome_com_versao`, constantes `BU`/`REDE_BASE`/`MESES_*`) de `atualizar_ksb1_gui.py` pra `_shared/ksb1_core.py`, com `atualizar_ksb1_gui.py` reimportando esses nomes (scripts que já importavam dele na mesma pasta, como `check_agrupamentos_ksb1.py`, continuam funcionando sem mudança). Scripts de outra pasta que precisavam desse código compartilhado (`extrair_ksb1_periodo.py`, `analisar_zlfib_duplicidade.py`) passaram a importar direto de `ksb1_core.py` via `sys.path.insert()` (mesmo padrão já usado em `verificacao_mensal_zlfib.py`).
+
+**Pontos externos corrigidos na mesma leva** (todos que tinham caminho hardcoded pro local antigo dos arquivos):
+- Tarefa agendada do Windows `Verificacao_ZLFIB_Duplicidade_Mensal`: `schtasks /change /tr ...` pro novo caminho de `watcher_mensal_zlfib.bat`.
+- Atalho `ATUALIZAR KSB1.lnk` na área de rede: regenerado rodando `criar_atalho_ksb1.ps1` de novo (o `.lnk` em si não é versionado, é local na rede — regenerar é a forma certa de "mover" um atalho).
+- `atualizar_ksb1_launcher.vbs` e `criar_atalho_ksb1.ps1`: caminhos internos atualizados pro novo local de `atualizar_ksb1_gui.py`.
+
+**Validação:** todos os `.py` movidos/editados passaram em `python -m py_compile` e depois em `import` real (não só sintaxe); o `watcher_mensal_zlfib.bat` foi rodado manualmente do novo local e funcionou (criou `logs/zlfib_mensal.log` vazio, como esperado por não ser o 1º dia útil); o `.lnk` regenerado foi conferido via PowerShell (`TargetPath`/`Arguments` corretos).
+
+**Pendência:** nenhuma automação ficou quebrada, mas ainda falta atualizar o `.bat` legado `ATUALIZAR KSB1.bat` (dentro de `fitted_units_despesas/`, referência relativa `%~dp0` — deveria continuar funcionando sem mudança, mas não foi testado ao vivo) e confirmar se a usuária quer que `Circuito Panamericano`/`Original Equipment` sigam o mesmo padrão de pastas quando esses sub-projetos começarem de verdade.

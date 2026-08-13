@@ -3,6 +3,14 @@
 > Manter apenas as últimas 2 sessões inline — sessões mais antigas vão para long_term/.
 
 ---
+## Fechamento da sessão 2026-08-13 (continuação final)
+- **Reorganização de pastas concluída:** `scripts/sap/` virou `scripts/sap/fitted_units/{_shared, fitted_units_despesas, fitted_recuperacao}/`, a pedido da usuária (queria os sub-projetos separados em pastas antes de mais sub-projetos, ex. Circuito Panamericano, serem criados). Detalhe técnico completo (o que moveu pra onde, imports corrigidos, pontos externos atualizados) em `memory/DECISOES.md` → "2026-08-13 — Reorganização de scripts/sap/". Estrutura nova também documentada em `memory/PROJECT_MAP.md`.
+- **Tudo testado depois da reorganização, nada ficou quebrado:** imports Python confirmados em runtime (não só sintaxe), tarefa agendada `Verificacao_ZLFIB_Duplicidade_Mensal` corrigida pro novo caminho (`schtasks /change`), atalho `ATUALIZAR KSB1.lnk` da rede regenerado (`criar_atalho_ksb1.ps1`) e conferido via PowerShell.
+- **Memória global do Claude Code também iniciada nesta sessão** (fora da pasta do projeto, em `C:\Users\silveju001\.claude\projects\...\memory\`, pedido explícito da usuária "guarde na memória"): 3 arquivos novos — referência pro sistema de memória do próprio projeto, estilo de colaboração da usuária (rigor com números financeiros, confirmar antes de automação irreversível, PT-BR), e um resumo do sub-projeto Fitted Recuperação/ZLFIB. Não duplica o que já está em `memory/BRIEFING.md`/`DECISOES.md` — só pontos que atravessam sessões/projetos.
+- **Pendência mínima:** `ATUALIZAR KSB1.bat` (o `.bat` legado dentro de `fitted_units_despesas/`) não foi testado ao vivo depois do move — deveria funcionar sem mudança (usa `%~dp0`, caminho relativo), mas vale confirmar da próxima vez que for usado.
+- Sessão bateu no limite de 45 ações **três vezes** — backup automático rodou a cada vez, tudo commitado e sincronizado no GitHub.
+
+---
 ## Resumo do dia 2026-08-11 — Fitted Units Despesas (popup SAP + estrutura de pastas + regra e automação da Base Intermediária)
 - **Popup "Definir área contab.custos" do SAP:** usuária relatou que, ao sair/voltar a entrar no SAP, um popup pede a área contábil (0580) antes de liberar qualquer transação. Primeira tentativa de fechar automaticamente adivinhou o campo errado e causou erro em cascata no SAP. Criado `scripts/sap/diagnosticar_popup.py` (+ atalho `DIAGNOSTICAR POPUP.bat`) pra inspecionar o popup ao vivo; descobriu-se que o campo fica dentro de um subscreen (`usr/sub:SAPLSPO4:0300/ctxtSVALD-VALUE`), não direto em `usr`. Corrigido com busca recursiva por `GuiCTextField` em `atualizar_ksb1_gui.py` e `extrair_ksb1.py`. **Testado pela usuária e funcionando.** Detalhe completo em `memory/errors/2026-08-11_popup_area_contabil_ao_reentrar_sap.md`.
 - **Regra de negócio confirmada — passo 3 do processo (montar a base intermediária):**
