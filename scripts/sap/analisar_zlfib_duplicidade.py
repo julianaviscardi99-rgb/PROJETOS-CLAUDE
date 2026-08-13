@@ -15,6 +15,20 @@ Regras confirmadas pela Juliana em 2026-08-11:
   Parceiro + Nota Fiscal + Série + Valor total repetidos em mais de um
   Nr Documento.
 
+Regras adicionadas em 2026-08-13:
+- Direção do movimento (S_DIRECT) = '1' (Entrada): só interessam notas de
+  entrada de fornecedor, não saídas. Reduz bastante o volume de linhas
+  (testado em SJP/jan-2026: 381 -> 175 linhas de item).
+- Filtro por "operação A24" (transferência de material) pedido pela Juliana
+  NÃO foi localizado na tela da ZLFIB (não é Cfop nem Tipo NF — os dois
+  campos foram checados ao vivo e não têm esse código). Decisão: seguir
+  sem esse filtro por enquanto; ela ainda vai confirmar onde fica o campo
+  "OPERA" que ela usa no dia a dia.
+- Cruzamento com o estudo de duplicidade da KSB1 (projeto irmão, ver
+  analisar_duplicidade_pagamento.py): os fornecedores que já apareceram
+  como duplicados na KSB1 (por Documento de compras ou por Data) são
+  marcados nas notas da ZLFIB, como sinal cruzado de confiança.
+
 Lê a grid ALV direto via COM (GetCellValue) em vez de exportar para Excel —
 mais rápido e mais simples que negociar o menu de exportação dessa tela.
 """
@@ -22,20 +36,46 @@ import time
 from collections import defaultdict
 from pathlib import Path
 
-from openpyxl import Workbook
-from openpyxl.styles import Font
+from openpyxl import Workbook, load_workbook
+from openpyxl.styles import Font, PatternFill
 
 from atualizar_ksb1_gui import connect_session
 
 FILIAIS = {"0031": "SJP", "0032": "IBI", "0053": "SOR", "0054": "GOI"}
 DATA_DE = "01.01.2026"
 DATA_ATE = "31.07.2026"
+DIRECAO_ENTRADA = "1"
 
 COLS = ["BRANCH", "DOCNUM", "NFNUM", "SERIES", "NFTYPE", "PSTDAT", "DOCDAT", "PARID", "NAME1", "NFTOT", "ACKEY"]
 
 PASTA_DESTINO = Path(
     r"\\FSS024-01BR.group.pirelli.com\GFU_DAC\Custos Fitted Units\Estudos\Estudo Duplicidade Pagamento"
 )
+ARQUIVO_DUP_KSB1 = PASTA_DESTINO / "Análise Duplicidade Pagamento.xlsx"
+
+DESTAQUE_FORNECEDOR = PatternFill(start_color="FFF2CC", end_color="FFF2CC", fill_type="solid")
+
+
+def carregar_fornecedores_duplicados_ksb1(caminho: Path = ARQUIVO_DUP_KSB1, log=print) -> set:
+    """Lê o resultado já gerado do estudo de duplicidade da KSB1
+    (analisar_duplicidade_pagamento.py) e devolve o conjunto de códigos de
+    fornecedor que apareceram em algum grupo duplicado lá (por Documento ou
+    por Data), pra cruzar com as notas da ZLFIB."""
+    if not caminho.exists():
+        log(f"Aviso: {caminho.name} não encontrado — seguindo sem cruzamento com a KSB1.")
+        return set()
+    wb = load_workbook(caminho, data_only=True, read_only=True)
+    fornecedores = set()
+    for nome_aba in ("Dup. por Documento", "Dup. por Data"):
+        if nome_aba not in wb.sheetnames:
+            continue
+        ws = wb[nome_aba]
+        for row in ws.iter_rows(min_row=2, values_only=True):
+            fornecedor = row[0]
+            if fornecedor:
+                fornecedores.add(str(fornecedor).strip())
+    log(f"{len(fornecedores)} fornecedor(es) distinto(s) já duplicado(s) no estudo da KSB1 (cruzamento).")
+    return fornecedores
 
 
 def abrir_zlfib(session, log):
@@ -53,9 +93,10 @@ def buscar_filial(session, filial: str, log):
     wnd.FindById("usr/ctxtS_BRANCH-LOW").Text = filial
     wnd.FindById("usr/ctxtS_PSTDAT-LOW").Text = DATA_DE
     wnd.FindById("usr/ctxtS_PSTDAT-HIGH").Text = DATA_ATE
+    wnd.FindById("usr/ctxtS_DIRECT-LOW").Text = DIRECAO_ENTRADA
     wnd.FindById("usr/radP_ITEM").Select()
     wnd.FindById("usr/chkP_ACKEY").Selected = True
-    log(f"Executando ZLFIB — Filial {filial} ({FILIAIS[filial]})...")
+    log(f"Executando ZLFIB — Filial {filial} ({FILIAIS[filial]}), só Entradas...")
     wnd.SendVKey(8)
     time.sleep(2)
 
@@ -77,10 +118,10 @@ def parse_valor(txt: str) -> float:
     return float(txt.replace(".", "").replace(",", "."))
 
 
-def coletar_todas_filiais(log=print):
+def coletar_todas_filiais(filiais: dict, log=print):
     session = connect_session()
     todas_linhas = []
-    for filial in FILIAIS:
+    for filial in filiais:
         abrir_zlfib(session, log)
         buscar_filial(session, filial, log)
         linhas = ler_grid(session, filial, log)
