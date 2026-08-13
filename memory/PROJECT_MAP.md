@@ -55,6 +55,14 @@ scripts/sap/fitted_units/
 
 ---
 
+### Sub-projeto: Energia Elétrica Fitted
+> Iniciado pela usuária em 2026-08-13. Objetivo: dois itens — (1) checar se todos os lançamentos de energia elétrica foram feitos corretamente/sem esquecimento, (2) mais importante, conferir se os créditos de PIS/COFINS/ICMS sobre energia estão sendo lançados (usuária acredita que não). Pasta: `scripts/sap/fitted_units/energia_eletrica_fitted/`.
+- **Conta contábil identificada:** `N17002S001` ("COM Fix - Energia El[étrica]") — única conta de energia elétrica no extrato da KSB1, usada por 6 centros de custo diferentes.
+- **Status:** exploração inicial feita (jan-jul/2026), achado concreto de lançamento faltando (centro de custo 8303/Fiat/Goiana sem nenhum lançamento em fev e jun/2026) e confirmado que nenhuma linha mostra detalhamento de PIS/COFINS/ICMS. **Ainda não fechado:** mapeamento Centro de custo → unidade (usuária vai enviar a lista), conta contábil dos créditos de PIS/COFINS/ICMS (se existir separada), como a energia da Resende (RES) é lançada (não apareceu no extrato com os fornecedores conhecidos até agora). Ver `memory/BRIEFING.md` (2026-08-13) para a tabela completa por centro de custo.
+- **Fornecedores de energia conhecidos (código de 10 dígitos, mesmo padrão da KSB1/ZLFIB):** CEMIG `4211308770`, CPFL `4211324097`, COPEL `4211333301`, FIAT AUTOMOVEIS S/A `4211330756` (revende energia pra Goiana, 2 notas — transmissão e repasse). Ignorar SERENA GERAÇÃO S.A `4211333021` (é rateio).
+
+---
+
 ## Projeto 2: Circuito Panamericano — Automação de Controladoria
 - **Domínio:** complexo de testes (Elias Fausto), modelo de aluguel de espaço (Pirelli R&D e terceiros). Controladoria: despesas, EBIT, P&L mensal (Flash e Actual). Mesmo processo de KSB1 da Fitted Units, sem etapa de rateio da Gerência; faturamento recebido já fechado.
 - **Scripts principais:** ainda não criados.

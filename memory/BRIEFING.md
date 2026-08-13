@@ -20,7 +20,24 @@
   2. **Popup "Segurança SAPGUI"** pedindo autorização pra criar arquivo numa pasta nova — apareceu porque eu estava salvando exports de teste numa pasta temporária efêmera (muda a cada sessão do Claude Code). **Corrigido: passar a salvar sempre em `data/processed/`** (regra que já existia no `CLAUDE.md` e que eu não tinha seguido nesse caso específico). Cada pasta nova ainda pede aprovação uma vez (usuária marca "Memorizar minha decisão"), mas usando sempre a mesma pasta estável isso só acontece uma vez, não a cada sessão.
 - **Novo script:** `scripts/sap/fitted_units/energia_eletrica_fitted/explorar_conta_energia.py` — extrai KSB1 Sem Agrupamento de 2026 (01.01-31.07) pra `data/processed/energia_eletrica_fitted/`. Sub-projeto ainda não tem pasta própria documentada no `PROJECT_MAP.md` — fazer isso quando o escopo fechar mais.
 - **Status no fim da sessão:** rodando a extração pela primeira vez com o método corrigido — travou de novo esperando a usuária aprovar o popup de segurança da nova pasta `data/processed/energia_eletrica_fitted`. **Retomar confirmando se a extração terminou e o arquivo foi gerado**, depois abrir o Excel e localizar a conta `N17002S001` e os fornecedores de energia pra entender a estrutura antes de decidir a lógica de checagem (não foi definida ainda — só o objetivo de negócio).
-- **Pendente perguntar à usuária:** ela tem uma fatura de energia de exemplo pra mostrar (mencionou "tenho um exemplo sim" mas não chegou a enviar/descrever o conteúdo) — pedir de novo, ajuda a entender como PIS/COFINS/ICMS aparecem discriminados e se tem conta contábil própria pro crédito.
+- **Extração concluída e inspecionada com sucesso** (`data/processed/energia_eletrica_fitted/KSB1 - Fitted Units 2026 - Sem Agrupamento (energia).xlsx`, jan-jul/2026): a conta `N17002S001` ("COM Fix - Energia El[étrica]") é a **única** conta contábil de energia elétrica em todo o extrato (nenhuma outra variante `N17002*`) — 58 lançamentos no total, cobrindo **6 centros de custo diferentes**:
+  | Centro custo | Fornecedor | Cobertura jan-jul/2026 |
+  |---|---|---|
+  | 8296 | CEMIG (`4211308770`) | Todo mês, sem falha aparente — provável IBI |
+  | 8290 | COPEL (`4211333301`) | Todo mês, sem falha aparente — provável SJP |
+  | 8289 | COPEL (`4211333301`) | Só abril (1 lançamento) |
+  | 8269 | CPFL (`4211324097`) | Só fev-mar, nada depois — padrão bate com SOR (unidade encerrada, "custo residual") |
+  | 8292 | CPFL (`4211324097`) | Só março (5 lançamentos, mesmo mês) |
+  | 8303 | FIAT/GOI (`4211330756`) | **Falta fevereiro e junho inteiros** — achado concreto pro objetivo 1 |
+  - Achado objetivo 1 (lançamentos faltando): **centro 8303 (Fiat/Goiana) sem nenhum lançamento em fev/2026 e jun/2026.** Também tem pares de valores que se cancelam no mesmo mês (ex: 8269 fev tem -12.623,38 e +12.623,38) — parecem estorno/correção, não tratados como erro sem confirmar com ela.
+  - Achado objetivo 2 (créditos PIS/COFINS/ICMS): **nenhuma das 58 linhas mostra esse detalhamento** — só um valor líquido (`Valor/MR`) por fatura. Compatível com a suspeita dela, mas falta confirmar se existe uma conta contábil SEPARADA pra esses créditos (perguntado, ainda sem resposta).
+  - **Resende (RES/Nissan) não apareceu em nenhum lançamento** dessa conta com os fornecedores conhecidos — não sabemos ainda como a energia da Resende é lançada/qual fornecedor.
+- **Pendências pra amanhã (usuária confirmou que retoma amanhã):**
+  1. Ela vai mandar a lista de qual Centro de custo pertence a qual unidade (SJP/IBI/SOR/GOI/RES/GER) — **não presumir o mapeamento acima, são só palpites por geografia da concessionária, aguardar confirmação dela.** Ela quer ver o resultado organizado por unidade.
+  2. Perguntar de novo sobre a conta contábil separada pros créditos de PIS/COFINS/ICMS (não respondeu ainda).
+  3. Entender como a energia da Resende é lançada (não apareceu no extrato).
+  4. Depois de mapear tudo, decidir a lógica formal de checagem (completude mensal + verificação dos créditos) e provavelmente criar um script recorrente (parecido com os outros sub-projetos).
+- Scripts exploratórios desta etapa (ainda ad-hoc, não é o script final do sub-projeto): `scripts/sap/fitted_units/energia_eletrica_fitted/explorar_conta_energia.py`, `inspecionar_energia.py`, `resumo_cobertura.py`.
 
 ---
 ## Fechamento da sessão 2026-08-13 (continuação final)
