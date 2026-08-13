@@ -14,7 +14,7 @@ from pathlib import Path
 
 import win32com.client
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+PROJECT_ROOT = Path(__file__).resolve().parents[4]  # .../fitted_units_despesas/fitted_units/sap/scripts/<raiz>
 ONTOLOGY_DIR = PROJECT_ROOT / "ontology"
 
 # Area de rede da Pirelli onde a Juliana quer uma copia dos exports brutos da

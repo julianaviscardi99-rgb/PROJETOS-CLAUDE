@@ -46,6 +46,7 @@ Regras adicionadas em 2026-08-13:
   uma coisa só na análise ou no texto de resultado, mesmo quando rodadas
   juntas no mesmo lote por conveniência (a coluna "Filial" já distingue).
 """
+import sys
 import tempfile
 import time
 from collections import defaultdict
@@ -54,7 +55,8 @@ from pathlib import Path
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, PatternFill
 
-from atualizar_ksb1_gui import connect_session
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "_shared"))
+from ksb1_core import connect_session  # noqa: E402
 
 FILIAIS = {"0031": "SJP", "0032": "IBI", "0053": "SOR", "0054": "GOI"}
 DATA_DE = "01.01.2026"

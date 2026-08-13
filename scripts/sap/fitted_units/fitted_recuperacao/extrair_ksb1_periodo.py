@@ -8,8 +8,8 @@ nao de um mes fechado por vez como o fluxo mensal recorrente.
 Sem Agrupamento (nao Gestoriais) porque aqui o objetivo e pegar TODAS as
 contas/lancamentos do periodo, sem filtro de agrupamento gestorial.
 
-Reaproveita as funcoes ja testadas de conexao/navegacao/popup do
-atualizar_ksb1_gui.py em vez de duplicar essa logica.
+Reaproveita as funcoes ja testadas de conexao/navegacao/popup de
+fitted_units/_shared/ksb1_core.py em vez de duplicar essa logica.
 
 Pre-requisitos: SAP GUI aberto e logada (script abre a KSB1 sozinho).
 """
@@ -17,7 +17,8 @@ import sys
 import time
 from pathlib import Path
 
-from atualizar_ksb1_gui import (
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "_shared"))
+from ksb1_core import (  # noqa: E402
     BU,
     abrir_ksb1,
     connect_session,

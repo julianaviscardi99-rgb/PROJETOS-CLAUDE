@@ -12,143 +12,30 @@ Pre-requisitos na maquina de quem for rodar:
 - SAP GUI Scripting habilitado (Alt+F12 > Opcoes > Acessibilidade e Scripting > Scripting)
 - SAP GUI aberto e logada (nao precisa estar na KSB1, o script abre a transacao sozinho)
 """
+import sys
 import time
 import tkinter as tk
 from datetime import datetime
 from pathlib import Path
 from tkinter import messagebox, ttk
 
-import win32com.client
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "_shared"))
+from ksb1_core import (  # noqa: E402
+    BU,
+    MESES_NOMES,
+    MESES_PASTA,
+    REDE_BASE,
+    abrir_ksb1,
+    connect_session,
+    nome_com_versao,
+    voltar_para_selecao,
+)
 
 # Logo da Pirelli embutido (base64) para o script continuar autossuficiente
 # (nao depender de arquivo de imagem separado ao copiar para a rede).
 LOGO_PIRELLI_B64 = (
     "iVBORw0KGgoAAAANSUhEUgAAAJsAAAAvCAYAAAD0OrjvAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAU4SURBVHhe7Zvri1VlFIcnm5qpbLLLt7KLlpk5Y4ZI6nwIDE0s8MOEgiRFN0UKTJQUu2AYo0KW1HRRpMuoYVaa1hBdUCu7Rx+ke/0rb8+PMweOb2vfztTrmWF9eEBnr7X23u969n735ey28HdbcJwUuGxOMlw2Jxkum5MMl81JhsvmJMNlc5LhsjnJcNmcZFSX7c2zQrjvvBD6upyxzLILQ3ikI4Q99PynyIEmqS7bdmS7iQ25/DJnLDMRrrs4hDmIt7YzhC8NFyrisjn5XAHTkW4js9nPhg8VSCPbVZeGsJSNffQcJxVr4EGYx7hbPamChFs0PoRDhg8VSCPb5EtCGDg3hB/Id9LxDbzaHsKNE+y+VGEWPd9BPcuJkqSR7Vpkex3ZrHrO/8vRcYjCWcnqSxXU836jfgXSyHYN0+gzyDZEvpOGD+EtWMVUqssYqy9VmEvPX6Ge5URJ0simOf8Gzm4zuNB00tENmlWsnlSlj55/bvhQgTSyOaOb3q4QdtH3Pw0fKuCyOdlM4qy45PwQ9tHz3wwXKpLumm1DRwiD5DqjgwPwGZyCPwwPmiCNbHr08Ro3CDoNO6OHv8ByoEnSyOaPPhw4s7I9BYv4+/xOm6Fx/87ZVJBThsXtIWykzteQdfTeRcxtRm5ZFsL+qKamo/2MnxUvFnCpsSrKyeIkLGd8rDribsbo4yjH4ivYkFNHbyE+inKa5MzKtpKLT02xVo54hx2Nc+6nzmRu6a34qkyfEMJBBtq6JrmZZXpkY+WV4WquU3dFNX+Hl1mfFS+uJGfx+NNzsjhGnbmMn1VH9F4UwvtGXsxxuIcxtWqIhfT6cJTTJGNPNj3AVKPr6P950sykKSfZp/gMVySbxFDtLLTPu6OaLpu9IJNWl63/7BD2ErdvmGdhNgOvn8xY8aKfxv1KXON6imR7gJjnctgJJ6CxpstmL8ik1WU7gmy6k2rM2Q5Tc3LupXGnopwi2V4gRtNvHvHZ0mWzF2TS6rK9i2z63ZXOVEL/fprGXJ+znhVNyLaenLdz0LXg91FNl81ekEmry/YYOc/TiJ3DPAkzcsTR3zcT80u0Hr9BqOGy5chWFb2w/pR9iqdel62Gy/YfyKbGzqTOAE2z3vsVyaZfVNySQy/5g1FNl81ekEmryzaLZfNo9DSYSPOsGDGNuD0Zooki2bYR810B8dTsstkLMml12Qa5QdDPoR+HvDtQPQsbIDZ+5FGnSLatxHxbgIRrlLmMbAsYW6tWnfpndUWyzUG2NxryYn4EbZvLNkwzstUffehV1Hy2Uw204sRsziJDxvWaKJLtDrZtZQEPt5/+rK1INq2vh/VatcRq6m1j/1SrSLap1Flq1KjzBHWOUcdlG2YksilWU52mSyuuzoqO2pFe9Q1CGSYheuNUViRbEbrp6LugVqtItiJu7QrhIHVaWrYdyKadnEITy9LDKX0vR2VcS19cd7PMyhGHjJzVCNjDQFnx4oMG2fSF0Z2cvXSUW7FCU+2L7FN87dbLIE/JyStDN/lHG2pKtt2sy4otg65Dl3fWah2njl6UW3FluJ1xeY86+qn3Q4ypFSOWIPcRYur7MAKqy6YN3ERD13A0lGUd0nzC4MS19O5Qy6wcccLI0UcXeTnxe05dt6xnMK3YOluIiS/mNc3o20srvizryG/8klwHgT5GsWLLsJZ6ehWmWjqQNrOvVlwZtjCGmuJV5yXOklaM2ErcF8PrHCHVZXOcJnHZnGS4bE4yXDYnGS6bkwyXzUmGy+Ykw2VzkuGyOclw2ZxEtIV/AAlejwcdSLwvAAAAAElFTkSuQmCC"
 )
-
-BU = {"nome": "Fitted Units", "kstgr": "0495", "disvar": "/DESPFITTED"}
-
-REDE_BASE = Path(
-    r"\\FSS024-01BR.group.pirelli.com\GFU_DAC\Custos Fitted Units\Resultados Fitted"
-)
-
-MESES_NOMES = {
-    1: "Janeiro", 2: "Fevereiro", 3: "Março", 4: "Abril",
-    5: "Maio", 6: "Junho", 7: "Julho", 8: "Agosto",
-    9: "Setembro", 10: "Outubro", 11: "Novembro", 12: "Dezembro",
-}
-MESES_PASTA = {
-    1: "01 - Jan", 2: "02 - Feb", 3: "03 - Mar", 4: "04 - Apr",
-    5: "05 - May", 6: "06 - Jun", 7: "07 - Jul", 8: "08 - Aug",
-    9: "09 - Sep", 10: "10 - Oct", 11: "11 - Nov", 12: "12 - Dec",
-}
-
-
-def connect_session():
-    sap_gui_auto = win32com.client.GetObject("SAPGUI")
-    application = sap_gui_auto.GetScriptingEngine
-    connection = application.Children(0)
-    return connection.Children(0)
-
-
-def _buscar_campo_editavel(elemento):
-    # Busca recursiva pelo primeiro campo de valor editavel (GuiCTextField).
-    # Necessario porque no popup "Definir área contab.custos" o campo fica
-    # dentro de um subscreen (usr/sub:SAPLSPO4:0300/ctxtSVALD-VALUE),
-    # nao direto em usr — descoberto rodando diagnosticar_popup.py (ver
-    # memory/errors/2026-08-11_popup_area_contabil_ao_reentrar_sap.md).
-    try:
-        if elemento.Type == "GuiCTextField":
-            return elemento
-    except Exception:
-        pass
-    try:
-        filhos = elemento.Children
-    except Exception:
-        return None
-    for filho in filhos:
-        achado = _buscar_campo_editavel(filho)
-        if achado is not None:
-            return achado
-    return None
-
-
-def tratar_popup_area_contabil(session, log):
-    # Ao sair e voltar a entrar no SAP (nova sessao), a primeira transacao
-    # do dia costuma abrir um popup modal "Definir área contab.custos"
-    # pedindo a area contabil de custos antes de liberar a tela principal.
-    # Se nao for fechado, os campos da tela de selecao da KSB1 (wnd[0])
-    # ficam inacessiveis. Preenche com "0580" (fixo para Fitted Units, ver
-    # memory/errors/2026-08-10_ksb1_kokrs_vazio.md) e confirma na seta verde.
-    wnd1 = session.FindById("wnd[1]", False)
-    if wnd1 is None:
-        return
-
-    log("Popup 'Definir área contab.custos' detectado, preenchendo 0580...")
-    campo = _buscar_campo_editavel(wnd1.FindById("usr"))
-
-    if campo is None:
-        # Nao adivinha: clicar em "confirmar" sem preencher o campo faz o
-        # proprio SAP abrir "Preencher todos os campos obrigatorios" e deixa
-        # a sessao com popups empilhados (foi o que aconteceu em
-        # memory/errors/2026-08-11_popup_area_contabil_ao_reentrar_sap.md).
-        raise RuntimeError(
-            "Não consegui identificar o campo do popup 'Definir área contab.custos' "
-            "automaticamente. Feche os popups no SAP, abra o popup de novo e rode "
-            "scripts/sap/diagnosticar_popup.py para descobrir o Id exato do campo."
-        )
-
-    campo.Text = "0580"
-    wnd1.FindById("tbar[0]/btn[0]").Press()  # seta verde (confirmar)
-
-
-def abrir_ksb1(session, log):
-    # Sempre reenviamos /nKSB1, mesmo se a transacao atual ja for "KSB1":
-    # a transacao permanece "KSB1" tanto na tela de selecao quanto na tela
-    # de resultados apos rodar o relatorio, entao checar so o nome da
-    # transacao nao garante que estamos na tela de selecao (isso causava
-    # "The control could not be found by id" na segunda extracao).
-    log("Abrindo a transação KSB1...")
-    session.FindById("wnd[0]/tbar[0]/okcd").Text = "/nKSB1"
-    session.FindById("wnd[0]").SendVKey(0)  # Enter
-
-    tratar_popup_area_contabil(session, log)
-
-    if session.Info.Transaction != "KSB1":
-        raise RuntimeError(
-            f"Não consegui abrir a KSB1 (tela atual: '{session.Info.Transaction}')."
-        )
-
-
-def voltar_para_selecao(session, log):
-    # Clica no botao "Voltar" (seta verde) em vez de SendVKey(3): o SendVKey
-    # simula a tecla F3, que o SAP pode reportar como desabilitada dependendo
-    # do estado da tela ("The virtual key is not enabled"), mesmo com o botao
-    # visualmente clicavel. Pressionar o botao direto evita esse problema e
-    # mantem os campos da tela de selecao preenchidos (diferente de reabrir a
-    # transacao do zero com /nKSB1, que limpa tudo).
-    log("Voltando para a tela de seleção...")
-    wnd = session.FindById("wnd[0]")
-    wnd.FindById("tbar[0]/btn[3]").Press()
-
-    if wnd.FindById("usr/ctxtP_KOKRS", False) is None:
-        # Nao caiu na tela de selecao esperada: reabre a transacao do zero
-        # como rede de seguranca.
-        abrir_ksb1(session, log)
-
-
-def nome_com_versao(pasta: Path, nome_base: str) -> str:
-    # Nunca sobrescrever um arquivo ja existente na pasta: se ja existe um
-    # arquivo com esse nome, salva como "_v2", se "_v2" tambem ja existir,
-    # "_v3", e assim por diante.
-    base = Path(nome_base)
-    stem, ext = base.stem, base.suffix
-    candidato = pasta / nome_base
-    versao = 2
-    while candidato.exists():
-        candidato = pasta / f"{stem}_v{versao}{ext}"
-        versao += 1
-    return candidato.name
 
 
 def extrair_um(session, mes, ano, koagr, agrup_label, log):

@@ -39,7 +39,7 @@ import win32com.client as win32
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from analisar_zlfib_duplicidade import FILIAIS, analisar  # noqa: E402
 
-RAIZ_PROJETO = Path(__file__).resolve().parent.parent.parent
+RAIZ_PROJETO = Path(__file__).resolve().parents[4]  # .../fitted_recuperacao/fitted_units/sap/scripts/<raiz>
 ARQUIVO_ESTADO = RAIZ_PROJETO / "data" / "processed" / "zlfib_mensal_estado.json"
 EMAIL_DESTINATARIO = "juliana.silveira@pirelli.com"
 HORA_LIMITE_AVISO = 18  # se passar dessa hora no 1o dia util sem achar o SAP logado, avisa por e-mail
