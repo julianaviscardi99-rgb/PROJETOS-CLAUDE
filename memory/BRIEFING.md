@@ -3,6 +3,29 @@
 > Manter apenas as últimas 2 sessões inline — sessões mais antigas vão para long_term/.
 
 ---
+## Continuação 2026-08-14 — Retomando passo 3 (BASE_KSB1 + Pivot nativo), validação com July Flash
+
+- **Objetivo desta sessão:** implementar o passo 3 do processo recorrente (Fitted Units Despesas) seguindo o plano já fechado em 2026-08-11 (retomada à tarde) — copiar o KSB1 Actual do mês anterior, colar linhas novas na aba `BASE_KSB1`, arrastar fórmulas S:AI, refresh das Pivot Tables nativas via COM. Ainda **não** implementado até esta sessão.
+- **Escopo confirmado com a usuária:** usar o mês de **julho/2026 (Flash)** como teste de **validação às cegas** (não é pra virar processo oficial ainda) — descobri que `KSB1 July Flash 2026.xlsx` e `Base Intermediária Fitted July Flash 2026.xlsx` já existem na rede (gerados manualmente em 03/08), então dá pra comparar o resultado da automação contra o que ela já fechou manualmente, igual foi feito com maio→junho antes. Ela confirmou essa abordagem via pergunta direta.
+- **Decisões técnicas tomadas nesta sessão (não confirmadas com a usuária, são de implementação):**
+  1. Saída da validação vai para **`data/processed/fitted_units_despesas/base_ksb1_teste/`** (local, fora da rede) — não escrevo em cima da pasta real de julho pra não colidir com os arquivos manuais já existentes lá.
+  2. **Julho decide por "Gestoriais"**: conferido no `Check de agrupamentos - 07.2026_v3.xlsx` já existente — Situação "OK - valores batem" (Gestoriais = Sem Agrupamento filtrado = R$ 6.767.317,49) — logo a regra manda usar Gestoriais.
+  3. **Links externos do BASE_KSB1 NÃO serão atualizados** (`UpdateLinks=0` no `Workbooks.Open`) — mantém o mesmo cache de mapeamento de Contas que já estava no `KSB1 June Actual 2026.xlsx`, em vez de puxar a versão mais recente do arquivo `Base_Contas_Contábeis_Fitted_22.xlsx` (que existe e está acessível, atualizado em 16/07 — mais recente que o fechamento de junho). Motivo: isolar a variável testada (a automação reproduz o processo manual?) sem misturar com "a base de contas mudou entre junho e agora" — se aparecerem diferenças, dá pra investigar depois se é isso.
+  4. **Estrutura real da aba `Intermediária` do arquivo de julho, inspecionada ao vivo** (não é como a nota antiga de 2026-08-11 sugeria — "linhas coloridas no fim"): são **753 linhas no total** (não 753 brancas + coloridas extras), sendo **686 sem cor** (as fixas, vêm do SAP/KSB1), **46 amarelas** (`RGB FFFFFF00`, provável "Prov"), **16 de um tema roxo/accent** e **4 de um tema verde/accent** (colunas de identificação ainda não 100% confirmadas com a usuária — coluna 22 "Usuário" tem valores "Reclass"/"Prov"/vazio, mas não testei a correlação exata cor↔texto ainda). **Decisão de escopo:** a comparação da validação só vai cobrir as 686 linhas sem cor (vêm direto do SAP via KSB1/Pivot) — as coloridas são ajustes manuais (provisão/reclassificação) fora do escopo desta automação, reportadas à parte, não como divergência.
+  5. Chave de casamento continua `(Conta Fiscal, Centro de Custo)` — mesmo tratamento de duplicidade/pendência já usado em `gerar_base_intermediaria.py` (o script antigo, revertido, mas as funções de normalização de chave são reaproveitáveis).
+- **Script novo criado (ainda NÃO TESTADO): `scripts/sap/fitted_units/fitted_units_despesas/gerar_ksb1_mensal.py`**
+  - `decidir_fonte_e_ler_linhas(mes, ano, log)`: decide Gestoriais vs Sem Agrupamento (mesma regra do `check_agrupamentos_ksb1.py`) e devolve as linhas de detalhe completas (18 colunas, A-R do BASE_KSB1), já filtradas.
+  - `localizar_ksb1_actual_anterior(mes, ano)`: acha o KSB1 Actual do mês anterior na rede.
+  - `copiar_para_teste(...)`: copia (nunca sobrescreve, usa `nome_com_versao`) para a pasta de saída.
+  - `colar_linhas_e_atualizar_pivots(caminho_copia, linhas_novas, log)`: abre uma instância **isolada e oculta** do Excel via `win32com.client.DispatchEx` (não interfere no Excel da usuária), cola as linhas novas em `BASE_KSB1`, usa `Range.AutoFill` pra "arrastar" as fórmulas S:AI, `wb.RefreshAll()` pra atualizar as Pivot Tables, salva.
+  - `gerar_ksb1_mensal(mes, ano, ciclo, pasta_saida, sufixo_nome, log)`: orquestra tudo. Ponto de entrada `__main__` já com o path de teste local hardcoded como default.
+- **PENDENTE — próximo passo imediato ao retomar:** rodar `python scripts/sap/fitted_units/fitted_units_despesas/gerar_ksb1_mensal.py 7 2026 Flash` (arquivo de 18-20MB, Excel COM pode demorar — usar timeout generoso ou rodar em background) e verificar se não quebra (Excel pode travar em popup de link externo mesmo com `AskToUpdateLinks=False`, testar com cuidado). Depois:
+  1. Ler a `Pivot_Inter.` do arquivo gerado (header row 4, dados a partir da linha 5; colunas: A=Gestorial, C=Classe de custo, E=Centro custo, e a partir da coluna I uma coluna por número de mês — achar dinamicamente a coluna com header `7`) e agrupar por (Centro custo, Classe de custo) somando os valores de julho (pode haver mais de uma linha por chave, por causa do split por MF/Variabilidade).
+  2. Comparar com a coluna "July" da `Base Intermediária Fitted July Flash 2026.xlsx` real, só nas 686 linhas sem cor, casando por `(Conta Fiscal, Centro de Custo)` — pendência se houver chave duplicada ou sem correspondência.
+  3. Gerar relatório de diferenças (não sobrescrever nada real).
+- Tasks internas (#1-#5) já criadas no task tracker desta sessão para acompanhar esse fluxo — task #1 (ler extrato/decidir fonte) concluída, #2 (copiar) em andamento, #3/#4/#5 pendentes.
+
+---
 ## Continuação 2026-08-13 (mais tarde) — Novo sub-projeto "Energia Elétrica Fitted"
 
 - **Escopo confirmado pela usuária:** dois objetivos —
