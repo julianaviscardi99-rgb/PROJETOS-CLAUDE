@@ -212,6 +212,7 @@ def gerar_ksb1_mensal(mes: int, ano: int, ciclo: str, pasta_saida: Path, sufixo_
 
     nome_base = f"KSB1 {MESES_INGLES[mes]} {ciclo} {ano}{sufixo_nome}.xlsx"
     caminho_copia = copiar_para_teste(caminho_origem, pasta_saida, nome_base, log)
+    remover_flag_somente_leitura_recomendada(caminho_copia, log)
 
     colar_linhas_e_atualizar_pivots(caminho_copia, linhas_novas, log)
 
