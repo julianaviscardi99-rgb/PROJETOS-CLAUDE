@@ -170,3 +170,17 @@
 **Validação:** todos os `.py` movidos/editados passaram em `python -m py_compile` e depois em `import` real (não só sintaxe); o `watcher_mensal_zlfib.bat` foi rodado manualmente do novo local e funcionou (criou `logs/zlfib_mensal.log` vazio, como esperado por não ser o 1º dia útil); o `.lnk` regenerado foi conferido via PowerShell (`TargetPath`/`Arguments` corretos).
 
 **Pendência:** nenhuma automação ficou quebrada, mas ainda falta atualizar o `.bat` legado `ATUALIZAR KSB1.bat` (dentro de `fitted_units_despesas/`, referência relativa `%~dp0` — deveria continuar funcionando sem mudança, mas não foi testado ao vivo) e confirmar se a usuária quer que `Circuito Panamericano`/`Original Equipment` sigam o mesmo padrão de pastas quando esses sub-projetos começarem de verdade.
+
+---
+
+## 2026-08-14 — Regra de processo (vale para todos os projetos/sub-projetos): validar em pasta apartada antes de ir para a rede
+
+**Decisão:** todo script novo (ou nova versão de script existente) que vai gerar/atualizar um arquivo "oficial" na pasta de rede primeiro roda **numa pasta apartada** (local, em `data/processed/...`, fora da rede) até a usuária confirmar que o resultado bate/faz sentido. Só depois desse "OK" o script passa a escrever de fato no caminho de rede oficial, e só nesse momento qualquer GUI/atalho/botão relacionado é atualizado pra apontar pra ele.
+
+**Motivo:** pedido explícito da usuária (2026-08-14, confirmando a validação de julho/2026 Flash do passo 3/BASE_KSB1) — quer sempre esse fluxo de "testar isolado → validar → promover pra produção", não só para este caso específico, mas como padrão para qualquer projeto novo daqui pra frente.
+
+**Como aplicar:**
+1. Script novo escreve output em `data/processed/<sub-projeto>/<algo>_teste/`, nunca direto na pasta de rede do processo real.
+2. Reportar o resultado da validação pra usuária (bateu/não bateu, com números).
+3. Só depois da aprovação dela: (a) trocar o destino do script pra pasta de rede oficial, (b) se houver GUI/atalho ligado ao processo antigo, atualizar pra chamar o script novo.
+4. Exemplo em andamento: `gerar_ksb1_mensal.py` (passo 3, Fitted Units Despesas) — hoje escreve em `data/processed/fitted_units_despesas/base_ksb1_teste/`; quando validado com julho/2026 Flash, passa a escrever em `<REDE_BASE>/<ano>/<MM - Mês>/<MM>_<Mês3>_<Ciclo>/` e o botão "Atualizar KSB1 Pivot" da GUI (`atualizar_ksb1_gui.py`) é atualizado pra chamá-lo (hoje esse botão ainda chama o script antigo/revertido `gerar_base_intermediaria.py`).

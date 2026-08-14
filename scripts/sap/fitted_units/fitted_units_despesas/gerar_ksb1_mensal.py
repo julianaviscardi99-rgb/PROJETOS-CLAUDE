@@ -24,8 +24,10 @@ automacao" ao validar contra um mes ja fechado manualmente.
 Depende de Excel instalado (pywin32) - abre uma instancia oculta e isolada
 (DispatchEx), nao interfere com o Excel que a usuaria tiver aberto.
 """
-import sys
+import re
 import shutil
+import sys
+import zipfile
 from pathlib import Path
 
 import win32com.client
@@ -121,6 +123,31 @@ def copiar_para_teste(caminho_origem: Path, pasta_destino: Path, nome_base: str,
     return caminho_saida
 
 
+def remover_flag_somente_leitura_recomendada(caminho: Path, log=print):
+    """O KSB1 Actual/Flash tem a flag interna 'Somente leitura recomendada'
+    (<fileSharing readOnlyRecommended="1"/> em xl/workbook.xml) gravada no
+    arquivo. Com DisplayAlerts=False, o Excel abre silenciosamente em modo
+    leitura mesmo com IgnoreReadOnlyRecommended=True no Open() (o parâmetro
+    não se mostrou confiável via COM), e o Save() vira um no-op sem erro.
+    Como esta função só roda na NOSSA cópia de teste (nunca no arquivo
+    original), removemos a flag direto do XML antes de abrir no Excel."""
+    with zipfile.ZipFile(caminho, "r") as zin:
+        itens = {n: zin.read(n) for n in zin.namelist()}
+        infos = {n: zin.getinfo(n) for n in zin.namelist()}
+
+    wb_xml = itens["xl/workbook.xml"].decode("utf-8")
+    nova_xml, n_removidas = re.subn(r"<fileSharing[^/]*/>", "", wb_xml)
+    if n_removidas == 0:
+        log("Arquivo não tinha a flag 'Somente leitura recomendada' — nada a remover.")
+        return
+    itens["xl/workbook.xml"] = nova_xml.encode("utf-8")
+
+    with zipfile.ZipFile(caminho, "w", zipfile.ZIP_DEFLATED) as zout:
+        for n, data in itens.items():
+            zout.writestr(infos[n], data)
+    log(f"Removida a flag 'Somente leitura recomendada' da cópia de teste ({n_removidas} ocorrência(s)).")
+
+
 def colar_linhas_e_atualizar_pivots(caminho_copia: Path, linhas_novas: list, log=print):
     log("Abrindo Excel (instância isolada, oculta)...")
     excel = win32com.client.DispatchEx("Excel.Application")
@@ -128,7 +155,18 @@ def colar_linhas_e_atualizar_pivots(caminho_copia: Path, linhas_novas: list, log
     excel.DisplayAlerts = False
     excel.AskToUpdateLinks = False
     try:
-        wb = excel.Workbooks.Open(str(caminho_copia), UpdateLinks=0)
+        # IgnoreReadOnlyRecommended=True: o BASE_KSB1 tem a flag interna
+        # "Somente leitura recomendada" (fileSharing readOnlyRecommended="1")
+        # - sem isso, com DisplayAlerts=False, o Excel abre o arquivo em modo
+        # leitura silenciosamente e o Save() vira um no-op sem erro nenhum.
+        wb = excel.Workbooks.Open(
+            str(caminho_copia), UpdateLinks=0, ReadOnly=False, IgnoreReadOnlyRecommended=True
+        )
+        if wb.ReadOnly:
+            raise RuntimeError(
+                "O arquivo abriu em modo somente leitura mesmo com IgnoreReadOnlyRecommended=True "
+                "— provavelmente já está aberto/travado por outro processo do Excel."
+            )
         ws = wb.Worksheets("BASE_KSB1")
         last_row = ws.Cells(ws.Rows.Count, 1).End(XL_UP).Row
         n = len(linhas_novas)
@@ -136,6 +174,13 @@ def colar_linhas_e_atualizar_pivots(caminho_copia: Path, linhas_novas: list, log
 
         destino_dados = ws.Range(ws.Cells(last_row + 1, 1), ws.Cells(last_row + n, N_COLS_BRUTO))
         destino_dados.Value = linhas_novas
+
+        last_row_pos_escrita = ws.Cells(ws.Rows.Count, 1).End(XL_UP).Row
+        if last_row_pos_escrita != last_row + n:
+            raise RuntimeError(
+                f"Depois de colar, a última linha em memória é {last_row_pos_escrita}, "
+                f"esperava {last_row + n} — a escrita não aconteceu como esperado."
+            )
 
         log("Arrastando fórmulas das colunas S:AI para as linhas novas (AutoFill)...")
         origem_formula = ws.Range(ws.Cells(last_row, 19), ws.Cells(last_row, 35))
@@ -151,6 +196,8 @@ def colar_linhas_e_atualizar_pivots(caminho_copia: Path, linhas_novas: list, log
 
         log("Salvando...")
         wb.Save()
+        if not wb.Saved:
+            raise RuntimeError("wb.Save() retornou mas wb.Saved ainda é False — o arquivo pode não ter sido gravado.")
         wb.Close(SaveChanges=False)
         log("Concluído.")
     finally:
