@@ -3,6 +3,18 @@
 > Manter apenas as últimas 2 sessões inline — sessões mais antigas vão para long_term/.
 
 ---
+## Continuação 2026-08-18 — Ajuste de frequência do Agendador da checagem ZLFIB (tela cmd piscando de hora em hora)
+
+- **Pedido da usuária:** ela notou que uma tela cmd preta abre e fecha de hora em hora, todo santo dia, e queria saber o que era.
+- **Diagnóstico:** é a tarefa agendada do Windows `Verificacao_ZLFIB_Duplicidade_Mensal` (criada em 2026-08-13, ver sessão de 2026-08-13 mais abaixo), que roda `watcher_mensal_zlfib.bat` → `verificacao_mensal_zlfib.py`. O gatilho original era um único `TimeTrigger` com repetição de 1h **sem restrição de dia**, então disparava de hora em hora todos os dias do mês — o script só se auto-encerra rápido (sem fazer nada) nos dias que não são o 1º dia útil, mas a janela cmd ainda piscava.
+- **Correção aplicada — só no Agendador de Tarefas do Windows, nenhuma mudança no `verificacao_mensal_zlfib.py`:** tarefa reconfigurada com dois gatilhos (`schtasks /create /xml` com XML customizado, já que os cmdlets `New-ScheduledTaskTrigger` desta máquina não suportam `-Monthly`):
+  1. `CalendarTrigger` mensal nos dias **1, 2 e 3** (cobre qualquer 1º dia útil deslocado por fim de semana), repetindo de hora em hora das **7h às 18h** — é essa a janela real de polling esperando o login no SAP.
+  2. `CalendarTrigger` diário às **9h**, todo dia — cobre os outros ~29 dias do mês com uma única checagem rápida (auto-encerra, "hoje não é o dia certo") em vez de hourly.
+- **Confirmado com a usuária antes de aplicar** (perguntei via AskUserQuestion, ela escolheu explicitamente esse formato híbrido) e validado depois com `schtasks /query /tn Verificacao_ZLFIB_Duplicidade_Mensal /v` — os dois `CalendarTrigger` aparecem certinhos (Monthly 1-3 com repetição 1h/11h, Daily 09:00).
+- **Nenhum dado real foi tocado** — mudança é só na configuração do Agendador do Windows. Detalhe também salvo na memória global (`memory/project_fitted_recuperacao_zlfib.md` fora do repo, pasta `.claude/projects/.../memory/`).
+- **Nada pendente nisso** — só acompanhar no próximo 1º dia útil do mês (setembro) se o gatilho dispara certinho nos dias 1-3.
+
+---
 ## Continuação 2026-08-14 — Passo 3 (BASE_KSB1 + Pivot nativo) automatizado e testado, validando com July Flash
 
 - **Objetivo da sessão:** implementar o passo 3 do processo recorrente (Fitted Units Despesas) — copiar o KSB1 Actual do mês anterior, colar as linhas novas do mês na aba `BASE_KSB1`, arrastar as fórmulas S:AI, refresh das Pivot Tables nativas via COM. Plano já vinha fechado desde 2026-08-11 (retomada à tarde), mas nunca tinha sido codificado até hoje.
