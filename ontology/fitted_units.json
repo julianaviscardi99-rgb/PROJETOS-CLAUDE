@@ -102,20 +102,20 @@
   },
   "centros_de_custo_por_unidade": {
     "fonte": "Print de Tabela Dinâmica (Row Labels) enviado pela usuária em 2026-08-18 diretamente no chat — lista completa dos centros de custo existentes, agrupados por unidade/planta. Não veio do arquivo Base_Contas_Contábeis_Fitted_22 (fonte separada, ver 'fonte_contas_gestoriais_e_centros').",
-    "observacao_destaque_amarelo": "No print original, os grupos CAMAÇARI, ITATIAIA, JUIZ DE FORA e SANTO ANDRE apareciam com fundo amarelo na Tabela Dinâmica. Significado do destaque NÃO confirmado com a usuária — ITATIAIA já é conhecida como unidade encerrada (ver 'unidades'), então uma hipótese é 'unidades encerradas/sem operação direta', mas não presumir isso em lógica de automação sem confirmar.",
-    "grupos_novos_nao_documentados_em_unidades": "CAMAÇARI, FATURAMENTO, JUIZ DE FORA e SANTO ANDRE aparecem aqui mas ainda não têm entrada na lista 'unidades' deste arquivo (que hoje só tem SJP, GOI, IBI, RES, GER, ITA, SOR) — perguntar à usuária o que são antes de tratar como unidades operacionais de Fitted Units (podem ser centros administrativos/staff, não plantas).",
+    "observacao_destaque_amarelo": "Confirmado pela usuária em 2026-08-18: o destaque amarelo marca unidades ENCERRADAS (mesma situação da Sorocaba) — confirmado explicitamente para CAMAÇARI, ITATIAIA e SANTO ANDRE. JUIZ DE FORA tinha o mesmo destaque amarelo no print mas a usuária NÃO a citou na confirmação — status ainda não confirmado, não presumir que também está encerrada sem perguntar.",
+    "grupos_novos_nao_documentados_em_unidades": "CAMAÇARI, ITATIAIA (já existia) e SANTO ANDRE foram adicionados à lista 'unidades' como encerradas (códigos CAM, ITA, STA). FATURAMENTO: usuária confirmou em 2026-08-18 que pode ser ignorado (não é unidade operacional de Fitted Units). JUIZ DE FORA segue sem entrada em 'unidades' e sem status confirmado.",
     "grupos": {
-      "CAMAÇARI": {"centros": [8249, 8271, 8272, 8274, 8385], "destaque_amarelo": true},
-      "FATURAMENTO": {"centros": [8375], "destaque_amarelo": false},
-      "GERENCIA": {"centros": [8299], "destaque_amarelo": false},
-      "GOIANA": {"centros": [8300, 8301, 8302, 8303, 8387, 8726], "destaque_amarelo": false},
-      "IBIRITE": {"centros": [8278, 8281, 8294, 8295, 8296, 8297, 8351, 8384], "destaque_amarelo": false},
-      "ITATIAIA": {"centros": [8320, 8321, 8322], "destaque_amarelo": true},
-      "JUIZ DE FORA": {"centros": [8270, 8286, 8287], "destaque_amarelo": true},
-      "RESENDE": {"centros": [8333, 8348, 8349, 8350], "destaque_amarelo": false},
-      "SANTO ANDRE": {"centros": [8205, 8280, 8282, 8283, 8284, 8285, 8298], "destaque_amarelo": true},
-      "SJP": {"centros": [8279, 8288, 8289, 8290, 8291, 8383, 8724], "destaque_amarelo": false},
-      "SOROCABA": {"centros": [8231, 8247, 8269, 8292, 8386, 8725], "destaque_amarelo": false}
+      "CAMAÇARI": {"centros": [8249, 8271, 8272, 8274, 8385], "status": "encerrada"},
+      "FATURAMENTO": {"centros": [8375], "status": "ignorar - nao e unidade operacional, confirmado pela usuaria em 2026-08-18"},
+      "GERENCIA": {"centros": [8299], "status": "ativa"},
+      "GOIANA": {"centros": [8300, 8301, 8302, 8303, 8387, 8726], "status": "ativa"},
+      "IBIRITE": {"centros": [8278, 8281, 8294, 8295, 8296, 8297, 8351, 8384], "status": "ativa"},
+      "ITATIAIA": {"centros": [8320, 8321, 8322], "status": "encerrada"},
+      "JUIZ DE FORA": {"centros": [8270, 8286, 8287], "status": "nao confirmado - tinha destaque amarelo igual as encerradas, mas usuaria nao citou ao confirmar as demais, perguntar antes de presumir"},
+      "RESENDE": {"centros": [8333, 8348, 8349, 8350], "status": "ativa"},
+      "SANTO ANDRE": {"centros": [8205, 8280, 8282, 8283, 8284, 8285, 8298], "status": "encerrada"},
+      "SJP": {"centros": [8279, 8288, 8289, 8290, 8291, 8383, 8724], "status": "ativa"},
+      "SOROCABA": {"centros": [8231, 8247, 8269, 8292, 8386, 8725], "status": "encerrada"}
     },
     "uso_ja_confirmado": "Resolve, com confiança alta, a pendência do sub-projeto Energia Elétrica Fitted (ver PROJECT_MAP.md) — centros 8296->IBIRITE, 8290 e 8289->SJP, 8269 e 8292->SOROCABA, 8303->GOIANA. Também resolve a ambiguidade da coluna 'Sigla' (2ª) do centro 8303 na aba Centros da Base_Contas_Contábeis_Fitted_22, que sugeria 'GER' — esta lista mais direta confirma GOIANA."
   },
