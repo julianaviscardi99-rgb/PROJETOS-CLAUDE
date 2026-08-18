@@ -37,31 +37,31 @@
       "codigo": "ITA",
       "nome": "Itatiaia",
       "status": "encerrada",
-      "observacao": "Unidade encerrada, mas ainda pode aparecer custo residual. Confirmado pela usuária em 2026-08-18 que fechou como a Sorocaba."
+      "observacao": "Unidade encerrada, mas ainda pode aparecer algum lançamento retroativo (custo residual). Confirmado pela usuária em 2026-08-18 que fechou como a Sorocaba."
     },
     {
       "codigo": "SOR",
       "nome": "Sorocaba",
       "status": "encerrada",
-      "observacao": "Unidade encerrada, mas ainda pode aparecer custo residual."
+      "observacao": "Unidade encerrada, mas ainda pode aparecer algum lançamento retroativo (custo residual)."
     },
     {
       "codigo": "CAM",
       "nome": "Camaçari",
       "status": "encerrada",
-      "observacao": "Unidade encerrada, mas ainda pode aparecer custo residual. Confirmado pela usuária em 2026-08-18 que fechou como a Sorocaba."
+      "observacao": "Unidade encerrada, mas ainda pode aparecer algum lançamento retroativo (custo residual). Confirmado pela usuária em 2026-08-18 que fechou como a Sorocaba."
     },
     {
       "codigo": "STA",
       "nome": "Santo André",
       "status": "encerrada",
-      "observacao": "Unidade encerrada, mas ainda pode aparecer custo residual. Confirmado pela usuária em 2026-08-18 que fechou como a Sorocaba."
+      "observacao": "Unidade encerrada, mas ainda pode aparecer algum lançamento retroativo (custo residual). Confirmado pela usuária em 2026-08-18 que fechou como a Sorocaba."
     },
     {
       "codigo": "JDF",
       "nome": "Juiz de Fora",
       "status": "encerrada",
-      "observacao": "Unidade encerrada, mas ainda pode aparecer custo residual. Confirmado pela usuária em 2026-08-18."
+      "observacao": "Unidade encerrada, mas ainda pode aparecer algum lançamento retroativo (custo residual). Confirmado pela usuária em 2026-08-18."
     }
   ],
   "area_de_rede": {
