@@ -35,15 +35,27 @@
     },
     {
       "codigo": "ITA",
-      "nome": "Itaiaia",
+      "nome": "Itatiaia",
       "status": "encerrada",
-      "observacao": "Unidade encerrada, mas ainda pode aparecer custo residual."
+      "observacao": "Unidade encerrada, mas ainda pode aparecer custo residual. Confirmado pela usuária em 2026-08-18 que fechou como a Sorocaba."
     },
     {
       "codigo": "SOR",
       "nome": "Sorocaba",
       "status": "encerrada",
       "observacao": "Unidade encerrada, mas ainda pode aparecer custo residual."
+    },
+    {
+      "codigo": "CAM",
+      "nome": "Camaçari",
+      "status": "encerrada",
+      "observacao": "Unidade encerrada, mas ainda pode aparecer custo residual. Confirmado pela usuária em 2026-08-18 que fechou como a Sorocaba."
+    },
+    {
+      "codigo": "STA",
+      "nome": "Santo André",
+      "status": "encerrada",
+      "observacao": "Unidade encerrada, mas ainda pode aparecer custo residual. Confirmado pela usuária em 2026-08-18 que fechou como a Sorocaba."
     }
   ],
   "area_de_rede": {
@@ -77,6 +89,35 @@
         "uso": "Conferência de lançamento — usada para checar se todas as notas faturadas foram contabilizadas corretamente."
       }
     ]
+  },
+  "fonte_contas_gestoriais_e_centros": {
+    "descricao": "Arquivo mestre de referência (rede, mantido pela controladoria central, não pela Juliana) com o cadastro de contas contábeis/gestoriais e de centros de custo do Fitted Units. Indicado pela usuária em 2026-08-18 para guardar na memória. Última modificação observada: 16/07/2026 — arquivo é ativo, não histórico.",
+    "caminho": "\\\\FSS024-01BR.group.pirelli.com\\GFU_DAC\\Custos Fitted Units\\Custos Efetivos\\_Acompanhamentos e Controles\\Base_Contas_Contábeis_Fitted_22.xlsx",
+    "abas_relevantes": {
+      "Contas": "Uma linha por Classe de custo (conta contábil, ex: '4200000P'). Colunas: Classe de custo, Descrição Classe de Custo, Conta Gestorial (código numérico, ex: 4200000), Descrição Conta Gestorial, Conta Gestão, Conta Geral, Var. (F/V = Fixo/Variável), MO/DG (Mão de Obra / Despesa Geral), Gestorial II, Check, Elemento, Denom. Elemento Cst. É a fonte-mestre pra resolver 'classificacao_despesas' (conta contábil -> gestorial) sem depender só do export mensal Gestoriais da KSB1.",
+      "Centros": "Uma linha por Centro de custo (código numérico, ex: 8320). Colunas: Centro, Variabilidade (F/V), Descrição, Sigla (rótulo administrativo/histórico, ex: 'ITA' para centros com origem em Itatiaia mesmo já rodando em outra planta — não confiar sozinho pra mapear unidade), MF (código Mini-Fábrica), [2ª] Sigla (sigla real da unidade atual, ex: SJP/IBI/GOI/SOR/GER), Planta (nome da planta), Fábrica, Planta II, Cód.Fitted.Ord., Descrição Código (ex: 'FITTED UNITS - PARANÁ'). É a fonte-mestre pra mapear Centro de Custo -> unidade e Fixo/Variável."
+    },
+    "abas_nao_exploradas": "Sheet1 (lista solta de códigos, uso não confirmado), 'Classificação Despesas Fixo' e 'Classificação Despesas' (parecem dados de outro relatório administrativo, não investigadas ainda).",
+    "uso_ja_confirmado": "Em 2026-08-18, cruzada com os centros de custo pendentes do sub-projeto Energia Elétrica Fitted (ver PROJECT_MAP.md) — resolveu o mapeamento Centro de Custo -> unidade pela coluna Sigla real (2ª coluna Sigla), exceto uma ambiguidade no centro 8303 (ver PROJECT_MAP.md, ainda não confirmada com a usuária)."
+  },
+  "centros_de_custo_por_unidade": {
+    "fonte": "Print de Tabela Dinâmica (Row Labels) enviado pela usuária em 2026-08-18 diretamente no chat — lista completa dos centros de custo existentes, agrupados por unidade/planta. Não veio do arquivo Base_Contas_Contábeis_Fitted_22 (fonte separada, ver 'fonte_contas_gestoriais_e_centros').",
+    "observacao_destaque_amarelo": "No print original, os grupos CAMAÇARI, ITATIAIA, JUIZ DE FORA e SANTO ANDRE apareciam com fundo amarelo na Tabela Dinâmica. Significado do destaque NÃO confirmado com a usuária — ITATIAIA já é conhecida como unidade encerrada (ver 'unidades'), então uma hipótese é 'unidades encerradas/sem operação direta', mas não presumir isso em lógica de automação sem confirmar.",
+    "grupos_novos_nao_documentados_em_unidades": "CAMAÇARI, FATURAMENTO, JUIZ DE FORA e SANTO ANDRE aparecem aqui mas ainda não têm entrada na lista 'unidades' deste arquivo (que hoje só tem SJP, GOI, IBI, RES, GER, ITA, SOR) — perguntar à usuária o que são antes de tratar como unidades operacionais de Fitted Units (podem ser centros administrativos/staff, não plantas).",
+    "grupos": {
+      "CAMAÇARI": {"centros": [8249, 8271, 8272, 8274, 8385], "destaque_amarelo": true},
+      "FATURAMENTO": {"centros": [8375], "destaque_amarelo": false},
+      "GERENCIA": {"centros": [8299], "destaque_amarelo": false},
+      "GOIANA": {"centros": [8300, 8301, 8302, 8303, 8387, 8726], "destaque_amarelo": false},
+      "IBIRITE": {"centros": [8278, 8281, 8294, 8295, 8296, 8297, 8351, 8384], "destaque_amarelo": false},
+      "ITATIAIA": {"centros": [8320, 8321, 8322], "destaque_amarelo": true},
+      "JUIZ DE FORA": {"centros": [8270, 8286, 8287], "destaque_amarelo": true},
+      "RESENDE": {"centros": [8333, 8348, 8349, 8350], "destaque_amarelo": false},
+      "SANTO ANDRE": {"centros": [8205, 8280, 8282, 8283, 8284, 8285, 8298], "destaque_amarelo": true},
+      "SJP": {"centros": [8279, 8288, 8289, 8290, 8291, 8383, 8724], "destaque_amarelo": false},
+      "SOROCABA": {"centros": [8231, 8247, 8269, 8292, 8386, 8725], "destaque_amarelo": false}
+    },
+    "uso_ja_confirmado": "Resolve, com confiança alta, a pendência do sub-projeto Energia Elétrica Fitted (ver PROJECT_MAP.md) — centros 8296->IBIRITE, 8290 e 8289->SJP, 8269 e 8292->SOROCABA, 8303->GOIANA. Também resolve a ambiguidade da coluna 'Sigla' (2ª) do centro 8303 na aba Centros da Base_Contas_Contábeis_Fitted_22, que sugeria 'GER' — esta lista mais direta confirma GOIANA."
   },
   "classificacao_despesas": {
     "conta_contabil": "Cada lançamento de despesa possui uma conta contábil no SAP. Na exportação da KSB1, é a coluna 'Classe de custo' (mesma coluna nos arquivos Gestoriais e Sem Agrupamento — não muda de nome/posição entre os dois).",
