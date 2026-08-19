@@ -184,3 +184,15 @@
 2. Reportar o resultado da validação pra usuária (bateu/não bateu, com números).
 3. Só depois da aprovação dela: (a) trocar o destino do script pra pasta de rede oficial, (b) se houver GUI/atalho ligado ao processo antigo, atualizar pra chamar o script novo.
 4. Exemplo em andamento: `gerar_ksb1_mensal.py` (passo 3, Fitted Units Despesas) — hoje escreve em `data/processed/fitted_units_despesas/base_ksb1_teste/`; quando validado com julho/2026 Flash, passa a escrever em `<REDE_BASE>/<ano>/<MM - Mês>/<MM>_<Mês3>_<Ciclo>/` e o botão "Atualizar KSB1 Pivot" da GUI (`atualizar_ksb1_gui.py`) é atualizado pra chamá-lo (hoje esse botão ainda chama o script antigo/revertido `gerar_base_intermediaria.py`).
+
+---
+
+## 2026-08-19 — Passo 3 (BASE_KSB1 + Pivot) validado com julho/2026 Actual: bateu, diferença 100% explicada por regra de negócio conhecida
+
+**Decisão/achado:** o teste às cegas de `gerar_ksb1_mensal.py` gerado em 2026-08-14 (`KSB1 July Flash 2026 - TESTE VALIDAÇÃO.xlsx`) foi comparado — a pedido explícito da usuária, contra o **Actual** de julho/2026 real (`Base Intermediária Fitted July Actual 2026.xlsx`), e não contra o Flash como estava planejado antes. Motivo da correção: os arquivos brutos de extração usados no teste (`00.Extração Base KSB1/07 - Jul/...v4`) foram puxados do SAP em 10-11/08/2026, depois do fechamento Actual (~05/08) — já deveriam conter as contas PIS/COFINS ("PC"), então comparar contra o Flash real (que ainda não tem essas contas integradas) seria inválido por natureza.
+
+**Resultado:** 587 combinações (Conta Fiscal, Centro de Custo) comparadas — **571 bateram exatamente**. As 16 restantes (R$ 112.275,58 de diferença) são 100% explicadas por uma regra de negócio confirmada pela usuária nesta sessão, não são erro da automação: **unidades com status "encerrada" continuam aparecendo na KSB1/BASE_KSB1 (lançamento retroativo/custo residual), mas não são coladas na `Intermediária` — não entram no EBIT.** O motivo: existe uma provisão em "Não Recorrente" pra cobrir custos de encerramento dessas unidades, e o residual é estornado contra essa provisão em vez de ir pro EBIT normal. 14 das 16 diferenças eram do centro de custo 8269 (Sorocaba), 1 do 8292 (Sorocaba) e 1 do 8247 (também Sorocaba, confirmado pela usuária — já estava correto em `centros_de_custo_por_unidade`). Regra completa registrada em `ontology/fitted_units.json` → `regra_unidades_encerradas_no_ebit`.
+
+**Impacto pra próxima etapa (passo 4, ainda não escrito):** quando o script que lê `Pivot_Inter.` e cola o valor do mês nas linhas brancas da `Intermediária` for implementado, ele precisa **excluir qualquer combinação cujo Centro de Custo pertença a uma unidade "encerrada"** antes de colar — senão vai tentar preencher uma linha que não existe mais na planilha manual.
+
+**Ainda pendente:** promover `gerar_ksb1_mensal.py` da pasta de teste local pra pasta de rede oficial (regra do processo confirmada em 2026-08-14 — só faz isso depois da validação, que agora está feita) e trocar o botão da GUI pra chamar esse script. Não foi feito ainda nesta sessão — perguntar à usuária se quer seguir pra isso agora.

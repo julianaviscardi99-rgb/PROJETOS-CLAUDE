@@ -132,62 +132,190 @@ AMARELO_PIRELLI = "#FFD400"
 VERMELHO_PIRELLI = "#DA291C"
 CINZA_TEXTO = "#555555"
 
+# Paleta "cockpit": cabecalho escuro com logo Pirelli (trim vermelho/amarelo);
+# corpo abaixo do trim em fundo branco/letras pretas, a pedido da usuaria.
+BG_ROOT = "#0b0c0e"
+BG_PAINEL = "#ffffff"
+BG_CARD = "#ffffff"
+BG_CAMPO = "#f0f0f2"
+BORDA = "#d5d6d9"
+TEXTO_CLARO = "#111111"
+TEXTO_SECUNDARIO = "#5a5c60"
+LOG_BG = "#ffffff"
+LOG_FG = "#111111"
+BG_RODAPE = "#ffffff"
+TREAD_DARK = "#1f2126"
+TREAD_LINE = "#c7c9cc"
+
+PASSOS = [
+    {
+        "aba": "①  Extração",
+        "titulo": "Passo 1 · Extrair KSB1",
+        "descricao": (
+            "Baixa a KSB1 direto do SAP (Gestoriais + Sem Agrupamento) pro mês/ano "
+            "escolhido e salva os dois arquivos na área de rede. Pré-requisito: SAP "
+            "GUI aberto e logado na tela inicial (o script abre a transação sozinho)."
+        ),
+        "botao": "Extrair KSB1 (Gestoriais + Sem Agrupamento)",
+    },
+    {
+        "aba": "②  Check de Agrupamentos",
+        "titulo": "Passo 2 · Check de Agrupamentos",
+        "descricao": (
+            "Confere se toda conta contábil do Sem Agrupamento está vinculada a um "
+            "agrupamento gestorial, comparando com o arquivo Gestoriais do mesmo mês. "
+            "Usa os arquivos já extraídos no Passo 1 — não acessa o SAP."
+        ),
+        "botao": "Gerar Check de Agrupamentos",
+    },
+    {
+        "aba": "③  Base Intermediária",
+        "titulo": "Passo 3 · Atualizar KSB1 Pivot",
+        "descricao": (
+            "Atualiza o KSB1 acumulado do ano (BASE_KSB1 + Pivot Tables nativas) com "
+            "as linhas do mês e prepara os valores pra colar na Base Intermediária. "
+            "Usa o Ciclo selecionado (Actual/Flash) só no nome do arquivo final."
+        ),
+        "botao": "Atualizar KSB1 Pivot",
+    },
+]
+
+
+def desenhar_rastro_pneu(canvas, largura, altura):
+    """Desenha uma faixa com padrao de sulco de pneu (blocos repetidos),
+    puramente vetorial via Canvas — sem depender de imagem externa,
+    mesmo espirito do logo embutido em base64."""
+    y_centro = altura // 2
+    canvas.create_line(0, y_centro, largura, y_centro, fill=TREAD_LINE, width=1)
+    bloco_w, vao = 12, 7
+    x = 4
+    while x < largura - bloco_w:
+        canvas.create_rectangle(
+            x, 3, x + bloco_w, altura - 3,
+            fill=TREAD_DARK, outline="",
+        )
+        x += bloco_w + vao
+
+
+def _configurar_estilo(root):
+    style = ttk.Style()
+    style.theme_use("clam")
+
+    style.configure("TFrame", background=BG_PAINEL)
+    style.configure("Card.TFrame", background=BG_CARD)
+    style.configure("TLabel", background=BG_PAINEL, foreground=TEXTO_CLARO, font=("Segoe UI", 10))
+    style.configure("Card.TLabel", background=BG_CARD, foreground=TEXTO_CLARO, font=("Segoe UI", 10))
+    style.configure(
+        "Titulo.TLabel", background=BG_CARD, foreground=TEXTO_CLARO,
+        font=("Segoe UI", 14, "bold"),
+    )
+    style.configure(
+        "Descricao.TLabel", background=BG_CARD, foreground=TEXTO_SECUNDARIO,
+        font=("Segoe UI", 10), wraplength=620,
+    )
+
+    style.configure(
+        "TCombobox",
+        fieldbackground=BG_CAMPO, background=BG_CAMPO, foreground=TEXTO_CLARO,
+        arrowcolor=TEXTO_CLARO, bordercolor=BORDA, lightcolor=BG_CAMPO, darkcolor=BG_CAMPO,
+    )
+    style.map(
+        "TCombobox",
+        fieldbackground=[("readonly", BG_CAMPO)],
+        foreground=[("readonly", TEXTO_CLARO)],
+    )
+    style.configure(
+        "TEntry",
+        fieldbackground=BG_CAMPO, foreground=TEXTO_CLARO, insertcolor=TEXTO_CLARO,
+        bordercolor=BORDA, lightcolor=BG_CAMPO, darkcolor=BG_CAMPO,
+    )
+    style.configure("Pirelli.TButton", font=("Segoe UI", 11, "bold"), foreground="black", borderwidth=0)
+    style.map(
+        "Pirelli.TButton",
+        background=[("!disabled", VERMELHO_PIRELLI), ("disabled", "#4a2320")],
+        foreground=[("!disabled", "black"), ("disabled", "#8a8a8a")],
+    )
+
+    # Notebook (abas) — tema "clam" permite recolorir tab a tab, o padrao do
+    # Windows (vista/xpnative) ignora essas cores.
+    style.configure("TNotebook", background=BG_PAINEL, borderwidth=0, tabmargins=(8, 8, 8, 0))
+    style.configure(
+        "TNotebook.Tab", background=BG_CARD, foreground=TEXTO_SECUNDARIO,
+        font=("Segoe UI", 10, "bold"), padding=(18, 10), borderwidth=0,
+    )
+    style.map(
+        "TNotebook.Tab",
+        background=[("selected", VERMELHO_PIRELLI), ("!selected", BG_CARD)],
+        foreground=[("selected", "black"), ("!selected", TEXTO_SECUNDARIO)],
+        expand=[("selected", (0, 0, 0, 0))],
+    )
+
+    # Combobox usa listas suspensas nativas do Tk (nao ttk) — precisam ser
+    # coloridas separadamente, senao ficam brancas mesmo com o tema escuro.
+    root.option_add("*TCombobox*Listbox.background", BG_CAMPO)
+    root.option_add("*TCombobox*Listbox.foreground", TEXTO_CLARO)
+    root.option_add("*TCombobox*Listbox.selectBackground", VERMELHO_PIRELLI)
+    root.option_add("*TCombobox*Listbox.selectForeground", "black")
+
 
 def main():
     root = tk.Tk()
-    root.title("Atualizar KSB1 - Fitted Units")
-    root.geometry("440x560")
-    root.resizable(False, False)
-    root.configure(bg="white")
+    root.title("Fitted Units · Cockpit Fechamento")
+    root.geometry("860x640")
+    root.minsize(780, 560)
+    root.configure(bg=BG_ROOT)
 
     logo_img = tk.PhotoImage(data=LOGO_PIRELLI_B64)
     root.iconphoto(True, logo_img)
 
-    header = tk.Frame(root, bg=AMARELO_PIRELLI, height=70)
+    _configurar_estilo(root)
+
+    # --- Cabecalho ---------------------------------------------------
+    header = tk.Frame(root, bg=BG_ROOT, height=78)
     header.pack(fill=tk.X, side=tk.TOP)
     header.pack_propagate(False)
-    tk.Label(header, image=logo_img, bg=AMARELO_PIRELLI).pack(expand=True)
+    tk.Label(header, image=logo_img, bg=BG_ROOT).pack(side=tk.LEFT, padx=(24, 12), pady=14)
+    titulo_box = tk.Frame(header, bg=BG_ROOT)
+    titulo_box.pack(side=tk.LEFT, pady=14)
+    tk.Label(
+        titulo_box, text="COCKPIT KSB1", bg=BG_ROOT, fg=TEXTO_CLARO,
+        font=("Segoe UI", 15, "bold"),
+    ).pack(anchor="w")
+    tk.Label(
+        titulo_box, text="Fitted Units · Despesas", bg=BG_ROOT, fg=TEXTO_SECUNDARIO,
+        font=("Consolas", 9, "bold"),
+    ).pack(anchor="w")
 
-    style = ttk.Style()
-    style.configure("Pirelli.TButton", font=("Segoe UI", 10, "bold"), foreground="black")
-    style.map(
-        "Pirelli.TButton",
-        background=[("!disabled", VERMELHO_PIRELLI), ("disabled", "#e0a29c")],
-        foreground=[("!disabled", "black"), ("disabled", "black")],
-    )
+    tk.Frame(root, bg=VERMELHO_PIRELLI, height=3).pack(fill=tk.X, side=tk.TOP)
 
-    frame = ttk.Frame(root, padding=20)
-    frame.pack(fill=tk.BOTH, expand=True)
+    corpo = ttk.Frame(root, padding=(24, 18, 24, 18), style="TFrame")
+    corpo.pack(fill=tk.BOTH, expand=True)
 
-    # Sugestao padrao: mes anterior ao atual (o fechamento mensal so fica
-    # pronto depois que o mes termina), com o ano ajustado se o mes atual
-    # for janeiro (mes anterior cai em dezembro do ano passado).
+    # --- Painel de instrumentos (Mes / Ano / Ciclo, compartilhado) ---
     hoje = datetime.now()
     if hoje.month == 1:
         mes_padrao, ano_padrao = 12, hoje.year - 1
     else:
         mes_padrao, ano_padrao = hoje.month - 1, hoje.year
 
-    ttk.Label(frame, text="Mês:", font=("Segoe UI", 10)).grid(row=0, column=0, sticky="w", pady=6)
+    painel = ttk.Frame(corpo, style="Card.TFrame", padding=16)
+    painel.pack(fill=tk.X, side=tk.TOP)
+
+    ttk.Label(painel, text="MÊS", style="Card.TLabel", font=("Consolas", 8, "bold")).grid(row=0, column=0, sticky="w")
     mes_var = tk.StringVar(value=MESES_NOMES[mes_padrao])
-    mes_combo = ttk.Combobox(frame, textvariable=mes_var, values=list(MESES_NOMES.values()), state="readonly")
-    mes_combo.grid(row=0, column=1, sticky="ew", pady=6)
+    ttk.Combobox(
+        painel, textvariable=mes_var, values=list(MESES_NOMES.values()), state="readonly", width=12
+    ).grid(row=1, column=0, sticky="w", padx=(0, 24), pady=(2, 0))
 
-    ttk.Label(frame, text="Ano:", font=("Segoe UI", 10)).grid(row=1, column=0, sticky="w", pady=6)
+    ttk.Label(painel, text="ANO", style="Card.TLabel", font=("Consolas", 8, "bold")).grid(row=0, column=1, sticky="w")
     ano_var = tk.StringVar(value=str(ano_padrao))
-    ano_entry = ttk.Entry(frame, textvariable=ano_var)
-    ano_entry.grid(row=1, column=1, sticky="ew", pady=6)
+    ttk.Entry(painel, textvariable=ano_var, width=8).grid(row=1, column=1, sticky="w", padx=(0, 24), pady=(2, 0))
 
-    ttk.Label(frame, text="Ciclo:", font=("Segoe UI", 10)).grid(row=2, column=0, sticky="w", pady=6)
+    ttk.Label(painel, text="CICLO", style="Card.TLabel", font=("Consolas", 8, "bold")).grid(row=0, column=2, sticky="w")
     ciclo_var = tk.StringVar(value="Actual")
-    ciclo_combo = ttk.Combobox(frame, textvariable=ciclo_var, values=["Actual", "Flash"], state="readonly")
-    ciclo_combo.grid(row=2, column=1, sticky="ew", pady=6)
-
-    frame.columnconfigure(1, weight=1)
-
-    log_widget = tk.Text(frame, height=10, wrap="word", relief="solid", borderwidth=1)
-    log_widget.grid(row=6, column=0, columnspan=2, sticky="nsew", pady=(14, 0))
-    frame.rowconfigure(6, weight=1)
+    ttk.Combobox(
+        painel, textvariable=ciclo_var, values=["Actual", "Flash"], state="readonly", width=10
+    ).grid(row=1, column=2, sticky="w", pady=(2, 0))
 
     def ler_mes_ano():
         nome_para_numero = {v: k for k, v in MESES_NOMES.items()}
@@ -199,16 +327,56 @@ def main():
             return None
         return mes, ano
 
+    # --- Abas, uma por passo do processo (ordem fixa) -----------------
+    notebook = ttk.Notebook(corpo)
+    notebook.pack(fill=tk.BOTH, expand=True, pady=(16, 0))
+
+    botoes = {}
+
+    def fazer_aba(passo, indice):
+        aba = ttk.Frame(notebook, style="Card.TFrame", padding=24)
+        notebook.add(aba, text=passo["aba"])
+
+        ttk.Label(aba, text=passo["titulo"], style="Titulo.TLabel").pack(anchor="w")
+        ttk.Label(aba, text=passo["descricao"], style="Descricao.TLabel", justify="left").pack(
+            anchor="w", pady=(8, 20)
+        )
+
+        btn = ttk.Button(aba, text=passo["botao"], style="Pirelli.TButton")
+        btn.pack(fill=tk.X, ipady=8)
+        botoes[indice] = btn
+        return aba
+
+    for i, passo in enumerate(PASSOS):
+        fazer_aba(passo, i)
+
+    # --- Console de log (compartilhado, sempre visivel embaixo) ------
+    ttk.Label(corpo, text="LOG", font=("Consolas", 8, "bold"), style="TLabel").pack(
+        anchor="w", pady=(16, 4)
+    )
+    log_widget = tk.Text(
+        corpo, height=9, wrap="word", relief="solid", borderwidth=1,
+        bg=LOG_BG, fg=LOG_FG, insertbackground=LOG_FG,
+        highlightbackground=BORDA, highlightcolor=BORDA, highlightthickness=1,
+        font=("Consolas", 9),
+    )
+    log_widget.pack(fill=tk.BOTH, expand=True)
+
+    def log(msg):
+        log_widget.insert(tk.END, msg + "\n")
+        log_widget.see(tk.END)
+        log_widget.update()
+
     def _todos_botoes(estado):
-        extrair_btn.config(state=estado)
-        check_btn.config(state=estado)
-        pivot_btn.config(state=estado)
+        for btn in botoes.values():
+            btn.config(state=estado)
 
     def ao_clicar_extrair():
         mes_ano = ler_mes_ano()
         if mes_ano is None:
             return
         mes, ano = mes_ano
+        log_widget.delete("1.0", tk.END)
         _todos_botoes("disabled")
         try:
             rodar(mes, ano, log_widget)
@@ -222,11 +390,6 @@ def main():
         if mes_ano is None:
             return
         mes, ano = mes_ano
-
-        def log(msg):
-            log_widget.insert(tk.END, msg + "\n")
-            log_widget.see(tk.END)
-            log_widget.update()
 
         log_widget.delete("1.0", tk.END)
         _todos_botoes("disabled")
@@ -247,11 +410,6 @@ def main():
         mes, ano = mes_ano
         ciclo = ciclo_var.get()
 
-        def log(msg):
-            log_widget.insert(tk.END, msg + "\n")
-            log_widget.see(tk.END)
-            log_widget.update()
-
         log_widget.delete("1.0", tk.END)
         _todos_botoes("disabled")
         try:
@@ -265,36 +423,14 @@ def main():
         finally:
             _todos_botoes("normal")
 
-    extrair_btn = ttk.Button(
-        frame,
-        text="Extrair KSB1 (Gestoriais + Sem Agrupamento)",
-        command=ao_clicar_extrair,
-        style="Pirelli.TButton",
-    )
-    extrair_btn.grid(row=3, column=0, columnspan=2, sticky="ew", pady=(16, 0), ipady=4)
+    botoes[0].config(command=ao_clicar_extrair)
+    botoes[1].config(command=ao_clicar_check)
+    botoes[2].config(command=ao_clicar_pivot)
 
-    check_btn = ttk.Button(
-        frame,
-        text="Gerar Check de Agrupamentos",
-        command=ao_clicar_check,
-        style="Pirelli.TButton",
-    )
-    check_btn.grid(row=4, column=0, columnspan=2, sticky="ew", pady=(8, 0), ipady=4)
-
-    pivot_btn = ttk.Button(
-        frame,
-        text="Atualizar KSB1 Pivot",
-        command=ao_clicar_pivot,
-        style="Pirelli.TButton",
-    )
-    pivot_btn.grid(row=5, column=0, columnspan=2, sticky="ew", pady=(8, 0), ipady=4)
-
-    ttk.Label(
-        frame,
-        text="Antes de clicar em Extrair: deixe o SAP GUI aberto e logada na tela inicial (não precisa abrir a KSB1, o script faz isso sozinho). O Check de Agrupamentos e o Atualizar KSB1 Pivot usam os arquivos já extraídos na rede.",
-        wraplength=380,
-        foreground=CINZA_TEXTO,
-    ).grid(row=7, column=0, columnspan=2, sticky="w", pady=(10, 0))
+    rastro_canvas = tk.Canvas(root, height=18, bg=BG_ROOT, highlightthickness=0)
+    rastro_canvas.pack(fill=tk.X, side=tk.BOTTOM)
+    root.update_idletasks()
+    desenhar_rastro_pneu(rastro_canvas, root.winfo_width(), 18)
 
     root.mainloop()
 
