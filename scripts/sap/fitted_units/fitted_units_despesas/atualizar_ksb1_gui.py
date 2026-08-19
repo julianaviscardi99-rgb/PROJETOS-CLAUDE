@@ -12,12 +12,26 @@ Pre-requisitos na maquina de quem for rodar:
 - SAP GUI Scripting habilitado (Alt+F12 > Opcoes > Acessibilidade e Scripting > Scripting)
 - SAP GUI aberto e logada (nao precisa estar na KSB1, o script abre a transacao sozinho)
 """
+import ctypes
 import sys
 import time
 import tkinter as tk
 from datetime import datetime
 from pathlib import Path
 from tkinter import messagebox, ttk
+
+# Sem isso, o Windows nao sabe que o Tkinter lida com DPI sozinho e "estica"
+# a janela como bitmap pra bater com o zoom da tela (125%/150% etc.) — e' o
+# que deixa o texto borrado. Precisa rodar antes de qualquer janela do Tk
+# ser criada. Tentativa em cascata (API mais nova -> mais antiga) porque
+# SetProcessDpiAwareness so existe a partir do Windows 8.1 (shcore.dll).
+try:
+    ctypes.windll.shcore.SetProcessDpiAwareness(1)  # PROCESS_SYSTEM_DPI_AWARE
+except (AttributeError, OSError):
+    try:
+        ctypes.windll.user32.SetProcessDPIAware()
+    except (AttributeError, OSError):
+        pass
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "_shared"))
 from ksb1_core import (  # noqa: E402
@@ -271,20 +285,22 @@ def main():
     _configurar_estilo(root)
 
     # --- Cabecalho ---------------------------------------------------
-    header = tk.Frame(root, bg=BG_ROOT, height=78)
+    # Altura NAO e' fixa em pixels (sem pack_propagate(False)) — com DPI
+    # awareness a fonte do titulo renderiza no tamanho real, e uma altura
+    # travada em pixels espreme o subtitulo contra a linha vermelha.
+    header = tk.Frame(root, bg=BG_ROOT)
     header.pack(fill=tk.X, side=tk.TOP)
-    header.pack_propagate(False)
-    tk.Label(header, image=logo_img, bg=BG_ROOT).pack(side=tk.LEFT, padx=(24, 12), pady=14)
+    tk.Label(header, image=logo_img, bg=BG_ROOT).pack(side=tk.LEFT, padx=(24, 12), pady=16)
     titulo_box = tk.Frame(header, bg=BG_ROOT)
-    titulo_box.pack(side=tk.LEFT, pady=14)
+    titulo_box.pack(side=tk.LEFT, pady=16)
     tk.Label(
-        titulo_box, text="COCKPIT KSB1", bg=BG_ROOT, fg=TEXTO_CLARO,
+        titulo_box, text="COCKPIT FECHAMENTO FITTED", bg=BG_ROOT, fg="#e9e9eb",
         font=("Segoe UI", 15, "bold"),
     ).pack(anchor="w")
     tk.Label(
-        titulo_box, text="Fitted Units · Despesas", bg=BG_ROOT, fg=TEXTO_SECUNDARIO,
+        titulo_box, text="Fitted Units · Despesas", bg=BG_ROOT, fg="#9a9da2",
         font=("Consolas", 9, "bold"),
-    ).pack(anchor="w")
+    ).pack(anchor="w", pady=(4, 0))
 
     tk.Frame(root, bg=VERMELHO_PIRELLI, height=3).pack(fill=tk.X, side=tk.TOP)
 
@@ -427,7 +443,7 @@ def main():
     botoes[1].config(command=ao_clicar_check)
     botoes[2].config(command=ao_clicar_pivot)
 
-    rastro_canvas = tk.Canvas(root, height=18, bg=BG_ROOT, highlightthickness=0)
+    rastro_canvas = tk.Canvas(root, height=18, bg=BG_RODAPE, highlightthickness=0)
     rastro_canvas.pack(fill=tk.X, side=tk.BOTTOM)
     root.update_idletasks()
     desenhar_rastro_pneu(rastro_canvas, root.winfo_width(), 18)
