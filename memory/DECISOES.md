@@ -355,3 +355,17 @@
 4. Novo handler `ao_clicar_finalizar_intermediaria`: lê Mês/Ano/Ciclo do painel compartilhado, resolve a pasta de rede oficial (`resolver_pasta_ciclo`, mesma tolerância a nome de mês por extenso), chama `atualizar_base_intermediaria`, mostra os dois caminhos gerados (Base Intermediária + arquivo de histórico de unidades encerradas, quando existir) na mensagem de conclusão.
 
 **Ainda não testado ao vivo pela GUI** (só via linha de comando até agora, contra pasta de teste local) — a usuária vai testar agora.
+
+---
+
+## 2026-08-21 (continuação) — Passo 4: refresh da Pivot + quadro "(+) gain" (comparação Flash x Actual) implementados e validados
+
+**Achado 1 — faltava refresh da Pivot Table da aba "Pivot":** a aba "Pivot" da Base Intermediária tem Tabelas Dinâmicas próprias (linhas 4-11, agrupadas por Var./MO-DG&Var), que não se atualizavam sozinhas só porque os dados da `Intermediária` mudaram. Corrigido com `wb.RefreshAll()` logo depois de zerar as unidades encerradas.
+
+**Achado 2 — quadro "(+) gain" (linhas 14-22 da aba Pivot):** compara Despesas/Mão de Obra do próprio ciclo do arquivo (linha 15/16, já é fórmula automática — soma da própria Pivot Table) contra o ciclo oposto (linha 18/19 — hoje um valor fixo, colado à mão todo mês, buscando no arquivo do outro ciclo). Confirmado com a usuária: linha 15/16 da aba Pivot do arquivo **Flash do mesmo mês** é a fonte certa. Implementado em `atualizar_comparacao_flash` — só roda quando o ciclo sendo gerado é Actual (não teria sentido comparar Flash com Flash); não é fatal se o Flash do mês não existir (avisa e segue).
+
+**Validação (Julho):** valores trazidos bateram exatamente com o real (Despesas R$ 4.334.644,06, Mão de Obra R$ 2.426.107,40). Intermediária continua 100% batendo (zero diferença, soma R$ 6.655.041,91).
+
+**Achado à parte, não é bug:** a coluna de Junho (mês anterior) no mesmo quadro ficou diferente entre o arquivo real de Julho e o meu teste (R$ 3.419.475,14 vs R$ 3.470.779,65, herdado do arquivo de Junho original) — usuária confirmou que foi uma **correção manual feita depois**, direto no arquivo de Julho, sem propagar de volta pro arquivo de Junho. Não afeta a lógica (o script nunca toca em meses passados dessa linha, só escreve a coluna do mês atual) — só registrado aqui pra não confundir numa validação futura.
+
+**Passo 4 (Ciclo Actual) considerado completo e validado** — cobre: full rebuild da Intermediária a partir do Pivot_Inter., exclusão de unidades encerradas com arquivo histórico separado, refresh da Pivot, e o quadro de comparação Flash x Actual.

@@ -23,6 +23,13 @@ Logica confirmada com a Juliana em 2026-08-21:
    pra usuaria mandar por e-mail pra contabilidade.
 6. Arrasta a formula da coluna U (Total Ano) e das colunas Y:AJ (Gestorial II
    ate Conta Geral) da primeira linha pra todas as linhas coladas.
+7. Da refresh nas Pivot Tables da aba "Pivot" (wb.RefreshAll()), que nao se
+   atualizam sozinhas so porque os dados da Intermediária mudaram.
+8. Traz da Base Intermediária FLASH do mesmo mes os valores de Despesas e
+   Mao de Obra pro quadro "(+) gain" da aba Pivot (linhas 18/19) - e' o que
+   a usuaria hoje faz manualmente (abre o Flash, copia, cola aqui). So roda
+   se o ciclo sendo gerado for Actual (nao teria sentido comparar Flash
+   contra Flash). Nao e' fatal se o arquivo Flash do mes nao existir.
 
 Ciclo Flash ainda NAO implementado (regra das linhas coloridas e' diferente -
 aguardando a usuaria detalhar).
@@ -55,6 +62,17 @@ COL_TOTAL_ANO = 21       # U
 COL_FORMULA_INICIO = 25  # Y (Gestorial II)
 COL_FORMULA_FIM = 36     # AJ (Conta Geral)
 COL_HISTORICO_FIM = 27   # AA - ate onde vai o arquivo de historico de unidades encerradas
+
+# Aba "Pivot", quadro "(+) gain" (layout proprio, diferente da Intermediária:
+# coluna C = Janeiro). Linha 15/16 = Despesas/Mão de Obra do PRÓPRIO ciclo do
+# arquivo (formula, ja se atualiza sozinha); linha 18/19 = mesma coisa, mas do
+# ciclo OPOSTO (Flash, quando o arquivo e' Actual) - sempre um valor fixo,
+# colado a mao todo mes ate agora.
+COL_PIVOT_MES_JANEIRO = 3       # C
+LINHA_PIVOT_DESPESAS_PROPRIO = 15
+LINHA_PIVOT_MAO_DE_OBRA_PROPRIO = 16
+LINHA_PIVOT_DESPESAS_COMPARACAO = 18
+LINHA_PIVOT_MAO_DE_OBRA_COMPARACAO = 19
 
 XL_UP = -4162
 XL_TO_LEFT = -4159
@@ -92,6 +110,48 @@ def localizar_base_ksb1_do_mes(mes: int, ano: int, ciclo: str) -> Path:
             "pra esse mês/Ciclo antes de rodar a Base Intermediária."
         )
     return caminho
+
+
+def localizar_base_intermediaria_flash_do_mes(mes: int, ano: int) -> Path | None:
+    """Acha a Base Intermediária Flash do MESMO mês (não do mês anterior) -
+    usada só pra trazer os valores de comparação na aba Pivot (linhas 18/19,
+    quadro "(+) gain"). Devolve None se não existir (log de aviso, não é
+    erro fatal - o resto da Base Intermediária já foi gerado igual)."""
+    pasta = resolver_pasta_ciclo(REDE_BASE / str(ano) / MESES_PASTA[mes], mes, "Flash")
+    nome = f"Base Intermediária Fitted {MESES_INGLES[mes]} Flash {ano}.xlsx"
+    caminho = pasta / nome
+    return caminho if caminho.exists() else None
+
+
+def atualizar_comparacao_flash(excel, wb, mes: int, ano: int, log):
+    """Traz da Base Intermediária Flash do mesmo mês os valores de Despesas
+    e Mão de Obra pro quadro "(+) gain" da aba Pivot (linhas 18/19) - o que
+    a usuária hoje faz manualmente (abre o arquivo Flash, copia, cola aqui).
+    Não é fatal se o Flash não existir (avisa e segue sem preencher)."""
+    caminho_flash = localizar_base_intermediaria_flash_do_mes(mes, ano)
+    if caminho_flash is None:
+        log(
+            f"AVISO: não encontrei a Base Intermediária Flash de {MESES_INGLES[mes]}/{ano} — "
+            "o quadro de comparação Flash x Actual (aba Pivot) não foi atualizado."
+        )
+        return
+
+    log(f"Trazendo Despesas/Mão de Obra do Flash pro quadro de comparação: {caminho_flash.name}...")
+    col = COL_PIVOT_MES_JANEIRO + mes - 1
+
+    wb_flash = excel.Workbooks.Open(str(caminho_flash), ReadOnly=True, UpdateLinks=0)
+    try:
+        excel.CalculateFullRebuild()
+        ws_flash = wb_flash.Worksheets("Pivot")
+        valor_despesas = ws_flash.Cells(LINHA_PIVOT_DESPESAS_PROPRIO, col).Value
+        valor_mao_de_obra = ws_flash.Cells(LINHA_PIVOT_MAO_DE_OBRA_PROPRIO, col).Value
+    finally:
+        wb_flash.Close(SaveChanges=False)
+
+    ws = wb.Worksheets("Pivot")
+    ws.Cells(LINHA_PIVOT_DESPESAS_COMPARACAO, col).Value = valor_despesas
+    ws.Cells(LINHA_PIVOT_MAO_DE_OBRA_COMPARACAO, col).Value = valor_mao_de_obra
+    log(f"  Despesas={valor_despesas:,.2f} | Mão de Obra={valor_mao_de_obra:,.2f}")
 
 
 def localizar_base_intermediaria_mes_anterior(mes: int, ano: int) -> Path:
@@ -293,6 +353,13 @@ def atualizar_base_intermediaria(mes: int, ano: int, ciclo: str, pasta_saida: Pa
                 ws.Cells(r, c).ClearContents()
 
         log(f"  {len(linhas_historico)} linha(s) de unidade encerrada com valor — zeradas na oficial, separadas pro histórico.")
+
+        log("Atualizando as Pivot Tables da aba 'Pivot'...")
+        wb.RefreshAll()
+        excel.CalculateUntilAsyncQueriesDone()
+
+        if ciclo == "Actual":
+            atualizar_comparacao_flash(excel, wb, mes, ano, log)
 
         log("Recalculando de novo (Total Ano das linhas zeradas)...")
         excel.CalculateFullRebuild()
