@@ -40,6 +40,7 @@ from ksb1_core import (  # noqa: E402
     REDE_BASE,
     encontrar_arquivo_ksb1,
     nome_com_versao,
+    resolver_pasta_ciclo,
 )
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -111,7 +112,8 @@ def decidir_fonte_e_ler_linhas(mes: int, ano: int, ciclo: str, log=print):
 
 def localizar_ksb1_actual_anterior(mes: int, ano: int) -> Path:
     mes_ant, ano_ant = (mes - 1, ano) if mes > 1 else (12, ano - 1)
-    pasta = REDE_BASE / str(ano_ant) / MESES_PASTA[mes_ant] / f"{mes_ant:02d}_{_abrev(mes_ant)}_Actual"
+    pasta_mes = REDE_BASE / str(ano_ant) / MESES_PASTA[mes_ant]
+    pasta = resolver_pasta_ciclo(pasta_mes, mes_ant, "Actual")
     nome = f"KSB1 {MESES_INGLES[mes_ant]} Actual {ano_ant}.xlsx"
     caminho = pasta / nome
     if not caminho.exists():

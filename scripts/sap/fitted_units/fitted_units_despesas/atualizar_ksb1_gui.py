@@ -43,6 +43,7 @@ from ksb1_core import (  # noqa: E402
     connect_session,
     nome_arquivo_ksb1,
     nome_com_versao,
+    resolver_pasta_ciclo,
     voltar_para_selecao,
 )
 
@@ -415,10 +416,9 @@ def main():
         mes, ano = mes_ano
         ciclo = ciclo_var.get()
 
-        # Pasta de rede oficial do ciclo (mesmo padrao ja usado pra localizar o
-        # Actual do mes anterior em gerar_ksb1_mensal.localizar_ksb1_actual_anterior).
-        mes_abrev = MESES_PASTA[mes].split(" - ")[1]
-        pasta_saida = REDE_BASE / str(ano) / MESES_PASTA[mes] / f"{mes:02d}_{mes_abrev}_{ciclo}"
+        # Pasta de rede oficial do ciclo - tolera excecoes de nome (ex: pastas
+        # de marco/abril usam o mes por extenso em vez da abreviacao padrao).
+        pasta_saida = resolver_pasta_ciclo(REDE_BASE / str(ano) / MESES_PASTA[mes], mes, ciclo)
 
         log_widget.delete("1.0", tk.END)
         _todos_botoes("disabled")

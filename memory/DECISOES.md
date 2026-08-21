@@ -280,3 +280,13 @@
 - **Janeiro:** diferença de R$ 391.655,32 (34 combinações) — **também 100% em centros de custo da Sorocaba** (8231, 8247, 8269, 8292 — lista completa em `ontology/fitted_units.json` → `centros_de_custo_por_unidade.grupos.SOROCABA.centros`). Zero diferença fora da Sorocaba, zero diferença sem explicação.
 
 **Conclusão:** confirma que a mudança do Ciclo não introduziu nenhum problema de valor — os dois meses batem exatamente com o valor real fechado, uma vez descontado o resíduo retroativo já conhecido e documentado (`regra_unidades_encerradas_no_ebit`). Fev/Mar/Jun ainda não passaram por essa mesma checagem linha a linha (só confirmado que retornam valor, sem erro) — fazer se a usuária pedir o mesmo nível de confiança pra esses meses.
+
+---
+
+## 2026-08-21 (continuação) — Bug real achado e corrigido: pastas de Março/Abril usam mês por extenso, quebrava Passo 3 pra Abr/Mai
+
+**Achado (durante a checagem Fev-Jul pedida pela usuária):** as pastas de Ciclo de março e abril na rede usam o **mês por extenso** (`03_March_Actual`, `04_April_Actual`) em vez da abreviação de 3 letras que todos os outros meses de 2026 usam (`03_Mar_Actual`, `04_Apr_Actual`) — inconsistência real na estrutura de pastas, não relacionada à mudança do Ciclo. Isso quebrava duas coisas que constroem esse caminho a partir do padrão: `localizar_ksb1_actual_anterior` (Passo 3 buscando o Actual do mês anterior — travaria rodando Abril ou Maio) e a saída de produção que acabei de ligar no botão da GUI (travaria rodando Março ou Abril).
+
+**Correção:** nova função `resolver_pasta_ciclo(pasta_mes, mes, ciclo)` em `ksb1_core.py` — tenta o nome padrão (abreviação); se não existir, cai para qualquer pasta existente que bata com `<MM>_*_<Ciclo>` (tolera a exceção sem precisar de uma lista hardcoded de meses problemáticos); se nada existir (mês/ciclo novo, pasta nunca criada), devolve o caminho padrão mesmo assim, pra quem chama decidir se cria (saída nova) ou reporta erro (entrada esperada). Aplicada em `localizar_ksb1_actual_anterior` (`gerar_ksb1_mensal.py`) e na construção de `pasta_saida` no botão "Atualizar Pivot KSB1" (`atualizar_ksb1_gui.py`).
+
+**Validado:** meses 1-8/2026 resolvem certo agora (antes, mes=4 e mes=5 davam `FileNotFoundError` em `localizar_ksb1_actual_anterior`).

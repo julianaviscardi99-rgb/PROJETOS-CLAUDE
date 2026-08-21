@@ -124,6 +124,31 @@ def voltar_para_selecao(session, log):
         abrir_ksb1(session, log)
 
 
+def resolver_pasta_ciclo(pasta_mes: Path, mes: int, ciclo: str) -> Path:
+    """Acha a subpasta do Ciclo (Actual/Flash/Forecast) dentro da pasta do mes
+    (ex: '.../03 - Mar/'), tolerando o mes por extenso no nome da subpasta em
+    vez da abreviacao de 3 letras padrao - inconsistencia real encontrada em
+    03_March_Actual/04_April_Actual (deveriam ser 03_Mar_Actual/04_Apr_Actual,
+    como todos os outros meses de 2026). Prefere o nome padrao exato; se nao
+    existir, cai para qualquer subpasta existente que bata com '<MM>_*_<Ciclo>'.
+    Se nada existir (mes/ciclo novo, pasta ainda nao criada), devolve o
+    caminho padrao mesmo assim - quem chama decide se cria ou reporta erro."""
+    abrev = MESES_PASTA[mes].split(" - ")[1]
+    padrao = pasta_mes / f"{mes:02d}_{abrev}_{ciclo}"
+    if padrao.exists():
+        return padrao
+
+    candidatos = sorted(pasta_mes.glob(f"{mes:02d}_*_{ciclo}")) if pasta_mes.exists() else []
+    if len(candidatos) == 1:
+        return candidatos[0]
+    if len(candidatos) > 1:
+        raise RuntimeError(
+            f"Mais de uma pasta do Ciclo '{ciclo}' encontrada em {pasta_mes}: "
+            f"{[c.name for c in candidatos]}"
+        )
+    return padrao
+
+
 def prefixo_arquivo_ksb1(bu_nome: str, mes: int, ano: int, agrup_label: str) -> str:
     return f"KSB1 - {bu_nome} {mes:02d}.{ano} - {agrup_label}"
 
