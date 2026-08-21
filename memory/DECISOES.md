@@ -235,3 +235,15 @@
 | Jul | 6.063 | 6.767.317,49 |
 
 **Limitação do teste:** confirma disponibilidade de dado e ausência de erro/ambiguidade — não é reconciliação de valor contra a Base Intermediária real de cada mês (isso só foi feito formalmente pra Julho, ver validação de 2026-08-19). Jan/Fev/Mar/Jun ainda não tiveram esse nível de conferência.
+
+---
+
+## 2026-08-21 (continuação) — Popup "Segurança SAPGUI": decisão de NÃO editar saprules.xml, manter clique manual mensal
+
+**Decisão:** a usuária optou por continuar clicando "Permitir + Memorizar minha decisão" manualmente no popup "Segurança SAPGUI" a cada mês (1x por pasta nova), em vez de adicionar uma regra curinga em `saprules.xml`.
+
+**Motivo:** a tentativa de editar o arquivo (via Bash e via Edit) foi bloqueada duas vezes pelo classificador de segurança do modo Auto do Claude Code (arquivo fora da pasta do projeto). Dei 3 opções pra usuária (mudar modo de permissão, adicionar regra de permissão, ou editar manualmente ela mesma) e ela preferiu simplesmente manter o clique manual — baixo custo (1x/mês) e zero risco de corromper um arquivo de configuração do SAP com mais de 1 ano de regras acumuladas.
+
+**Estado do arquivo:** `saprules.xml` não foi alterado. Existe um backup (`saprules.xml.backup_2026-08-21`, mesma pasta `AppData\Roaming\SAP\Common\`) que pode ser removido a qualquer momento — não tem mais uso previsto.
+
+**Se o assunto voltar no futuro:** a regra proposta (não aplicada) era um `<rule>` com diretório em curinga `.../Resultados Fitted/2026/00.Extração Base KSB1/*`, mesmo formato/contexto (KSB1, SAPLSLVC_FULLSCREEN/0200) das regras já existentes — texto completo já formulado, ver histórico desta sessão se precisar retomar.
