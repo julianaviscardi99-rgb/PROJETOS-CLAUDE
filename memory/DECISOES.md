@@ -266,3 +266,17 @@
 **Ainda não fechado (fora do escopo desta mudança):** segundo botão da aba ③ pra "atualizar arquivo colorido" — usuária mencionou mas decidiu adiar a definição do escopo exato ("vamos fazer assim, altera o nome do primeiro botão apenas e vamos passar pra produção"). Retomar quando ela quiser detalhar o que esse botão deve fazer.
 
 **Nota:** a janela do cockpit já estava aberta (lançada mais cedo nesta sessão) quando essas mudanças foram feitas no código — como é uma aplicação Tkinter carregada em memória, a usuária precisa **fechar e abrir de novo** a janela pra ver essas mudanças (não há hot-reload).
+
+---
+
+## 2026-08-21 (continuação) — Confirmação pedida pela usuária: Janeiro e Julho batem contra a Base Intermediária REAL (não só "sem erro")
+
+**Contexto:** a usuária notou, corretamente, que o teste anterior (Jan-Jul/2026, Ciclo Actual) só confirmava que os arquivos eram encontrados e retornavam um total — não que esse total batia com o valor real já fechado. Pediu confirmação explícita pra Janeiro e Julho.
+
+**Método:** comparação linha a linha por chave (Conta Fiscal, Centro de Custo) entre o KSB1 bruto (fonte decidida por `decidir_fonte_e_ler_linhas`) e a coluna do mês na aba `Intermediária` do arquivo real já fechado (`Base Intermediária Fitted <Mês> Actual 2026.xlsx`) — mesmo método já usado e validado pra Julho em 2026-08-19.
+
+**Resultado:**
+- **Julho:** diferença de R$ 112.275,58 (16 combinações) — **reconfirma exatamente** o resultado de 2026-08-19, 100% em centros de custo da Sorocaba (unidade encerrada).
+- **Janeiro:** diferença de R$ 391.655,32 (34 combinações) — **também 100% em centros de custo da Sorocaba** (8231, 8247, 8269, 8292 — lista completa em `ontology/fitted_units.json` → `centros_de_custo_por_unidade.grupos.SOROCABA.centros`). Zero diferença fora da Sorocaba, zero diferença sem explicação.
+
+**Conclusão:** confirma que a mudança do Ciclo não introduziu nenhum problema de valor — os dois meses batem exatamente com o valor real fechado, uma vez descontado o resíduo retroativo já conhecido e documentado (`regra_unidades_encerradas_no_ebit`). Fev/Mar/Jun ainda não passaram por essa mesma checagem linha a linha (só confirmado que retornam valor, sem erro) — fazer se a usuária pedir o mesmo nível de confiança pra esses meses.
