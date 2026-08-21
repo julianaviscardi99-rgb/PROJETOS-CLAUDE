@@ -5,11 +5,11 @@ if (-not $pasta) {
     exit 1
 }
 $shell = New-Object -ComObject WScript.Shell
-$atalho = $shell.CreateShortcut((Join-Path $pasta.FullName 'ATUALIZAR KSB1.lnk'))
+$atalho = $shell.CreateShortcut((Join-Path $pasta.FullName 'Fechamento Custo Fitted Units.lnk'))
 $atalho.TargetPath = 'C:\Windows\System32\wscript.exe'
 $atalho.Arguments = '"C:\Users\silveju001\Projetos Claude\scripts\sap\fitted_units\fitted_units_despesas\atualizar_ksb1_launcher.vbs"'
 $atalho.WorkingDirectory = 'C:\Users\silveju001\Projetos Claude'
 $atalho.IconLocation = 'C:\Users\silveju001\Projetos Claude\scripts\sap\fitted_units\fitted_units_despesas\assets\pirelli_tire.ico'
-$atalho.Description = 'Atualizar KSB1 - Fitted Units'
+$atalho.Description = 'Fechamento Custo Fitted Units'
 $atalho.Save()
 Write-Output "Atalho criado em: $($pasta.FullName)"

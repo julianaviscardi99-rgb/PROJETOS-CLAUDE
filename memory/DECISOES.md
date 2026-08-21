@@ -319,3 +319,9 @@
 **Pergunta da usuária:** ao explicar o Passo 3 passo a passo (pedido "explica pro meu estagiário"), ela perguntou se a coluna S do arquivo extraído pelo Passo 1 (`Nº doc.de referência`) deveria ser ignorada ao colar na aba `BASE_KSB1`, já que o arquivo acumulado ("arquivo gigante") termina em `Soc.parc.negócios` (coluna R), sem essa coluna.
 
 **Confirmado (checando ao vivo, não de memória):** sim, já é assim por construção, não é bug nem pendência. `N_COLS_BRUTO = 18` em `gerar_ksb1_mensal.py` limita a leitura/colagem às colunas A-R (18 colunas) — para exatamente em `Soc.parc.negócios`, nunca chega na coluna S. Verificado nos dois arquivos brutos (Gestoriais e Sem Agrupamento) de julho/2026: ambos têm 19 colunas, mesma ordem, coluna S sempre `Nº doc.de referência` por último — consistente nos dois tipos de arquivo.
+
+---
+
+## 2026-08-21 (continuação) — Atalho de rede do cockpit renomeado: "ATUALIZAR KSB1" -> "Fechamento Custo Fitted Units"
+
+**Decisão:** a pedido da usuária, o atalho `.lnk` na pasta `00.Extração Base KSB1` (que abre o cockpit) foi renomeado de "ATUALIZAR KSB1.lnk" pra **"Fechamento Custo Fitted Units.lnk"**. `criar_atalho_ksb1.ps1` atualizado com o novo nome (arquivo + descrição), pra ficar consistente se precisar regenerar o atalho no futuro.
