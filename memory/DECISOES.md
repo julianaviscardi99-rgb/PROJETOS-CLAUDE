@@ -311,3 +311,11 @@
 **Único ponto que não é "unidade encerrada" (Junho):** par `N151420000` nos centros `8295` (-R$354,60) e `8297` (+R$354,60), líquido R$ 0,00 — **não é problema novo**, é a mesma inconsistência já documentada em 2026-08-11 (linha 752 da planilha manual: "REVISAR TODOS OS MESES, TROCAR DE 8297 PARA CC FIXO 8295"). Ajuste manual conhecido, efeito líquido zero.
 
 **Conclusão:** Jan-Jul/2026 (Ciclo Actual) batem 100% com o valor real fechado — toda diferença é explicada por regra de negócio já documentada (unidades encerradas + a inconsistência conhecida do centro 8295/8297). Zero diferença sem explicação em qualquer um dos 7 meses. A mudança do Ciclo e a correção da lacuna de dados (Jan/Fev/Mar/Jun extraídos nesta sessão) não introduziram nenhum problema de valor.
+
+---
+
+## 2026-08-21 (continuação) — Confirmado: coluna S ("Nº doc.de referência") do extrato bruto é ignorada de propósito no Passo 3
+
+**Pergunta da usuária:** ao explicar o Passo 3 passo a passo (pedido "explica pro meu estagiário"), ela perguntou se a coluna S do arquivo extraído pelo Passo 1 (`Nº doc.de referência`) deveria ser ignorada ao colar na aba `BASE_KSB1`, já que o arquivo acumulado ("arquivo gigante") termina em `Soc.parc.negócios` (coluna R), sem essa coluna.
+
+**Confirmado (checando ao vivo, não de memória):** sim, já é assim por construção, não é bug nem pendência. `N_COLS_BRUTO = 18` em `gerar_ksb1_mensal.py` limita a leitura/colagem às colunas A-R (18 colunas) — para exatamente em `Soc.parc.negócios`, nunca chega na coluna S. Verificado nos dois arquivos brutos (Gestoriais e Sem Agrupamento) de julho/2026: ambos têm 19 colunas, mesma ordem, coluna S sempre `Nº doc.de referência` por último — consistente nos dois tipos de arquivo.
