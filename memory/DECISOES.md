@@ -434,3 +434,9 @@
 **Validado de ponta a ponta (Julho Flash):** rodei Lançar Provisões isolado, depois Finalização em cima do mesmo arquivo — bateu exatamente igual ao teste anterior (área branca zero diferença, soma R$ 5.008.431,48; provisões com as mesmas 5 diferenças já explicadas por versão do Fast Provisão). A trava de arquivo aberto também foi testada ao vivo (bloqueou de verdade com o Fast Provisão aberto, e passou depois que a usuária fechou).
 
 **GUI (`atualizar_ksb1_gui.py`):** `PASSOS` reestruturado com o novo passo inserido no índice 2; wiring dos botões ajustado (índices deslocados pro antigo Passo 3). Não testado ao vivo pela interface ainda, só via linha de comando.
+
+---
+
+## 2026-08-21 (continuação) — Cores do cockpit: vermelho removido, botões/abas em amarelo claro
+
+**Decisão:** a pedido da usuária ("tem que ficar gostoso de ver"), o vermelho Pirelli (`#DA291C`, usado nos botões, aba selecionada, seleção de combobox e na linha de trim do cabeçalho) foi substituído por um amarelo claro (`#FFE9A8`) em todo o cockpit. Constante renomeada de `VERMELHO_PIRELLI` pra `AMARELO_CLARO`. Cor de botão desabilitado também ajustada pra combinar (`#ecdfb0`, antes era um marrom-avermelhado escuro).

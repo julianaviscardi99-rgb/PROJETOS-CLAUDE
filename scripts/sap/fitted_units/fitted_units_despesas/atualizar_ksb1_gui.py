@@ -144,8 +144,7 @@ def rodar(mes, ano, ciclo, log_widget):
     messagebox.showinfo("Concluído", "Extração da KSB1 finalizada (Gestoriais + Sem Agrupamento).")
 
 
-AMARELO_PIRELLI = "#FFD400"
-VERMELHO_PIRELLI = "#DA291C"
+AMARELO_CLARO = "#FFE9A8"
 CINZA_TEXTO = "#555555"
 
 # Paleta "cockpit": cabecalho escuro com logo Pirelli (trim vermelho/amarelo);
@@ -246,7 +245,7 @@ def _configurar_estilo(root):
     style.configure("Pirelli.TButton", font=("Segoe UI", 11, "bold"), foreground="black", borderwidth=0)
     style.map(
         "Pirelli.TButton",
-        background=[("!disabled", VERMELHO_PIRELLI), ("disabled", "#4a2320")],
+        background=[("!disabled", AMARELO_CLARO), ("disabled", "#ecdfb0")],
         foreground=[("!disabled", "black"), ("disabled", "#8a8a8a")],
     )
 
@@ -259,7 +258,7 @@ def _configurar_estilo(root):
     )
     style.map(
         "TNotebook.Tab",
-        background=[("selected", VERMELHO_PIRELLI), ("!selected", BG_CARD)],
+        background=[("selected", AMARELO_CLARO), ("!selected", BG_CARD)],
         foreground=[("selected", "black"), ("!selected", TEXTO_SECUNDARIO)],
         expand=[("selected", (0, 0, 0, 0))],
     )
@@ -268,7 +267,7 @@ def _configurar_estilo(root):
     # coloridas separadamente, senao ficam brancas mesmo com o tema escuro.
     root.option_add("*TCombobox*Listbox.background", BG_CAMPO)
     root.option_add("*TCombobox*Listbox.foreground", TEXTO_CLARO)
-    root.option_add("*TCombobox*Listbox.selectBackground", VERMELHO_PIRELLI)
+    root.option_add("*TCombobox*Listbox.selectBackground", AMARELO_CLARO)
     root.option_add("*TCombobox*Listbox.selectForeground", "black")
 
 
@@ -302,7 +301,7 @@ def main():
         font=("Consolas", 9, "bold"),
     ).pack(anchor="w", pady=(4, 0))
 
-    tk.Frame(root, bg=VERMELHO_PIRELLI, height=3).pack(fill=tk.X, side=tk.TOP)
+    tk.Frame(root, bg=AMARELO_CLARO, height=3).pack(fill=tk.X, side=tk.TOP)
 
     corpo = ttk.Frame(root, padding=(24, 18, 24, 18), style="TFrame")
     corpo.pack(fill=tk.BOTH, expand=True)
