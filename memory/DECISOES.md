@@ -341,3 +341,17 @@
 **Validação final (July, Ciclo Actual):** comparação linha a linha (587 combinações Conta Fiscal + Centro de Custo) entre o arquivo gerado pelo Passo 4 e o arquivo real fechado — **zero diferença, soma idêntica (R$ 6.655.041,91 nos dois)**. 60 linhas de unidade encerrada identificadas e corretamente zeradas (mais granulares que os 16 combos da checagem em 2 chaves feita antes — o Pivot_Inter agrupa por 8 dimensões, não só Conta Fiscal + Centro de Custo, então uma combinação "grossa" pode virar várias linhas "finas" no Pivot_Inter).
 
 **Pendente:** Ciclo Flash (lógica das linhas coloridas ainda não detalhada pela usuária); segundo botão da aba ③ da GUI ("arquivo colorido", também ainda sem escopo); wiring do Passo 4 na GUI (`atualizar_ksb1_gui.py` ainda não chama `gerar_base_intermediaria.py` — só foi testado via linha de comando/pasta local até agora).
+
+---
+
+## 2026-08-21 (continuação) — Passo 4 ligado na GUI: segundo botão na aba ③, "Finalização da Base Intermediária"
+
+**Decisão:** o Passo 4 (`gerar_base_intermediaria.py`) ganhou botão na GUI — a pedido explícito da usuária, **não** virou uma aba/passo novo, ficou como um segundo botão dentro da mesma aba ③ "Base Intermediária" (junto do Passo 3), rotulado **"Finalização da Base Intermediária"**.
+
+**Mudanças em `atualizar_ksb1_gui.py`:**
+1. Estrutura de dados `PASSOS` trocou `"botao": "..."` (string única) por `"botoes": [...]` (lista) em todas as 3 abas, pra suportar mais de um botão por aba.
+2. `fazer_aba` agora cria um botão por item da lista, empilhados verticalmente.
+3. `_todos_botoes` (liga/desliga botões durante uma operação) ajustado pra percorrer listas em vez de widgets únicos.
+4. Novo handler `ao_clicar_finalizar_intermediaria`: lê Mês/Ano/Ciclo do painel compartilhado, resolve a pasta de rede oficial (`resolver_pasta_ciclo`, mesma tolerância a nome de mês por extenso), chama `atualizar_base_intermediaria`, mostra os dois caminhos gerados (Base Intermediária + arquivo de histórico de unidades encerradas, quando existir) na mensagem de conclusão.
+
+**Ainda não testado ao vivo pela GUI** (só via linha de comando até agora, contra pasta de teste local) — a usuária vai testar agora.

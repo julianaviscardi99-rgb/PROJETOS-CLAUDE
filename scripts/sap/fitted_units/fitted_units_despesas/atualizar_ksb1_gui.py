@@ -170,7 +170,7 @@ PASSOS = [
             "Ciclo no nome. Pré-requisito: SAP GUI aberto e logado na tela inicial (o "
             "script abre a transação sozinho)."
         ),
-        "botao": "Extrair KSB1 (Gestoriais + Sem Agrupamento)",
+        "botoes": ["Extrair KSB1 (Gestoriais + Sem Agrupamento)"],
     },
     {
         "aba": "②  Check de Agrupamentos",
@@ -180,7 +180,7 @@ PASSOS = [
             "agrupamento gestorial, comparando com o arquivo Gestoriais do mesmo mês/Ciclo. "
             "Usa os arquivos já extraídos no Passo 1 — não acessa o SAP."
         ),
-        "botao": "Gerar Check de Agrupamentos",
+        "botoes": ["Gerar Check de Agrupamentos"],
     },
     {
         "aba": "③  Base Intermediária",
@@ -189,9 +189,11 @@ PASSOS = [
             "Atualiza o KSB1 acumulado do ano (BASE_KSB1 + Pivot Tables nativas) com "
             "as linhas do mês e prepara os valores pra colar na Base Intermediária. "
             "Usa o Ciclo selecionado (Actual/Flash) pra escolher a extração certa do "
-            "Passo 1 e também no nome do arquivo final."
+            "Passo 1 e também no nome do arquivo final. Depois de atualizar o Pivot, use "
+            "'Finalização da Base Intermediária' pra colar os valores na Intermediária "
+            "(só Ciclo Actual por enquanto)."
         ),
-        "botao": "Atualizar Pivot KSB1",
+        "botoes": ["Atualizar Pivot KSB1", "Finalização da Base Intermediária"],
     },
 ]
 
@@ -346,9 +348,13 @@ def main():
             anchor="w", pady=(8, 20)
         )
 
-        btn = ttk.Button(aba, text=passo["botao"], style="Pirelli.TButton")
-        btn.pack(fill=tk.X, ipady=8)
-        botoes[indice] = btn
+        widgets = []
+        rotulos = passo["botoes"]
+        for i, rotulo in enumerate(rotulos):
+            btn = ttk.Button(aba, text=rotulo, style="Pirelli.TButton")
+            btn.pack(fill=tk.X, ipady=8, pady=(0, 8) if i < len(rotulos) - 1 else 0)
+            widgets.append(btn)
+        botoes[indice] = widgets
         return aba
 
     for i, passo in enumerate(PASSOS):
@@ -372,8 +378,9 @@ def main():
         log_widget.update()
 
     def _todos_botoes(estado):
-        for btn in botoes.values():
-            btn.config(state=estado)
+        for lista in botoes.values():
+            for btn in lista:
+                btn.config(state=estado)
 
     def ao_clicar_extrair():
         mes_ano = ler_mes_ano()
@@ -433,9 +440,34 @@ def main():
         finally:
             _todos_botoes("normal")
 
-    botoes[0].config(command=ao_clicar_extrair)
-    botoes[1].config(command=ao_clicar_check)
-    botoes[2].config(command=ao_clicar_pivot)
+    def ao_clicar_finalizar_intermediaria():
+        from gerar_base_intermediaria import atualizar_base_intermediaria
+
+        mes_ano = ler_mes_ano()
+        if mes_ano is None:
+            return
+        mes, ano = mes_ano
+        ciclo = ciclo_var.get()
+
+        pasta_saida = resolver_pasta_ciclo(REDE_BASE / str(ano) / MESES_PASTA[mes], mes, ciclo)
+
+        log_widget.delete("1.0", tk.END)
+        _todos_botoes("disabled")
+        try:
+            caminho, caminho_historico = atualizar_base_intermediaria(mes, ano, ciclo, pasta_saida, log=log)
+            msg = f"Base Intermediária finalizada:\n{caminho}"
+            if caminho_historico:
+                msg += f"\n\nHistórico de unidades encerradas (enviar pra contabilidade):\n{caminho_historico}"
+            messagebox.showinfo("Concluído", msg)
+        except Exception as e:
+            messagebox.showerror("Erro ao finalizar a Base Intermediária", str(e))
+        finally:
+            _todos_botoes("normal")
+
+    botoes[0][0].config(command=ao_clicar_extrair)
+    botoes[1][0].config(command=ao_clicar_check)
+    botoes[2][0].config(command=ao_clicar_pivot)
+    botoes[2][1].config(command=ao_clicar_finalizar_intermediaria)
 
     root.mainloop()
 
