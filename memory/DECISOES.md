@@ -212,3 +212,26 @@
 **Não alterado:** `extrair_ksb1.py` (script standalone antigo na raiz de `fitted_units_despesas/`) — confirmado que não é chamado por nenhum `.bat`/`.vbs`/atalho em uso (o fluxo real é todo via `atualizar_ksb1_gui.py`); ficou como código morto, fora do escopo desta mudança.
 
 **Ainda pendente (não fechado nesta sessão):** trocar o botão "Atualizar KSB1 Pivot" da GUI pra chamar `gerar_ksb1_mensal.py` (hoje ainda chama o script antigo `gerar_base_intermediaria.py`) e apontar a pasta de saída do Passo 3 pra rede oficial (hoje ainda escreve em `data/processed/fitted_units_despesas/base_ksb1_teste/`). Isso é o item #2 da lista de pendências antes de "colocar o cockpit em produção" — perguntar à usuária se quer seguir pra isso agora.
+
+---
+
+## 2026-08-21 (continuação) — Extração ao vivo de Jan/Fev/Mar/Jun 2026 (Actual): lacuna de dados preenchida, teste completo Jan-Jul confirmado
+
+**Achado durante o teste ao vivo do Ciclo:** rodando `decidir_fonte_e_ler_linhas` (Passo 3) pro cenário Actual em todos os meses de jan-jul/2026, Jan/Fev/Mar/Jun retornaram erro "arquivo não encontrado" — não por causa da mudança do Ciclo, mas porque a pasta `00.Extração Base KSB1/<mês>` desses 4 meses estava **completamente vazia** (nenhum arquivo `KSB1 - Fitted Units...`, em nenhum padrão de nome, em lugar nenhum da árvore de 2026). Confirmado que os arquivos finais acumulados (`KSB1 <Mês> Actual 2026.xlsx`) existem pra Fev/Jun (Jan só tem versão Flash; Mar nem a pasta Actual existe) — ou seja, esses meses foram fechados normalmente, só que a extração bruta que alimenta o Passo 3 nunca foi salva nessa pasta (o fluxo `00.Extração Base KSB1` só passou a ser usado a partir de abril/2026).
+
+**Decisão da usuária:** extrair agora, ao vivo, via SAP (`extrair_um` de `atualizar_ksb1_gui.py`, mesma função de produção), as bases brutas Gestoriais + Sem Agrupamento de Jan/Fev/Mar/Jun 2026, Ciclo Actual.
+
+**Executado com sucesso** — 8 arquivos novos gerados (todos já com o Ciclo no nome, ex: `KSB1 - Fitted Units 01.2026 - Gestoriais - Actual.XLSX`), salvos em `00.Extração Base KSB1/<mês>/`. Único obstáculo: o popup nativo "Segurança SAPGUI" apareceu uma vez por pasta nova (Jan, Fev, Mar, Jun — primeira vez que cada uma recebe um arquivo via scripting), pedindo confirmação manual da usuária (não pode ser fechado por script, é proteção por design do SAP GUI). Usuária confirmou com "Memorizar minha decisão" em cada uma — igual ao que já tinha acontecido com Abr/Mai/Jul em sessões anteriores (ver 2026-08-13).
+
+**Resultado final do teste (Jan-Jul/2026, Ciclo Actual, `decidir_fonte_e_ler_linhas`):** todos os 7 meses retornam valor, sem erro:
+| Mês | Linhas | Soma Valor/MR |
+|---|---|---|
+| Jan | 7.448 | 5.370.934,68 |
+| Fev | 7.994 | 3.855.960,16 |
+| Mar | 9.938 | 4.952.336,15 |
+| Abr | 8.130 | 4.339.578,33 |
+| Mai | 4.811 | 5.493.635,51 |
+| Jun | 6.655 | 5.717.965,18 |
+| Jul | 6.063 | 6.767.317,49 |
+
+**Limitação do teste:** confirma disponibilidade de dado e ausência de erro/ambiguidade — não é reconciliação de valor contra a Base Intermediária real de cada mês (isso só foi feito formalmente pra Julho, ver validação de 2026-08-19). Jan/Fev/Mar/Jun ainda não tiveram esse nível de conferência.

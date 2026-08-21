@@ -20,6 +20,14 @@
   3. Passo 4 (ler `Pivot_Inter.` e colar nas linhas brancas da `Intermediária`, já excluindo unidades encerradas) continua não escrito.
 - **Pergunta em aberto pra usuária:** ela quer seguir agora pros itens 1-2 acima (colocar o Passo 3 em produção de fato), ou prefere revisar/testar mais a mudança do Ciclo antes?
 
+### Continuação (mesmo dia) — Teste ao vivo Jan-Jul/2026 (Ciclo Actual): lacuna de dados achada e preenchida, todos os 7 meses OK agora
+
+- **Usuária pediu teste ao vivo** só do cenário Actual, todos os meses, garantindo que "o valor volte" jan-jul/2026. Primeira rodada: Jan/Fev/Mar/Jun deram erro "arquivo não encontrado" — **não é bug da mudança do Ciclo**, é porque a pasta `00.Extração Base KSB1/<mês>` desses 4 meses estava vazia (o fluxo de extração automatizada só passou a salvar ali a partir de abril/2026; Jan/Fev/Mar foram fechados antes disso, por fora). Detalhe completo em `memory/DECISOES.md` → "2026-08-21 (continuação)".
+- **Usuária autorizou extrair ao vivo via SAP** — feito com sucesso (`extrair_um`, mesma função de produção da GUI), 8 arquivos novos (Gestoriais + Sem Agrupamento × 4 meses), já com o Ciclo no nome.
+- **Obstáculo tratado:** popup nativo "Segurança SAPGUI" apareceu uma vez por pasta nova (não dá pra fechar via script, é proteção por design). Usuária resolveu clicando "Permitir" + "Memorizar minha decisão" em cada uma — mesma solução já usada em 2026-08-13 para outras pastas. **Ela perguntou se dava pra "corrigir pra não aparecer mais"** — expliquei que é um aviso de segurança nativo do SAP GUI (não do nosso script), que "Memorizar minha decisão" já resolve permanentemente por pasta (foi o que ela fez), e que não tentei desabilitar isso globalmente nas configurações do SAP GUI porque reduziria uma proteção de segurança real — não decidido/mudado nada nessa frente, só expliquei.
+- **Resultado final:** reteste completo Jan-Jul/2026 (Ciclo Actual) — todos os 7 meses retornam valor sem erro agora (tabela completa em `DECISOES.md`). Confirma disponibilidade de dado, não é reconciliação de valor contra a Base Intermediária real (só Julho tem essa validação formal, de 2026-08-19).
+- **Nada commitado ainda desta parte** (só a implementação do Ciclo, commit `fe4f098`, foi commitada antes do teste).
+
 ---
 ## Continuação 2026-08-19 — Retomada Fitted Units Despesas: Flash vs Actual, check de agrupamentos confirmado, comparação July em andamento (compare contra Actual, não Flash)
 
