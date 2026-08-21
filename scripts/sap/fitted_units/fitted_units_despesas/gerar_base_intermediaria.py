@@ -30,6 +30,10 @@ Logica confirmada com a Juliana em 2026-08-21:
    a usuaria hoje faz manualmente (abre o Flash, copia, cola aqui). So roda
    se o ciclo sendo gerado for Actual (nao teria sentido comparar Flash
    contra Flash). Nao e' fatal se o arquivo Flash do mes nao existir.
+   Tambem corrige as formulas de Custos (H26/I26) do quadro amarelo
+   "Month/Flash/Actual/delta", que ficavam travadas na coluna do ultimo mes
+   editado a mao - passam a apontar sempre pra coluna do mes atual.
+   Faturamento (linha 25) fica de fora, ainda e' manual.
 
 Ciclo Flash ainda NAO implementado (regra das linhas coloridas e' diferente -
 aguardando a usuaria detalhar).
@@ -73,6 +77,15 @@ LINHA_PIVOT_DESPESAS_PROPRIO = 15
 LINHA_PIVOT_MAO_DE_OBRA_PROPRIO = 16
 LINHA_PIVOT_DESPESAS_COMPARACAO = 18
 LINHA_PIVOT_MAO_DE_OBRA_COMPARACAO = 19
+LINHA_PIVOT_GRAND_TOTAL = 11
+
+# Quadro amarelo "Month / Flash / Actual / delta" (linhas 24-29): celulas
+# fixas (nao mudam de mes pra mes), mas as formulas de Custos (H26/I26)
+# precisam apontar pra coluna do MES ATUAL no quadro "(+) gain" acima -
+# ficavam travadas na coluna do ultimo mes que alguem editou a mao.
+COL_QUADRO_CUSTOS_FLASH = 8    # H
+COL_QUADRO_CUSTOS_ACTUAL = 9   # I
+LINHA_QUADRO_CUSTOS = 26
 
 XL_UP = -4162
 XL_TO_LEFT = -4159
@@ -86,6 +99,11 @@ def _normalizar_centro(v) -> str:
         return str(int(float(s)))
     except ValueError:
         return s
+
+
+def _letra_coluna_mes(mes: int) -> str:
+    """Letra da coluna do mes no quadro '(+) gain' da aba Pivot (C=Jan...N=Dec)."""
+    return chr(ord("A") - 1 + COL_PIVOT_MES_JANEIRO + mes - 1)
 
 
 def carregar_centros_encerrados() -> dict:
@@ -152,6 +170,19 @@ def atualizar_comparacao_flash(excel, wb, mes: int, ano: int, log):
     ws.Cells(LINHA_PIVOT_DESPESAS_COMPARACAO, col).Value = valor_despesas
     ws.Cells(LINHA_PIVOT_MAO_DE_OBRA_COMPARACAO, col).Value = valor_mao_de_obra
     log(f"  Despesas={valor_despesas:,.2f} | Mão de Obra={valor_mao_de_obra:,.2f}")
+
+    # Quadro amarelo "Month/Flash/Actual/delta": H26 (Custos, Flash) e I26
+    # (Custos, Actual) ficavam travados na coluna do ultimo mes editado a mao
+    # - reescreve as duas formulas apontando pra coluna do mes atual (ex: em
+    # julho, H26 = "=(I18+I19)/1000", I26 = "=I11/1000"). Faturamento (linha
+    # 25) fica de fora de proposito - a usuaria confirmou que ainda vai
+    # automatizar isso em outro momento.
+    letra_mes = _letra_coluna_mes(mes)
+    ws.Cells(LINHA_QUADRO_CUSTOS, COL_QUADRO_CUSTOS_FLASH).Formula = (
+        f"=({letra_mes}{LINHA_PIVOT_DESPESAS_COMPARACAO}+{letra_mes}{LINHA_PIVOT_MAO_DE_OBRA_COMPARACAO})/1000"
+    )
+    ws.Cells(LINHA_QUADRO_CUSTOS, COL_QUADRO_CUSTOS_ACTUAL).Formula = f"={letra_mes}{LINHA_PIVOT_GRAND_TOTAL}/1000"
+    log(f"  Fórmulas de Custos (linha {LINHA_QUADRO_CUSTOS}) apontando pra coluna {letra_mes} ({MESES_INGLES[mes]}).")
 
 
 def localizar_base_intermediaria_mes_anterior(mes: int, ano: int) -> Path:
