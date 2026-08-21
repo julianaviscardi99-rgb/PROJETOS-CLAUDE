@@ -395,3 +395,24 @@
 **Validado (Julho):** L25 = 5,849, igual ao real.
 
 **Nota à parte (não implementada agora):** usuária mostrou um quadro de Faturamento por Centro de Montagem (Forecast/Flash/Delta — São José dos Pinhais, Ibirité, Sorocaba, Goiana) que será automatizado depois, junto com o resto do Faturamento (linha 25 do quadro amarelo) — confirmado que por enquanto continua manual.
+
+---
+
+## 2026-08-21 (continuação) — Ciclo Flash implementado (básico): preenchimento de provisões + rebuild igual ao Actual
+
+**Lógica confirmada com a usuária:** diferente do Actual (linhas coloridas sempre em branco), no Flash as linhas coloridas — geralmente só as amarelas, que são provisões — são preenchidas manualmente todo mês, porque a contabilidade ainda não lançou (e estorna o mês seguinte, então nunca há nada acumulado pra herdar; como sempre partimos do Actual do mês anterior, que já vem com essas linhas em branco, cada mês começa do zero).
+
+**Fonte das provisões:** pasta `Provisões e Reclassificações` dentro do Flash do mês (`\...\Resultados Fitted\2026\<mês>\<mês>_Flash\Provisões e Reclassificações\`), arquivo `Fast Provisão_<Mês>[_vN].xlsx` de **versão mais alta** (se não tiver `_v2` etc., usa o arquivo base). Aba "Ficha de Solicitação", dados a partir da linha 13: coluna C (Conta Contábil) → coluna C da Intermediária; coluna D (Centro de Custo) → coluna E da Intermediária; coluna H (Valor) → coluna do mês que está fechando. Mapeamento sequencial direto: linha 13→linha 2 da Intermediária, linha 14→linha 3, etc.
+
+**Fórmulas arrastadas (colunas A, B, D, F, G):** cada linha nova recebe a mesma fórmula VLOOKUP (buscando na base de contas/centros externa) que já existe na última linha colorida do arquivo copiado (o "molde") — implementado com substituição de referência de linha via regex (não dá pra usar AutoFill normal porque as linhas ficam ACIMA da linha-molde, não abaixo).
+
+**Limitação aceita por enquanto:** se as provisões não couberem nas linhas coloridas já existentes, o script para com erro claro em vez de inserir linhas novas automaticamente (usuária mencionou que às vezes precisa inserir linha inteira via Ctrl+ — não implementado ainda, fica pra quando/se acontecer de verdade).
+
+**Implementado:** `localizar_fast_provisao` (acha a versão mais alta) + `preencher_provisoes_flash` (lê a Ficha de Solicitação, preenche C/E/valor, arrasta fórmulas). Chamado antes do resto do Passo 4 (que segue idêntico ao Actual: rebuild da área branca a partir do Pivot_Inter, unidades encerradas, refresh da Pivot). **O quadro de comparação Flash x Actual (linhas 18/19/H26/I26/L25) fica de fora de propósito quando o ciclo é Flash** — usuária vai detalhar depois como deve funcionar nesse caso.
+
+**Validação (Julho Flash):**
+- Área branca (dados do Pivot_Inter): zero diferença, soma idêntica (R$ 5.008.431,48).
+- 28 provisões encontradas e preenchidas (linhas 2-29), batendo com a contagem do arquivo real.
+- 2 achados nas linhas coloridas, ambos **confirmados pela usuária como esperados, não bugs**: (1) coluna D do arquivo real estava em branco porque a fórmula nunca foi arrastada lá de verdade (**o arquivo real estava incompleto — o script está certo**); (2) pequenas diferenças de centro/valor em 5 linhas porque a usuária foi revisando o Fast Provisão de v4 pra v5 depois que o arquivo real foi montado — o script sempre usa a versão mais alta (v5), então reflete a informação mais atual, não a desatualizada.
+
+**Ciclo Flash (básico) considerado completo.** Pendente: o quadro de comparação Flash x Actual pro caso do próprio Flash (a usuária vai detalhar), e a inserção automática de linhas coloridas quando as provisões excederem a capacidade existente.

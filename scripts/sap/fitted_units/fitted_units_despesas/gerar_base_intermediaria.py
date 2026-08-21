@@ -35,13 +35,26 @@ Logica confirmada com a Juliana em 2026-08-21:
    editado a mao - passam a apontar sempre pra coluna do mes atual.
    Faturamento (linha 25) fica de fora, ainda e' manual.
 
-Ciclo Flash ainda NAO implementado (regra das linhas coloridas e' diferente -
-aguardando a usuaria detalhar).
+Ciclo Flash (confirmado com a usuaria em 2026-08-21): antes do passo 3 acima,
+preenche as linhas coloridas (provisoes/reclassificacoes) a partir do "Fast
+Provisao" do mes (pasta "Provisões e Reclassificações" dentro do Flash do
+mes, sempre a versao mais alta) - cada linha da aba "Ficha de Solicitação"
+(a partir da linha 13: Conta=col C, Centro=col D, Valor=col H) vira uma linha
+colorida na Intermediária (linha 2, 3, 4...), arrastando pra cada uma a
+formula VLOOKUP (colunas A, B, D, F, G) que ja existe na ultima linha
+colorida do arquivo. As provisoes SEMPRE comecam do zero a cada mes (a
+contabilidade estorna a provisao do mes anterior, entao nao ha nada
+acumulado pra herdar - o arquivo de origem, sempre o Actual do mes anterior,
+ja vem com essas linhas em branco). Se as provisoes nao couberem nas linhas
+coloridas existentes, para com erro claro (inserir linha nova ainda nao esta
+automatizado). O quadro de comparacao Flash x Actual (passo 8) fica de fora
+de proposito quando o ciclo e' Flash - a usuaria vai detalhar depois.
 
 Depende de Excel instalado (pywin32) - abre uma instancia oculta e isolada
 (DispatchEx), igual ao gerar_ksb1_mensal.py.
 """
 import json
+import re
 import shutil
 import sys
 from pathlib import Path
@@ -238,6 +251,97 @@ def ler_pivot_inter(caminho_base_ksb1: Path, excel, log):
     return cabecalho, linhas, n_meses
 
 
+COL_PROVISAO_CONTA = 3    # C, na Ficha de Solicitação
+COL_PROVISAO_CENTRO = 4   # D
+COL_PROVISAO_VALOR = 8    # H
+LINHA_PROVISAO_INICIO = 13  # primeira linha de dado na Ficha de Solicitação
+
+LINHA_INTER_PROVISAO_INICIO = 2   # primeira linha colorida da Intermediária
+COL_INTER_CONTA_FISCAL = 3        # C
+COL_INTER_CENTRO_CUSTO = 5        # E
+COL_FORMULA_MODELO = [1, 2, 4, 6, 7]  # A, B, D, F, G - colunas com formula VLOOKUP
+
+
+def localizar_fast_provisao(mes: int, ano: int) -> Path:
+    """Acha o arquivo 'Fast Provisão_<Mês>[_v#].xlsx' de versão mais alta na
+    pasta 'Provisões e Reclassificações' do Flash do mês. Ignora arquivos de
+    lock do Excel (começam com '~$')."""
+    pasta = resolver_pasta_ciclo(REDE_BASE / str(ano) / MESES_PASTA[mes], mes, "Flash") / "Provisões e Reclassificações"
+    if not pasta.exists():
+        raise FileNotFoundError(f"Pasta de Provisões e Reclassificações não encontrada: {pasta}")
+
+    candidatos = [
+        f for f in pasta.glob(f"Fast Provisão_{MESES_INGLES[mes]}*.xlsx") if not f.name.startswith("~$")
+    ]
+    if not candidatos:
+        raise FileNotFoundError(f"Nenhum arquivo 'Fast Provisão_{MESES_INGLES[mes]}*.xlsx' encontrado em {pasta}")
+
+    def versao(caminho: Path) -> int:
+        m = re.search(r"_v(\d+)\.xlsx$", caminho.name)
+        return int(m.group(1)) if m else 1
+
+    return max(candidatos, key=versao)
+
+
+def preencher_provisoes_flash(wb, mes: int, ano: int, log):
+    """Preenche as linhas coloridas (provisões/reclassificações) da aba
+    Intermediária a partir do Fast Provisão do mês (aba 'Ficha de
+    Solicitação', linha 13 em diante: coluna C=Conta, D=Centro, H=Valor).
+    Cada linha da ficha vira uma linha colorida (linha 13 -> Intermediária
+    linha 2, linha 14 -> linha 3, ...). Preenche só C, E e a coluna do mês
+    atual; arrasta pra cada linha nova a fórmula VLOOKUP (A, B, D, F, G) que
+    já existe na última linha colorida do arquivo (o "molde")."""
+    caminho_provisao = localizar_fast_provisao(mes, ano)
+    log(f"Lendo provisões de {caminho_provisao.name}...")
+
+    wb_prov = wb.Application.Workbooks.Open(str(caminho_provisao), ReadOnly=True, UpdateLinks=0)
+    try:
+        ws_prov = wb_prov.Worksheets("Ficha de Solicitação")
+        last_row_prov = ws_prov.Cells(ws_prov.Rows.Count, COL_PROVISAO_CONTA).End(XL_UP).Row
+        provisoes = []
+        for r in range(LINHA_PROVISAO_INICIO, last_row_prov + 1):
+            conta = ws_prov.Cells(r, COL_PROVISAO_CONTA).Value
+            if conta in (None, ""):
+                continue
+            centro = ws_prov.Cells(r, COL_PROVISAO_CENTRO).Value
+            valor = ws_prov.Cells(r, COL_PROVISAO_VALOR).Value
+            provisoes.append((conta, centro, valor))
+    finally:
+        wb_prov.Close(SaveChanges=False)
+
+    log(f"  {len(provisoes)} provisão(ões)/reclassificação(ões) encontrada(s).")
+    if not provisoes:
+        return
+
+    ws = wb.Worksheets("Intermediária")
+    ultima_linha_colorida = encontrar_primeira_linha_sem_cor(ws) - 1
+    capacidade = ultima_linha_colorida - LINHA_INTER_PROVISAO_INICIO + 1
+    if len(provisoes) > capacidade:
+        raise RuntimeError(
+            f"{len(provisoes)} provisões não cabem nas {capacidade} linhas coloridas disponíveis "
+            f"(linhas {LINHA_INTER_PROVISAO_INICIO}-{ultima_linha_colorida}) — inserir linhas novas "
+            "ainda não está automatizado. Insira manualmente (Ctrl+ com a linha inteira selecionada, "
+            "copiando o formato/cor da última linha colorida) e rode de novo."
+        )
+
+    col_mes = N_COLS_LABEL + mes
+    formulas_modelo = {
+        c: ws.Cells(ultima_linha_colorida, c).Formula for c in COL_FORMULA_MODELO
+    }
+
+    for i, (conta, centro, valor) in enumerate(provisoes):
+        r = LINHA_INTER_PROVISAO_INICIO + i
+        ws.Cells(r, COL_INTER_CONTA_FISCAL).Value = conta
+        ws.Cells(r, COL_INTER_CENTRO_CUSTO).Value = centro
+        ws.Cells(r, col_mes).Value = valor
+        for c, formula in formulas_modelo.items():
+            ws.Cells(r, c).Formula = re.sub(
+                rf"([A-Z]){ultima_linha_colorida}\b", rf"\g<1>{r}", formula
+            )
+
+    log(f"  {len(provisoes)} linha(s) colorida(s) preenchida(s) (linhas {LINHA_INTER_PROVISAO_INICIO}-{LINHA_INTER_PROVISAO_INICIO + len(provisoes) - 1}).")
+
+
 def encontrar_primeira_linha_sem_cor(ws) -> int:
     r = 2
     while r < 5000:
@@ -272,8 +376,8 @@ def gerar_historico_unidades_encerradas(mes, ano, ciclo, cabecalho_historico, li
 
 
 def atualizar_base_intermediaria(mes: int, ano: int, ciclo: str, pasta_saida: Path, sufixo_nome: str = "", log=print):
-    if ciclo != "Actual":
-        raise NotImplementedError("Só o Ciclo Actual está implementado por enquanto — Flash ainda não.")
+    if ciclo not in ("Actual", "Flash"):
+        raise ValueError(f"Ciclo '{ciclo}' desconhecido — só Actual e Flash são suportados.")
 
     centros_encerrados = carregar_centros_encerrados()
 
@@ -302,6 +406,9 @@ def atualizar_base_intermediaria(mes: int, ano: int, ciclo: str, pasta_saida: Pa
                 "A cópia abriu em modo somente leitura — provavelmente já está aberta por outro processo."
             )
         ws = wb.Worksheets("Intermediária")
+
+        if ciclo == "Flash":
+            preencher_provisoes_flash(wb, mes, ano, log)
 
         primeira_sem_cor = encontrar_primeira_linha_sem_cor(ws)
         last_row_antiga = ws.Cells(ws.Rows.Count, 1).End(XL_UP).Row
