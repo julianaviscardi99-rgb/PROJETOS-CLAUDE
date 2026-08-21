@@ -183,15 +183,28 @@ PASSOS = [
         "botoes": ["Gerar Check de Agrupamentos"],
     },
     {
-        "aba": "③  Base Intermediária",
-        "titulo": "Passo 3 · Atualizar KSB1 Pivot",
+        "aba": "③  Provisões",
+        "titulo": "Passo 3 · Provisões",
+        "descricao": (
+            "Só pro Ciclo Flash: cria a Base Intermediária Flash do mês (a partir do Actual "
+            "do mês anterior) e preenche as linhas coloridas com as provisões/reclassificações "
+            "do 'Fast Provisão' mais recente da pasta de rede. 'Lançar Provisões' cria o "
+            "arquivo pela primeira vez; 'Atualizar Provisões' relê o Fast Provisão (ex: depois "
+            "de uma correção) e atualiza um arquivo já criado. O Fast Provisão precisa estar "
+            "fechado e salvo antes de rodar qualquer um dos dois."
+        ),
+        "botoes": ["Lançar Provisões", "Atualizar Provisões"],
+    },
+    {
+        "aba": "④  Base Intermediária",
+        "titulo": "Passo 4 · Atualizar KSB1 Pivot",
         "descricao": (
             "Atualiza o KSB1 acumulado do ano (BASE_KSB1 + Pivot Tables nativas) com "
             "as linhas do mês e prepara os valores pra colar na Base Intermediária. "
             "Usa o Ciclo selecionado (Actual/Flash) pra escolher a extração certa do "
             "Passo 1 e também no nome do arquivo final. Depois de atualizar o Pivot, use "
             "'Finalização da Base Intermediária' pra colar os valores na Intermediária "
-            "(só Ciclo Actual por enquanto)."
+            "(no Flash, rode o Passo 3 — Lançar Provisões — antes)."
         ),
         "botoes": ["Atualizar Pivot KSB1", "Finalização da Base Intermediária"],
     },
@@ -414,6 +427,48 @@ def main():
         finally:
             _todos_botoes("normal")
 
+    def ao_clicar_lancar_provisoes():
+        from gerar_base_intermediaria import lancar_provisoes
+
+        mes_ano = ler_mes_ano()
+        if mes_ano is None:
+            return
+        mes, ano = mes_ano
+
+        # Provisões e' sempre Flash, independente do Ciclo selecionado no
+        # painel compartilhado (esse passo nem existe pro Actual).
+        pasta_saida = resolver_pasta_ciclo(REDE_BASE / str(ano) / MESES_PASTA[mes], mes, "Flash")
+
+        log_widget.delete("1.0", tk.END)
+        _todos_botoes("disabled")
+        try:
+            caminho = lancar_provisoes(mes, ano, pasta_saida, log=log)
+            messagebox.showinfo("Concluído", f"Provisões lançadas:\n{caminho}")
+        except Exception as e:
+            messagebox.showerror("Erro ao lançar as provisões", str(e))
+        finally:
+            _todos_botoes("normal")
+
+    def ao_clicar_atualizar_provisoes():
+        from gerar_base_intermediaria import atualizar_provisoes
+
+        mes_ano = ler_mes_ano()
+        if mes_ano is None:
+            return
+        mes, ano = mes_ano
+
+        pasta_saida = resolver_pasta_ciclo(REDE_BASE / str(ano) / MESES_PASTA[mes], mes, "Flash")
+
+        log_widget.delete("1.0", tk.END)
+        _todos_botoes("disabled")
+        try:
+            caminho = atualizar_provisoes(mes, ano, pasta_saida, log=log)
+            messagebox.showinfo("Concluído", f"Provisões atualizadas:\n{caminho}")
+        except Exception as e:
+            messagebox.showerror("Erro ao atualizar as provisões", str(e))
+        finally:
+            _todos_botoes("normal")
+
     def ao_clicar_pivot():
         from gerar_ksb1_mensal import gerar_ksb1_mensal
 
@@ -466,8 +521,10 @@ def main():
 
     botoes[0][0].config(command=ao_clicar_extrair)
     botoes[1][0].config(command=ao_clicar_check)
-    botoes[2][0].config(command=ao_clicar_pivot)
-    botoes[2][1].config(command=ao_clicar_finalizar_intermediaria)
+    botoes[2][0].config(command=ao_clicar_lancar_provisoes)
+    botoes[2][1].config(command=ao_clicar_atualizar_provisoes)
+    botoes[3][0].config(command=ao_clicar_pivot)
+    botoes[3][1].config(command=ao_clicar_finalizar_intermediaria)
 
     root.mainloop()
 

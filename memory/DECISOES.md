@@ -416,3 +416,21 @@
 - 2 achados nas linhas coloridas, ambos **confirmados pela usuária como esperados, não bugs**: (1) coluna D do arquivo real estava em branco porque a fórmula nunca foi arrastada lá de verdade (**o arquivo real estava incompleto — o script está certo**); (2) pequenas diferenças de centro/valor em 5 linhas porque a usuária foi revisando o Fast Provisão de v4 pra v5 depois que o arquivo real foi montado — o script sempre usa a versão mais alta (v5), então reflete a informação mais atual, não a desatualizada.
 
 **Ciclo Flash (básico) considerado completo.** Pendente: o quadro de comparação Flash x Actual pro caso do próprio Flash (a usuária vai detalhar), e a inserção automática de linhas coloridas quando as provisões excederem a capacidade existente.
+
+---
+
+## 2026-08-21 (continuação) — Cockpit reestruturado: novo Passo 3 "Provisões", antigo Passo 3 vira Passo 4
+
+**Decisão (a pedido da usuária):** o cockpit ganha um passo novo dedicado a Provisões (só Ciclo Flash), inserido ANTES do antigo Passo 3 (que passa a ser Passo 4):
+- **Passo 3 (novo) · Provisões** — 2 botões: **"Lançar Provisões"** (cria a Base Intermediária Flash do mês, copiando do Actual do mês anterior, e preenche as linhas coloridas pela primeira vez) e **"Atualizar Provisões"** (relê o Fast Provisão — útil se ela corrigir e salvar uma versão nova depois — e atualiza um arquivo já existente, sem criar cópia nova).
+- **Passo 4 (era Passo 3) · Base Intermediária** — mesmos 2 botões de antes ("Atualizar Pivot KSB1", "Finalização da Base Intermediária"), só renomeado.
+
+**Trava de segurança implementada:** antes de ler o Fast Provisão (nos dois botões de Provisões), o script confere se existe um arquivo de lock do Excel (`~$Fast Provisão_...xlsx`, mesmo padrão que já vimos na pasta) — se o arquivo estiver aberto, para com erro claro em vez de ler um estado potencialmente incompleto. Confirmado com a usuária: é o arquivo Fast Provisão que precisa estar fechado, não a Base Intermediária.
+
+**Refatoração no `gerar_base_intermediaria.py`:**
+- Novas funções: `arquivo_esta_aberto` (checa o lock), `lancar_provisoes` (cria + preenche), `atualizar_provisoes` (relê + limpa + repreenche num arquivo já existente), `limpar_provisoes` (apaga rótulos + 12 meses das linhas coloridas antes de repreencher, mesma filosofia de full-rebuild já usada na área branca), `localizar_base_intermediaria_flash_existente` (acha o arquivo já criado pelo Passo 3, versão mais recente).
+- `atualizar_base_intermediaria` (Finalização): pra Flash, não cria mais cópia nova nem chama `preencher_provisoes_flash` — usa o arquivo que o Passo 3 já criou. Pra Actual, comportamento idêntico a antes.
+
+**Validado de ponta a ponta (Julho Flash):** rodei Lançar Provisões isolado, depois Finalização em cima do mesmo arquivo — bateu exatamente igual ao teste anterior (área branca zero diferença, soma R$ 5.008.431,48; provisões com as mesmas 5 diferenças já explicadas por versão do Fast Provisão). A trava de arquivo aberto também foi testada ao vivo (bloqueou de verdade com o Fast Provisão aberto, e passou depois que a usuária fechou).
+
+**GUI (`atualizar_ksb1_gui.py`):** `PASSOS` reestruturado com o novo passo inserido no índice 2; wiring dos botões ajustado (índices deslocados pro antigo Passo 3). Não testado ao vivo pela interface ainda, só via linha de comando.

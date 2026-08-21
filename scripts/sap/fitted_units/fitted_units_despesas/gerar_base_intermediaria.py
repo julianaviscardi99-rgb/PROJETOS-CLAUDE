@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
 """
-Passo 4 do processo recorrente (Fitted Units Despesas, Ciclo Actual): monta a
-aba "Intermediária" do arquivo "Base Intermediária Fitted <Mes> <Ciclo> <Ano>.xlsx"
-a partir do Pivot_Inter. do "arquivo gigante" (BASE_KSB1) já gerado pelo Passo 3.
+Passo 3 (Provisões, so' Flash) e Passo 4 (Base Intermediária) do processo
+recorrente (Fitted Units Despesas). Passo 4 monta a aba "Intermediária" do
+arquivo "Base Intermediária Fitted <Mes> <Ciclo> <Ano>.xlsx" a partir do
+Pivot_Inter. do "arquivo gigante" (BASE_KSB1) já gerado pelo Passo 4 (botão
+"Atualizar Pivot KSB1", gerar_ksb1_mensal.py).
 
-Logica confirmada com a Juliana em 2026-08-21:
+Logica confirmada com a Juliana em 2026-08-21 (renumerado nesta mesma sessao:
+o antigo Passo 3 - Atualizar Pivot KSB1 + Finalização - virou Passo 4; o
+preenchimento de provisoes do Flash ganhou seu proprio Passo 3):
 1. Copia a Base Intermediária Actual do mes anterior -> nova copia versionada
-   (nunca sobrescreve o arquivo original), igual ao Passo 3.
-2. Le o Pivot_Inter. do BASE_KSB1 do mes/ciclo atual (ja gerado pelo Passo 3).
+   (nunca sobrescreve o arquivo original), igual ao Passo 4.
+2. Le o Pivot_Inter. do BASE_KSB1 do mes/ciclo atual (ja gerado pelo Passo 4).
 3. Na aba Intermediária, as linhas 2 ate a primeira linha SEM cor de fundo sao
    reservadas pra reclassificacoes/provisoes manuais (só existem de verdade no
    Flash) - no Actual ficam sempre em branco e NUNCA sao tocadas.
@@ -142,7 +146,7 @@ def localizar_base_ksb1_do_mes(mes: int, ano: int, ciclo: str) -> Path:
     caminho = pasta / nome
     if not caminho.exists():
         raise FileNotFoundError(
-            f"Não encontrei '{nome}' em {pasta} — rode o Passo 3 (Atualizar Pivot KSB1) "
+            f"Não encontrei '{nome}' em {pasta} — rode o Passo 4 (Atualizar Pivot KSB1) "
             "pra esse mês/Ciclo antes de rodar a Base Intermediária."
         )
     return caminho
@@ -262,10 +266,20 @@ COL_INTER_CENTRO_CUSTO = 5        # E
 COL_FORMULA_MODELO = [1, 2, 4, 6, 7]  # A, B, D, F, G - colunas com formula VLOOKUP
 
 
+def arquivo_esta_aberto(caminho: Path) -> bool:
+    """O Excel cria um arquivo de lock '~$<nome>' na mesma pasta enquanto
+    alguém (a usuária ou outra pessoa) está com o arquivo aberto. Usado pra
+    garantir que a leitura do Fast Provisão pega a versão salva de verdade,
+    não um estado intermediário ainda sendo editado."""
+    return (caminho.parent / f"~${caminho.name}").exists()
+
+
 def localizar_fast_provisao(mes: int, ano: int) -> Path:
     """Acha o arquivo 'Fast Provisão_<Mês>[_v#].xlsx' de versão mais alta na
     pasta 'Provisões e Reclassificações' do Flash do mês. Ignora arquivos de
-    lock do Excel (começam com '~$')."""
+    lock do Excel (começam com '~$'). Levanta erro claro se o arquivo
+    escolhido estiver aberto no momento (confirmado com a usuária em
+    2026-08-21: precisa garantir que está fechado e salvo antes de ler)."""
     pasta = resolver_pasta_ciclo(REDE_BASE / str(ano) / MESES_PASTA[mes], mes, "Flash") / "Provisões e Reclassificações"
     if not pasta.exists():
         raise FileNotFoundError(f"Pasta de Provisões e Reclassificações não encontrada: {pasta}")
@@ -280,7 +294,13 @@ def localizar_fast_provisao(mes: int, ano: int) -> Path:
         m = re.search(r"_v(\d+)\.xlsx$", caminho.name)
         return int(m.group(1)) if m else 1
 
-    return max(candidatos, key=versao)
+    escolhido = max(candidatos, key=versao)
+    if arquivo_esta_aberto(escolhido):
+        raise RuntimeError(
+            f"O arquivo '{escolhido.name}' está aberto no Excel agora — feche e salve antes de rodar de novo, "
+            "pra garantir que as provisões lidas são a versão final, não uma edição em andamento."
+        )
+    return escolhido
 
 
 def preencher_provisoes_flash(wb, mes: int, ano: int, log):
@@ -342,6 +362,104 @@ def preencher_provisoes_flash(wb, mes: int, ano: int, log):
     log(f"  {len(provisoes)} linha(s) colorida(s) preenchida(s) (linhas {LINHA_INTER_PROVISAO_INICIO}-{LINHA_INTER_PROVISAO_INICIO + len(provisoes) - 1}).")
 
 
+COL_PROVISAO_LIMPAR_FIM = N_COLS_LABEL + 12  # T - todos os 12 meses, alem dos rotulos A-H
+
+
+def limpar_provisoes(ws, log):
+    """Apaga o conteúdo das linhas coloridas (rótulos A-H + os 12 meses),
+    sem tocar na formatação/cor — usado pelo 'Atualizar Provisões' antes de
+    preencher de novo, mesmo espírito do full-rebuild da área branca (evita
+    sobrar provisão antiga se a lista nova tiver menos linhas que a anterior)."""
+    ultima_linha_colorida = encontrar_primeira_linha_sem_cor(ws) - 1
+    ws.Range(
+        ws.Cells(LINHA_INTER_PROVISAO_INICIO, 1), ws.Cells(ultima_linha_colorida, COL_PROVISAO_LIMPAR_FIM)
+    ).ClearContents()
+    log(f"  Linhas coloridas (2-{ultima_linha_colorida}) limpas antes de preencher de novo.")
+
+
+def localizar_base_intermediaria_flash_existente(mes: int, ano: int, pasta_saida: Path) -> Path:
+    """Acha a Base Intermediária Flash do mês já criada por 'Lançar
+    Provisões' (versão mais alta salva em pasta_saida) — usada por
+    'Atualizar Provisões' e pela Finalização (Passo 4) quando o ciclo é
+    Flash, que não criam mais uma cópia nova do zero."""
+    prefixo = f"Base Intermediária Fitted {MESES_INGLES[mes]} Flash {ano}"
+    candidatos = list(pasta_saida.glob(f"{prefixo}*.xlsx"))
+    if not candidatos:
+        raise FileNotFoundError(
+            f"Não encontrei nenhuma Base Intermediária Flash de {MESES_INGLES[mes]}/{ano} em {pasta_saida} — "
+            "rode 'Lançar Provisões' primeiro."
+        )
+    return max(candidatos, key=lambda p: p.stat().st_mtime)
+
+
+def lancar_provisoes(mes: int, ano: int, pasta_saida: Path, sufixo_nome: str = "", log=print) -> Path:
+    """Passo 3 (Provisões), botão 'Lançar Provisões': cria a Base
+    Intermediária Flash do mês (cópia do Actual do mês anterior) e preenche
+    as linhas coloridas pela primeira vez a partir do Fast Provisão."""
+    caminho_origem = localizar_base_intermediaria_mes_anterior(mes, ano)
+    log(f"Partindo da Base Intermediária Actual do mês anterior: {caminho_origem.name}")
+    pasta_saida.mkdir(parents=True, exist_ok=True)
+    nome_base = f"Base Intermediária Fitted {MESES_INGLES[mes]} Flash {ano}{sufixo_nome}.xlsx"
+    nome_saida = nome_com_versao(pasta_saida, nome_base)
+    caminho_saida = pasta_saida / nome_saida
+    log(f"Copiando {caminho_origem.name} -> {caminho_saida.name} ...")
+    shutil.copy2(caminho_origem, caminho_saida)
+
+    log("Abrindo Excel (instância isolada, oculta)...")
+    excel = win32com.client.DispatchEx("Excel.Application")
+    excel.Visible = False
+    excel.DisplayAlerts = False
+    excel.AskToUpdateLinks = False
+    try:
+        wb = excel.Workbooks.Open(str(caminho_saida), UpdateLinks=0, ReadOnly=False)
+        if wb.ReadOnly:
+            raise RuntimeError(
+                "A cópia abriu em modo somente leitura — provavelmente já está aberta por outro processo."
+            )
+        preencher_provisoes_flash(wb, mes, ano, log)
+        excel.CalculateFullRebuild()
+        log("Salvando...")
+        wb.Save()
+        wb.Close(SaveChanges=False)
+    finally:
+        excel.Quit()
+
+    log(f"\nProvisões lançadas: {caminho_saida}")
+    return caminho_saida
+
+
+def atualizar_provisoes(mes: int, ano: int, pasta_saida: Path, log=print) -> Path:
+    """Passo 3 (Provisões), botão 'Atualizar Provisões': relê o Fast
+    Provisão (versão mais alta no momento) e atualiza as linhas coloridas
+    da Base Intermediária Flash já existente (não cria cópia nova)."""
+    caminho_saida = localizar_base_intermediaria_flash_existente(mes, ano, pasta_saida)
+    log(f"Atualizando provisões em: {caminho_saida.name}")
+
+    log("Abrindo Excel (instância isolada, oculta)...")
+    excel = win32com.client.DispatchEx("Excel.Application")
+    excel.Visible = False
+    excel.DisplayAlerts = False
+    excel.AskToUpdateLinks = False
+    try:
+        wb = excel.Workbooks.Open(str(caminho_saida), UpdateLinks=0, ReadOnly=False)
+        if wb.ReadOnly:
+            raise RuntimeError(
+                "O arquivo abriu em modo somente leitura — provavelmente já está aberto por outro processo."
+            )
+        ws = wb.Worksheets("Intermediária")
+        limpar_provisoes(ws, log)
+        preencher_provisoes_flash(wb, mes, ano, log)
+        excel.CalculateFullRebuild()
+        log("Salvando...")
+        wb.Save()
+        wb.Close(SaveChanges=False)
+    finally:
+        excel.Quit()
+
+    log(f"\nProvisões atualizadas: {caminho_saida}")
+    return caminho_saida
+
+
 def encontrar_primeira_linha_sem_cor(ws) -> int:
     r = 2
     while r < 5000:
@@ -382,15 +500,22 @@ def atualizar_base_intermediaria(mes: int, ano: int, ciclo: str, pasta_saida: Pa
     centros_encerrados = carregar_centros_encerrados()
 
     caminho_base_ksb1 = localizar_base_ksb1_do_mes(mes, ano, ciclo)
-    caminho_origem_inter = localizar_base_intermediaria_mes_anterior(mes, ano)
-
-    log(f"Partindo da Base Intermediária Actual do mês anterior: {caminho_origem_inter.name}")
     pasta_saida.mkdir(parents=True, exist_ok=True)
-    nome_base = f"Base Intermediária Fitted {MESES_INGLES[mes]} {ciclo} {ano}{sufixo_nome}.xlsx"
-    nome_saida = nome_com_versao(pasta_saida, nome_base)
-    caminho_saida = pasta_saida / nome_saida
-    log(f"Copiando {caminho_origem_inter.name} -> {caminho_saida.name} ...")
-    shutil.copy2(caminho_origem_inter, caminho_saida)
+
+    if ciclo == "Actual":
+        caminho_origem_inter = localizar_base_intermediaria_mes_anterior(mes, ano)
+        log(f"Partindo da Base Intermediária Actual do mês anterior: {caminho_origem_inter.name}")
+        nome_base = f"Base Intermediária Fitted {MESES_INGLES[mes]} {ciclo} {ano}{sufixo_nome}.xlsx"
+        nome_saida = nome_com_versao(pasta_saida, nome_base)
+        caminho_saida = pasta_saida / nome_saida
+        log(f"Copiando {caminho_origem_inter.name} -> {caminho_saida.name} ...")
+        shutil.copy2(caminho_origem_inter, caminho_saida)
+    else:
+        # Flash: o arquivo ja foi criado pelo Passo 3 (botao "Lançar
+        # Provisões"), com as linhas coloridas ja preenchidas - so continua
+        # nele, nao cria copia nova nem repete as provisoes.
+        caminho_saida = localizar_base_intermediaria_flash_existente(mes, ano, pasta_saida)
+        log(f"Continuando na Base Intermediária Flash já criada pelo Passo 3: {caminho_saida.name}")
 
     log("Abrindo Excel (instância isolada, oculta)...")
     excel = win32com.client.DispatchEx("Excel.Application")
@@ -406,9 +531,6 @@ def atualizar_base_intermediaria(mes: int, ano: int, ciclo: str, pasta_saida: Pa
                 "A cópia abriu em modo somente leitura — provavelmente já está aberta por outro processo."
             )
         ws = wb.Worksheets("Intermediária")
-
-        if ciclo == "Flash":
-            preencher_provisoes_flash(wb, mes, ano, log)
 
         primeira_sem_cor = encontrar_primeira_linha_sem_cor(ws)
         last_row_antiga = ws.Cells(ws.Rows.Count, 1).End(XL_UP).Row
@@ -531,12 +653,21 @@ def atualizar_base_intermediaria(mes: int, ano: int, ciclo: str, pasta_saida: Pa
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 4:
-        print("Uso: python gerar_base_intermediaria.py <mes> <ano> <Actual>")
+    if len(sys.argv) not in (4, 5):
+        print("Uso: python gerar_base_intermediaria.py <mes> <ano> <Actual|Flash> [lancar_provisoes|atualizar_provisoes|finalizar]")
         sys.exit(1)
     _mes, _ano, _ciclo = int(sys.argv[1]), int(sys.argv[2]), sys.argv[3]
+    _acao = sys.argv[4] if len(sys.argv) == 5 else "finalizar"
     _pasta_saida = (
         Path(__file__).resolve().parent.parent.parent.parent.parent
         / "data" / "processed" / "fitted_units_despesas" / "base_intermediaria_teste"
     )
-    atualizar_base_intermediaria(_mes, _ano, _ciclo, _pasta_saida, sufixo_nome=" - TESTE VALIDAÇÃO")
+    if _acao == "lancar_provisoes":
+        lancar_provisoes(_mes, _ano, _pasta_saida, sufixo_nome=" - TESTE VALIDAÇÃO")
+    elif _acao == "atualizar_provisoes":
+        atualizar_provisoes(_mes, _ano, _pasta_saida)
+    elif _acao == "finalizar":
+        atualizar_base_intermediaria(_mes, _ano, _ciclo, _pasta_saida, sufixo_nome=" - TESTE VALIDAÇÃO")
+    else:
+        print(f"Ação desconhecida: {_acao}")
+        sys.exit(1)
