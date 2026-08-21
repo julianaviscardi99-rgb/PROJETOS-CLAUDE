@@ -369,3 +369,17 @@
 **Achado à parte, não é bug:** a coluna de Junho (mês anterior) no mesmo quadro ficou diferente entre o arquivo real de Julho e o meu teste (R$ 3.419.475,14 vs R$ 3.470.779,65, herdado do arquivo de Junho original) — usuária confirmou que foi uma **correção manual feita depois**, direto no arquivo de Julho, sem propagar de volta pro arquivo de Junho. Não afeta a lógica (o script nunca toca em meses passados dessa linha, só escreve a coluna do mês atual) — só registrado aqui pra não confundir numa validação futura.
 
 **Passo 4 (Ciclo Actual) considerado completo e validado** — cobre: full rebuild da Intermediária a partir do Pivot_Inter., exclusão de unidades encerradas com arquivo histórico separado, refresh da Pivot, e o quadro de comparação Flash x Actual.
+
+---
+
+## 2026-08-21 (continuação) — Quadro amarelo "Month/Flash/Actual/delta": fórmulas de Custos (H26/I26) corrigidas pra sempre apontar pro mês certo
+
+**Achado:** H26 (Custos, Flash) e I26 (Custos, Actual) do quadro amarelo abaixo do "(+) gain" ficavam **travadas na coluna do último mês que alguém editou a mão** (I26 = `=I11/1000`, sempre coluna I/julho, mesmo processando outro mês) — H26 nem era fórmula, era um valor fixo colado.
+
+**Confirmado com a usuária:** H26 = soma das linhas 18+19 (Flash) da coluna do mês atual, dividido por 1000 (keur). I26 = linha 11 (Grand Total, equivalente a somar 15+16) da coluna do mês atual, dividido por 1000. Faturamento (linha 25) fica de fora — usuária vai automatizar em outro momento.
+
+**Implementado** em `atualizar_comparacao_flash` (mesma função que já traz Despesas/Mão de Obra do Flash): reescreve H26 e I26 como fórmulas com a coluna do mês atual calculada dinamicamente (`_letra_coluna_mes`), em vez de valor fixo/coluna travada.
+
+**Validado (Julho):** H26 e I26 bateram exatamente com o arquivo real (R$ 6.760,75 e R$ 6.655,04, em milhares), agora como fórmula dinâmica em vez de valor/coluna fixos.
+
+**Passo 4 (Ciclo Actual) considerado completo** — cobre: rebuild da Intermediária, exclusão de unidades encerradas + histórico separado, refresh da Pivot, comparação Flash x Actual (linhas 18/19 e quadro Custos H26/I26). Faturamento (linha 25) e Ciclo Flash continuam pendentes, ambos por decisão da usuária de tratar depois.
