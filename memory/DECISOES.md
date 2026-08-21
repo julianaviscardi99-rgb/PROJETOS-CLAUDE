@@ -383,3 +383,15 @@
 **Validado (Julho):** H26 e I26 bateram exatamente com o arquivo real (R$ 6.760,75 e R$ 6.655,04, em milhares), agora como fórmula dinâmica em vez de valor/coluna fixos.
 
 **Passo 4 (Ciclo Actual) considerado completo** — cobre: rebuild da Intermediária, exclusão de unidades encerradas + histórico separado, refresh da Pivot, comparação Flash x Actual (linhas 18/19 e quadro Custos H26/I26). Faturamento (linha 25) e Ciclo Flash continuam pendentes, ambos por decisão da usuária de tratar depois.
+
+---
+
+## 2026-08-21 (continuação) — Câmbio (L25) passa a ser puxado do Flash
+
+**Confirmado com a usuária:** o câmbio (célula L25 da aba Pivot, usado no cálculo de "keur"/milhares de euros) só é alterado no arquivo Flash — o Actual deve sempre puxar exatamente o mesmo valor de lá, célula por célula (não depende de coluna de mês, é fixo).
+
+**Implementado** em `atualizar_comparacao_flash` (mesma função que já traz Despesas/Mão de Obra e ajusta H26/I26) — reaproveita a mesma instância já aberta do arquivo Flash.
+
+**Validado (Julho):** L25 = 5,849, igual ao real.
+
+**Nota à parte (não implementada agora):** usuária mostrou um quadro de Faturamento por Centro de Montagem (Forecast/Flash/Delta — São José dos Pinhais, Ibirité, Sorocaba, Goiana) que será automatizado depois, junto com o resto do Faturamento (linha 25 do quadro amarelo) — confirmado que por enquanto continua manual.

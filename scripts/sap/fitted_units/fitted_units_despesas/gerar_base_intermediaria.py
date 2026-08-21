@@ -87,6 +87,11 @@ COL_QUADRO_CUSTOS_FLASH = 8    # H
 COL_QUADRO_CUSTOS_ACTUAL = 9   # I
 LINHA_QUADRO_CUSTOS = 26
 
+# Cambio (L25): so e' alterado no Flash - o Actual sempre puxa o mesmo valor
+# de la, celula por celula (nao depende da coluna do mes, e' fixo).
+LINHA_CAMBIO = 25
+COL_CAMBIO = 12  # L
+
 XL_UP = -4162
 XL_TO_LEFT = -4159
 XL_FILL_DEFAULT = 0
@@ -163,6 +168,7 @@ def atualizar_comparacao_flash(excel, wb, mes: int, ano: int, log):
         ws_flash = wb_flash.Worksheets("Pivot")
         valor_despesas = ws_flash.Cells(LINHA_PIVOT_DESPESAS_PROPRIO, col).Value
         valor_mao_de_obra = ws_flash.Cells(LINHA_PIVOT_MAO_DE_OBRA_PROPRIO, col).Value
+        valor_cambio = ws_flash.Cells(LINHA_CAMBIO, COL_CAMBIO).Value
     finally:
         wb_flash.Close(SaveChanges=False)
 
@@ -170,6 +176,11 @@ def atualizar_comparacao_flash(excel, wb, mes: int, ano: int, log):
     ws.Cells(LINHA_PIVOT_DESPESAS_COMPARACAO, col).Value = valor_despesas
     ws.Cells(LINHA_PIVOT_MAO_DE_OBRA_COMPARACAO, col).Value = valor_mao_de_obra
     log(f"  Despesas={valor_despesas:,.2f} | Mão de Obra={valor_mao_de_obra:,.2f}")
+
+    # Cambio (L25) so e' alterado no Flash - o Actual sempre puxa o mesmo
+    # valor de la, celula por celula (confirmado com a usuaria em 2026-08-21).
+    ws.Cells(LINHA_CAMBIO, COL_CAMBIO).Value = valor_cambio
+    log(f"  Câmbio (L25) = {valor_cambio} (puxado do Flash).")
 
     # Quadro amarelo "Month/Flash/Actual/delta": H26 (Custos, Flash) e I26
     # (Custos, Actual) ficavam travados na coluna do ultimo mes editado a mao
