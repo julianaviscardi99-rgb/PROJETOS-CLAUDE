@@ -158,9 +158,6 @@ TEXTO_CLARO = "#111111"
 TEXTO_SECUNDARIO = "#5a5c60"
 LOG_BG = "#ffffff"
 LOG_FG = "#111111"
-BG_RODAPE = "#ffffff"
-TREAD_DARK = "#1f2126"
-TREAD_LINE = "#c7c9cc"
 
 PASSOS = [
     {
@@ -196,22 +193,6 @@ PASSOS = [
         "botao": "Atualizar Pivot KSB1",
     },
 ]
-
-
-def desenhar_rastro_pneu(canvas, largura, altura):
-    """Desenha uma faixa com padrao de sulco de pneu (blocos repetidos),
-    puramente vetorial via Canvas — sem depender de imagem externa,
-    mesmo espirito do logo embutido em base64."""
-    y_centro = altura // 2
-    canvas.create_line(0, y_centro, largura, y_centro, fill=TREAD_LINE, width=1)
-    bloco_w, vao = 12, 7
-    x = 4
-    while x < largura - bloco_w:
-        canvas.create_rectangle(
-            x, 3, x + bloco_w, altura - 3,
-            fill=TREAD_DARK, outline="",
-        )
-        x += bloco_w + vao
 
 
 def _configurar_estilo(root):
@@ -455,11 +436,6 @@ def main():
     botoes[0].config(command=ao_clicar_extrair)
     botoes[1].config(command=ao_clicar_check)
     botoes[2].config(command=ao_clicar_pivot)
-
-    rastro_canvas = tk.Canvas(root, height=18, bg=BG_RODAPE, highlightthickness=0)
-    rastro_canvas.pack(fill=tk.X, side=tk.BOTTOM)
-    root.update_idletasks()
-    desenhar_rastro_pneu(rastro_canvas, root.winfo_width(), 18)
 
     root.mainloop()
 
