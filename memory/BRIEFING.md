@@ -3,6 +3,24 @@
 > Manter apenas as últimas 2 sessões inline — sessões mais antigas vão para long_term/.
 
 ---
+## Continuação 2026-08-21 — Fitted Units Despesas: implementada a opção 1 (Ciclo já na extração), decisão pendente de 2026-08-19 fechada
+
+- **Retomada rápida no início da sessão:** recapitulei pra usuária o estado de 2026-08-19 (Passo 3 validado com julho Actual, GUI cockpit aprovada visualmente, mas ainda não em produção) e a decisão pendente das 3 opções pra resolver o risco de o Passo 3 pegar a extração errada (Flash vs Actual) do mesmo mês. Ela confirmou direto: **opção 1 (recomendada) — marcar o Ciclo já na extração.**
+- **Implementado nesta sessão** (detalhe técnico completo em `memory/DECISOES.md` → "2026-08-21"):
+  - `scripts/sap/fitted_units/_shared/ksb1_core.py`: novas funções `prefixo_arquivo_ksb1`, `nome_arquivo_ksb1` e `encontrar_arquivo_ksb1` (busca pelo Ciclo pedido, com fallback pra arquivos antigos sem Ciclo no nome — meses de jan-jul/2026 continuam funcionando sem re-extrair nada).
+  - `atualizar_ksb1_gui.py` (Passo 1, `extrair_um`/`rodar`): grava o Ciclo no nome do arquivo bruto (ex: `KSB1 - Fitted Units 07.2026 - Gestoriais - Actual.XLSX`), lendo o Ciclo do painel compartilhado (Mês/Ano/Ciclo) da GUI.
+  - `check_agrupamentos_ksb1.py` (Passo 2, `gerar_check`): agora recebe Ciclo, busca os arquivos certos e nomeia a saída incluindo o Ciclo (`Check de agrupamentos - MM.AAAA - Ciclo.xlsx`).
+  - `gerar_ksb1_mensal.py` (Passo 3, `decidir_fonte_e_ler_linhas`): busca a extração do Ciclo pedido em vez da mais recente por data de modificação — **é exatamente o bug que motivou a decisão de 2026-08-19.**
+- **Testado (sem tocar rede/SAP):** `python -m py_compile` nos 4 arquivos + import real de todos os módulos (assinaturas conferidas) + 5 cenários de teste unitário do `encontrar_arquivo_ksb1` em pasta temporária (só arquivo antigo sem Ciclo, Flash+Actual novos coexistindo, antigo+novo Actual coexistindo, mês sem nenhum arquivo, e o caso mais delicado — arquivo antigo ambíguo + arquivo novo de OUTRO Ciclo coexistindo, pra garantir que o fallback não pega o Ciclo errado por engano). Todos passaram.
+- **`extrair_ksb1.py` (script standalone antigo, raiz de `fitted_units_despesas/`) não foi tocado** — confirmado (grep) que nenhum `.bat`/`.vbs`/atalho em uso chama ele; o fluxo real de produção é 100% via `atualizar_ksb1_gui.py`. Fora do escopo desta mudança.
+- **Nenhum dado real foi alterado** — só código (4 arquivos `.py`) e documentação (`DECISOES.md`, este `BRIEFING.md`). Nada commitado ainda nesta sessão.
+- **Pendente pra fechar de vez a promoção do cockpit pra produção** (item #2 já identificado em 2026-08-19, ainda em aberto):
+  1. Trocar o botão "Atualizar KSB1 Pivot" da GUI pra chamar `gerar_ksb1_mensal.py` (hoje ainda chama o script antigo/revertido `gerar_base_intermediaria.py`).
+  2. Apontar a pasta de saída do Passo 3 pra rede oficial (`<REDE_BASE>/<ano>/<MM - Mês>/<MM>_<Mês3>_<Ciclo>/`) — hoje ainda escreve em `data/processed/fitted_units_despesas/base_ksb1_teste/`.
+  3. Passo 4 (ler `Pivot_Inter.` e colar nas linhas brancas da `Intermediária`, já excluindo unidades encerradas) continua não escrito.
+- **Pergunta em aberto pra usuária:** ela quer seguir agora pros itens 1-2 acima (colocar o Passo 3 em produção de fato), ou prefere revisar/testar mais a mudança do Ciclo antes?
+
+---
 ## Continuação 2026-08-19 — Retomada Fitted Units Despesas: Flash vs Actual, check de agrupamentos confirmado, comparação July em andamento (compare contra Actual, não Flash)
 
 - **Recap pedido pela usuária no início:** confirmado que passo 1 (extração KSB1 + check de agrupamentos) está OK/estável desde 2026-08-10, sem pendência. Já o arquivo `KSB1 July` gigante (passo 3, BASE_KSB1 + Pivot) **não estava validado** — o teste às cegas de 2026-08-14 (`data/processed/fitted_units_despesas/base_ksb1_teste/KSB1 July Flash 2026 - TESTE VALIDAÇÃO.xlsx`, 51.039 linhas) nunca teve o resultado da comparação conferido (o script exploratório `comparar_julho.py` daquela sessão era só de scratchpad, se perdeu, e a sessão encerrou antes de rodar).

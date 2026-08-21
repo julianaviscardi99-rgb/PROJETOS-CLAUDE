@@ -196,3 +196,19 @@
 **Impacto pra próxima etapa (passo 4, ainda não escrito):** quando o script que lê `Pivot_Inter.` e cola o valor do mês nas linhas brancas da `Intermediária` for implementado, ele precisa **excluir qualquer combinação cujo Centro de Custo pertença a uma unidade "encerrada"** antes de colar — senão vai tentar preencher uma linha que não existe mais na planilha manual.
 
 **Ainda pendente:** promover `gerar_ksb1_mensal.py` da pasta de teste local pra pasta de rede oficial (regra do processo confirmada em 2026-08-14 — só faz isso depois da validação, que agora está feita) e trocar o botão da GUI pra chamar esse script. Não foi feito ainda nesta sessão — perguntar à usuária se quer seguir pra isso agora.
+
+---
+
+## 2026-08-21 — Ciclo (Actual/Flash) passa a ser marcado já na extração da KSB1, e o Passo 3 busca por Ciclo em vez de "arquivo mais recente"
+
+**Decisão (opção 1, recomendada, escolhida pela usuária das 3 propostas em 2026-08-19):** o Passo 1 (extração, `atualizar_ksb1_gui.py` → `extrair_um`) grava o Ciclo no nome do arquivo bruto (`nome_arquivo_ksb1` em `ksb1_core.py`, ex: `KSB1 - Fitted Units 07.2026 - Gestoriais - Actual.XLSX`). O Passo 2 (Check, `check_agrupamentos_ksb1.py` → `gerar_check`) e o Passo 3 (`gerar_ksb1_mensal.py` → `decidir_fonte_e_ler_linhas`) agora recebem o Ciclo como parâmetro e buscam pelo arquivo daquele Ciclo específico (`ksb1_core.encontrar_arquivo_ksb1`), em vez do arquivo com data de modificação mais recente na pasta do mês.
+
+**Motivo:** achado da sessão de 2026-08-19 — se a usuária extrai a KSB1 2x no mês (Flash dia 1, Actual dia ~5) e depois regera/reroda o Flash com a extração do Actual já disponível, o script antigo pegaria por engano os dados do Actual (mais recente por `mtime`) com o nome do Flash. Mesmo tipo de inconsistência que motivou a comparação contra Actual (não Flash) na validação de julho.
+
+**Compatibilidade com meses já extraídos (jan-jul/2026, sem Ciclo no nome do arquivo):** `encontrar_arquivo_ksb1` primeiro procura o arquivo com o Ciclo explícito no nome; se não achar, cai para o arquivo mais recente com o prefixo antigo (sem Ciclo) — mas nunca escolhe um arquivo que pertença claramente a OUTRO Ciclo (nome novo, com sufixo `- Flash`/`- Actual` diferente do pedido), pra não repetir o mesmo bug com dados mistos antigo/novo no mesmo mês. Testado com 4 cenários (só arquivo antigo, Flash+Actual novos coexistindo, antigo+novo Actual coexistindo, mês inexistente) — todos corretos.
+
+**Também ajustado:** nome de saída do "Check de agrupamentos" passou a incluir o Ciclo (`Check de agrupamentos - MM.AAAA - Ciclo.xlsx`), já que agora cada Check é específico de um Ciclo, não mais do mês só.
+
+**Não alterado:** `extrair_ksb1.py` (script standalone antigo na raiz de `fitted_units_despesas/`) — confirmado que não é chamado por nenhum `.bat`/`.vbs`/atalho em uso (o fluxo real é todo via `atualizar_ksb1_gui.py`); ficou como código morto, fora do escopo desta mudança.
+
+**Ainda pendente (não fechado nesta sessão):** trocar o botão "Atualizar KSB1 Pivot" da GUI pra chamar `gerar_ksb1_mensal.py` (hoje ainda chama o script antigo `gerar_base_intermediaria.py`) e apontar a pasta de saída do Passo 3 pra rede oficial (hoje ainda escreve em `data/processed/fitted_units_despesas/base_ksb1_teste/`). Isso é o item #2 da lista de pendências antes de "colocar o cockpit em produção" — perguntar à usuária se quer seguir pra isso agora.

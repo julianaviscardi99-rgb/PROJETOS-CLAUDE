@@ -12,6 +12,8 @@ import win32com.client
 
 BU = {"nome": "Fitted Units", "kstgr": "0495", "disvar": "/DESPFITTED"}
 
+CICLOS = ("Actual", "Flash")
+
 REDE_BASE = Path(
     r"\\FSS024-01BR.group.pirelli.com\GFU_DAC\Custos Fitted Units\Resultados Fitted"
 )
@@ -120,6 +122,46 @@ def voltar_para_selecao(session, log):
         # Nao caiu na tela de selecao esperada: reabre a transacao do zero
         # como rede de seguranca.
         abrir_ksb1(session, log)
+
+
+def prefixo_arquivo_ksb1(bu_nome: str, mes: int, ano: int, agrup_label: str) -> str:
+    return f"KSB1 - {bu_nome} {mes:02d}.{ano} - {agrup_label}"
+
+
+def nome_arquivo_ksb1(bu_nome: str, mes: int, ano: int, agrup_label: str, ciclo: str) -> str:
+    # Ciclo faz parte do nome desde 2026-08-21 (antes disso, o Passo 3 pegava
+    # a extracao mais recente por data de modificacao em vez de casar com o
+    # Ciclo pedido - se a usuaria extraisse Flash e depois Actual no mesmo
+    # mes, regerar o Flash pegava por engano os dados do Actual).
+    return f"{prefixo_arquivo_ksb1(bu_nome, mes, ano, agrup_label)} - {ciclo}.XLSX"
+
+
+def encontrar_arquivo_ksb1(pasta: Path, bu_nome: str, mes: int, ano: int, agrup_label: str, ciclo: str) -> Path:
+    """Acha o arquivo bruto da KSB1 (Gestoriais/Sem Agrupamento) do mes/ano,
+    do Ciclo pedido (ver nome_arquivo_ksb1). Para meses extraidos antes da
+    mudanca de 2026-08-21 (sem Ciclo no nome do arquivo), cai para o arquivo
+    mais recente com o prefixo antigo - mas nunca escolhe um arquivo que
+    pertenca claramente a OUTRO Ciclo, para nao repetir o bug que motivou
+    essa mudanca."""
+    prefixo_base = prefixo_arquivo_ksb1(bu_nome, mes, ano, agrup_label)
+    prefixo_ciclo = f"{prefixo_base} - {ciclo}"
+
+    candidatos_ciclo = sorted(pasta.glob(f"{prefixo_ciclo}*.XLSX"), key=lambda p: p.stat().st_mtime)
+    if candidatos_ciclo:
+        return candidatos_ciclo[-1]
+
+    prefixos_outros_ciclos = tuple(f"{prefixo_base} - {c}" for c in CICLOS if c != ciclo)
+    candidatos_antigos = [
+        p for p in pasta.glob(f"{prefixo_base}*.XLSX")
+        if not p.stem.startswith(prefixos_outros_ciclos)
+    ]
+    if not candidatos_antigos:
+        raise FileNotFoundError(
+            f"Não encontrei nenhum arquivo do Ciclo '{ciclo}' (nem versão antiga sem Ciclo "
+            f"no nome) começando com '{prefixo_base}' em {pasta}"
+        )
+    candidatos_antigos.sort(key=lambda p: p.stat().st_mtime)
+    return candidatos_antigos[-1]
 
 
 def nome_com_versao(pasta: Path, nome_base: str) -> str:

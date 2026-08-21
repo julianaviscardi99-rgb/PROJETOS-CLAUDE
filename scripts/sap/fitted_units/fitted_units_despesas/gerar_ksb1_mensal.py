@@ -34,14 +34,16 @@ import win32com.client
 from openpyxl import load_workbook
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "_shared"))
-from ksb1_core import BU, MESES_PASTA, REDE_BASE, nome_com_versao  # noqa: E402
+from ksb1_core import (  # noqa: E402
+    BU,
+    MESES_PASTA,
+    REDE_BASE,
+    encontrar_arquivo_ksb1,
+    nome_com_versao,
+)
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from check_agrupamentos_ksb1 import (  # noqa: E402
-    eh_conta_ignorada,
-    encontrar_arquivo,
-    linha_e_subtotal,
-)
+from check_agrupamentos_ksb1 import eh_conta_ignorada, linha_e_subtotal  # noqa: E402
 
 MESES_INGLES = {
     1: "January", 2: "February", 3: "March", 4: "April",
@@ -61,14 +63,17 @@ def _abrev(mes: int) -> str:
     return MESES_PASTA[mes].split(" - ")[1]
 
 
-def decidir_fonte_e_ler_linhas(mes: int, ano: int, log=print):
+def decidir_fonte_e_ler_linhas(mes: int, ano: int, ciclo: str, log=print):
     """Decide Gestoriais vs Sem Agrupamento (mesma regra do check_agrupamentos_ksb1)
     e devolve as linhas de detalhe completas (18 colunas, A-R do BASE_KSB1),
     ja filtradas (sem subtotal, sem conta em branco, excluindo contas do
-    Check 1 se for usado o Sem Agrupamento)."""
+    Check 1 se for usado o Sem Agrupamento). As extracoes brutas usadas sao
+    sempre do Ciclo pedido (ver ksb1_core.encontrar_arquivo_ksb1) - nao mais
+    "a mais recente por data de modificacao", que podia pegar por engano a
+    extracao de outro Ciclo do mesmo mes."""
     pasta_mes = REDE_BASE / str(ano) / "00.Extração Base KSB1" / MESES_PASTA[mes]
-    arquivo_gest = encontrar_arquivo(pasta_mes, f"KSB1 - {BU['nome']} {mes:02d}.{ano} - Gestoriais")
-    arquivo_sem = encontrar_arquivo(pasta_mes, f"KSB1 - {BU['nome']} {mes:02d}.{ano} - Sem Agrupamento")
+    arquivo_gest = encontrar_arquivo_ksb1(pasta_mes, BU["nome"], mes, ano, "Gestoriais", ciclo)
+    arquivo_sem = encontrar_arquivo_ksb1(pasta_mes, BU["nome"], mes, ano, "Sem Agrupamento", ciclo)
 
     def linhas_completas(caminho):
         wb = load_workbook(caminho, data_only=True)
@@ -205,7 +210,7 @@ def colar_linhas_e_atualizar_pivots(caminho_copia: Path, linhas_novas: list, log
 
 
 def gerar_ksb1_mensal(mes: int, ano: int, ciclo: str, pasta_saida: Path, sufixo_nome: str = "", log=print) -> Path:
-    linhas_novas, fonte, arquivo_fonte = decidir_fonte_e_ler_linhas(mes, ano, log)
+    linhas_novas, fonte, arquivo_fonte = decidir_fonte_e_ler_linhas(mes, ano, ciclo, log)
 
     caminho_origem = localizar_ksb1_actual_anterior(mes, ano)
     log(f"Partindo do Actual do mês anterior: {caminho_origem.name}")

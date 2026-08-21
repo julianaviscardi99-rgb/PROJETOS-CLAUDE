@@ -41,6 +41,7 @@ from ksb1_core import (  # noqa: E402
     REDE_BASE,
     abrir_ksb1,
     connect_session,
+    nome_arquivo_ksb1,
     nome_com_versao,
     voltar_para_selecao,
 )
@@ -52,7 +53,7 @@ LOGO_PIRELLI_B64 = (
 )
 
 
-def extrair_um(session, mes, ano, koagr, agrup_label, log):
+def extrair_um(session, mes, ano, ciclo, koagr, agrup_label, log):
     import calendar
 
     ultimo_dia = calendar.monthrange(ano, mes)[1]
@@ -68,13 +69,13 @@ def extrair_um(session, mes, ano, koagr, agrup_label, log):
     wnd.FindById("usr/ctxtR_BUDAT-HIGH").Text = data_ate
     wnd.FindById("usr/ctxtP_DISVAR").Text = BU["disvar"]
 
-    log(f"Executando KSB1 ({agrup_label})...")
+    log(f"Executando KSB1 ({agrup_label}, Ciclo {ciclo})...")
     session.FindById("wnd[0]").SendVKey(8)
 
     pasta_rede = REDE_BASE / str(ano) / "00.Extração Base KSB1" / MESES_PASTA[mes]
     pasta_rede.mkdir(parents=True, exist_ok=True)
     nome_arquivo = nome_com_versao(
-        pasta_rede, f"KSB1 - {BU['nome']} {mes:02d}.{ano} - {agrup_label}.XLSX"
+        pasta_rede, nome_arquivo_ksb1(BU["nome"], mes, ano, agrup_label, ciclo)
     )
 
     session.FindById("wnd[0]/mbar/menu[0]/menu[3]/menu[1]").Select()
@@ -102,7 +103,7 @@ def extrair_um(session, mes, ano, koagr, agrup_label, log):
     voltar_para_selecao(session, log)
 
 
-def rodar(mes, ano, log_widget):
+def rodar(mes, ano, ciclo, log_widget):
     def log(msg):
         log_widget.insert(tk.END, msg + "\n")
         log_widget.see(tk.END)
@@ -130,10 +131,10 @@ def rodar(mes, ano, log_widget):
         )
         return
 
-    log(f"Extraindo KSB1 - {MESES_NOMES[mes]}/{ano}...")
+    log(f"Extraindo KSB1 - {MESES_NOMES[mes]}/{ano} (Ciclo {ciclo})...")
     try:
-        extrair_um(session, mes, ano, "gestoriais", "Gestoriais", log)
-        extrair_um(session, mes, ano, "", "Sem Agrupamento", log)
+        extrair_um(session, mes, ano, ciclo, "gestoriais", "Gestoriais", log)
+        extrair_um(session, mes, ano, ciclo, "", "Sem Agrupamento", log)
     except Exception as e:
         messagebox.showerror("Erro durante a extração", str(e))
         return
@@ -166,9 +167,10 @@ PASSOS = [
         "aba": "①  Extração",
         "titulo": "Passo 1 · Extrair KSB1",
         "descricao": (
-            "Baixa a KSB1 direto do SAP (Gestoriais + Sem Agrupamento) pro mês/ano "
-            "escolhido e salva os dois arquivos na área de rede. Pré-requisito: SAP "
-            "GUI aberto e logado na tela inicial (o script abre a transação sozinho)."
+            "Baixa a KSB1 direto do SAP (Gestoriais + Sem Agrupamento) pro mês/ano/Ciclo "
+            "escolhidos e salva os dois arquivos na área de rede, já identificados com o "
+            "Ciclo no nome. Pré-requisito: SAP GUI aberto e logado na tela inicial (o "
+            "script abre a transação sozinho)."
         ),
         "botao": "Extrair KSB1 (Gestoriais + Sem Agrupamento)",
     },
@@ -177,7 +179,7 @@ PASSOS = [
         "titulo": "Passo 2 · Check de Agrupamentos",
         "descricao": (
             "Confere se toda conta contábil do Sem Agrupamento está vinculada a um "
-            "agrupamento gestorial, comparando com o arquivo Gestoriais do mesmo mês. "
+            "agrupamento gestorial, comparando com o arquivo Gestoriais do mesmo mês/Ciclo. "
             "Usa os arquivos já extraídos no Passo 1 — não acessa o SAP."
         ),
         "botao": "Gerar Check de Agrupamentos",
@@ -188,7 +190,8 @@ PASSOS = [
         "descricao": (
             "Atualiza o KSB1 acumulado do ano (BASE_KSB1 + Pivot Tables nativas) com "
             "as linhas do mês e prepara os valores pra colar na Base Intermediária. "
-            "Usa o Ciclo selecionado (Actual/Flash) só no nome do arquivo final."
+            "Usa o Ciclo selecionado (Actual/Flash) pra escolher a extração certa do "
+            "Passo 1 e também no nome do arquivo final."
         ),
         "botao": "Atualizar KSB1 Pivot",
     },
@@ -392,10 +395,11 @@ def main():
         if mes_ano is None:
             return
         mes, ano = mes_ano
+        ciclo = ciclo_var.get()
         log_widget.delete("1.0", tk.END)
         _todos_botoes("disabled")
         try:
-            rodar(mes, ano, log_widget)
+            rodar(mes, ano, ciclo, log_widget)
         finally:
             _todos_botoes("normal")
 
@@ -406,11 +410,12 @@ def main():
         if mes_ano is None:
             return
         mes, ano = mes_ano
+        ciclo = ciclo_var.get()
 
         log_widget.delete("1.0", tk.END)
         _todos_botoes("disabled")
         try:
-            caminho = gerar_check(mes, ano, log=log)
+            caminho = gerar_check(mes, ano, ciclo, log=log)
             messagebox.showinfo("Concluído", f"Check de agrupamentos gerado:\n{caminho}")
         except Exception as e:
             messagebox.showerror("Erro ao gerar o check", str(e))

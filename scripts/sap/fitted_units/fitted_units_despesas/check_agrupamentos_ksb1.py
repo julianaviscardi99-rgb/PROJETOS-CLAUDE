@@ -19,11 +19,15 @@ Regra de negocio (confirmada pela Juliana em 2026-08-10):
 Gera um arquivo "Check de agrupamentos - MM.YYYY.xlsx" na mesma pasta de rede
 do mes, com o resultado dos dois checks e o resumo da soma.
 """
+import sys
 from pathlib import Path
 
 from openpyxl import Workbook, load_workbook
 
 from atualizar_ksb1_gui import BU, MESES_PASTA, REDE_BASE, nome_com_versao
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "_shared"))
+from ksb1_core import encontrar_arquivo_ksb1  # noqa: E402
 
 IGNORAR_EXATAS = {
     "C23020JJ15",
@@ -73,19 +77,12 @@ def ler_linhas_detalhe(caminho: Path):
     return linhas
 
 
-def encontrar_arquivo(pasta: Path, prefixo: str) -> Path:
-    candidatos = sorted(pasta.glob(f"{prefixo}*.XLSX"), key=lambda p: p.stat().st_mtime)
-    if not candidatos:
-        raise FileNotFoundError(f"Não encontrei nenhum arquivo começando com '{prefixo}' em {pasta}")
-    return candidatos[-1]
-
-
-def gerar_check(mes: int, ano: int, log=print) -> Path:
+def gerar_check(mes: int, ano: int, ciclo: str, log=print) -> Path:
     pasta_mes = REDE_BASE / str(ano) / "00.Extração Base KSB1" / MESES_PASTA[mes]
 
-    arquivo_gest = encontrar_arquivo(pasta_mes, f"KSB1 - {BU['nome']} {mes:02d}.{ano} - Gestoriais")
-    arquivo_sem = encontrar_arquivo(pasta_mes, f"KSB1 - {BU['nome']} {mes:02d}.{ano} - Sem Agrupamento")
-    log(f"Comparando:\n  Gestoriais: {arquivo_gest.name}\n  Sem Agrupamento: {arquivo_sem.name}")
+    arquivo_gest = encontrar_arquivo_ksb1(pasta_mes, BU["nome"], mes, ano, "Gestoriais", ciclo)
+    arquivo_sem = encontrar_arquivo_ksb1(pasta_mes, BU["nome"], mes, ano, "Sem Agrupamento", ciclo)
+    log(f"Comparando (Ciclo {ciclo}):\n  Gestoriais: {arquivo_gest.name}\n  Sem Agrupamento: {arquivo_sem.name}")
 
     linhas_sem = ler_linhas_detalhe(arquivo_sem)
     linhas_gest = ler_linhas_detalhe(arquivo_gest)
@@ -136,7 +133,7 @@ def gerar_check(mes: int, ano: int, log=print) -> Path:
         ws.append(["Check 2: todas as contas contábeis do Sem Agrupamento (após o Check 1) estão no agrupamento gestorial."])
 
     ws.append([])
-    ws.append(["Resumo da conferência", f"{mes:02d}.{ano}"])
+    ws.append(["Resumo da conferência", f"{mes:02d}.{ano} - {ciclo}"])
     ws.append(["Total Sem Agrupamento (excluindo contas do Check 1)", total_sem_filtrado])
     ws.append(["Total Gestoriais", total_gest])
     ws.append(["Diferença", diferenca])
@@ -145,7 +142,7 @@ def gerar_check(mes: int, ano: int, log=print) -> Path:
         "OK - valores batem" if abs(diferenca) < 0.01 else "ATENÇÃO - valores não batem, ver Check 2",
     ])
 
-    nome_saida = nome_com_versao(pasta_mes, f"Check de agrupamentos - {mes:02d}.{ano}.xlsx")
+    nome_saida = nome_com_versao(pasta_mes, f"Check de agrupamentos - {mes:02d}.{ano} - {ciclo}.xlsx")
     caminho_saida = pasta_mes / nome_saida
     wb_out.save(caminho_saida)
     log(f"\nArquivo gerado: {caminho_saida}")
@@ -158,9 +155,7 @@ def gerar_check(mes: int, ano: int, log=print) -> Path:
 
 
 if __name__ == "__main__":
-    import sys
-
-    if len(sys.argv) != 3:
-        print("Uso: python check_agrupamentos_ksb1.py <mes> <ano>")
+    if len(sys.argv) != 4:
+        print("Uso: python check_agrupamentos_ksb1.py <mes> <ano> <Actual|Flash>")
         sys.exit(1)
-    gerar_check(int(sys.argv[1]), int(sys.argv[2]))
+    gerar_check(int(sys.argv[1]), int(sys.argv[2]), sys.argv[3])
