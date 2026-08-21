@@ -179,14 +179,35 @@ def colar_linhas_e_atualizar_pivots(caminho_copia: Path, linhas_novas: list, log
         n = len(linhas_novas)
         log(f"BASE_KSB1: última linha existente = {last_row}. Colando {n} linha(s) nova(s) (linhas {last_row + 1}-{last_row + n})...")
 
-        destino_dados = ws.Range(ws.Cells(last_row + 1, 1), ws.Cells(last_row + n, N_COLS_BRUTO))
-        destino_dados.Value = linhas_novas
+        # Colar linha por linha, NUNCA o bloco inteiro de uma vez: escrever um
+        # array grande via Range.Value em uma unica chamada COM pode corromper
+        # aleatoriamente algumas celulas em erro #N/A (bug de marshalling do
+        # pywin32/COM, sem relacao com o conteudo - achado e confirmado
+        # testando gerar_base_intermediaria.py ao vivo em 2026-08-21: 166
+        # erros colando tudo de uma vez, 25 em blocos de 50, ZERO linha por
+        # linha). Nenhum arquivo de producao foi afetado ate agora (confirmado
+        # que este script nunca rodou de verdade contra a rede), mas a mesma
+        # proteção foi aplicada aqui preventivamente.
+        for i, linha in enumerate(linhas_novas):
+            r = last_row + 1 + i
+            ws.Range(ws.Cells(r, 1), ws.Cells(r, N_COLS_BRUTO)).Value = [linha]
 
         last_row_pos_escrita = ws.Cells(ws.Rows.Count, 1).End(XL_UP).Row
         if last_row_pos_escrita != last_row + n:
             raise RuntimeError(
                 f"Depois de colar, a última linha em memória é {last_row_pos_escrita}, "
                 f"esperava {last_row + n} — a escrita não aconteceu como esperado."
+            )
+
+        log("Verificando se alguma célula foi gravada como erro (#N/A) durante a colagem...")
+        conferencia = ws.Range(ws.Cells(last_row + 1, 1), ws.Cells(last_row + n, N_COLS_BRUTO)).Value
+        celulas_com_erro = sum(
+            1 for linha in conferencia for v in linha if isinstance(v, int) and v < 0
+        )
+        if celulas_com_erro:
+            raise RuntimeError(
+                f"{celulas_com_erro} célula(s) gravada(s) como erro (#N/A) mesmo colando linha por linha — "
+                "abortando sem salvar."
             )
 
         log("Arrastando fórmulas das colunas S:AI para as linhas novas (AutoFill)...")
