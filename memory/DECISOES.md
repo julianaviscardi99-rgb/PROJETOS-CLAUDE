@@ -290,3 +290,24 @@
 **Correção:** nova função `resolver_pasta_ciclo(pasta_mes, mes, ciclo)` em `ksb1_core.py` — tenta o nome padrão (abreviação); se não existir, cai para qualquer pasta existente que bata com `<MM>_*_<Ciclo>` (tolera a exceção sem precisar de uma lista hardcoded de meses problemáticos); se nada existir (mês/ciclo novo, pasta nunca criada), devolve o caminho padrão mesmo assim, pra quem chama decidir se cria (saída nova) ou reporta erro (entrada esperada). Aplicada em `localizar_ksb1_actual_anterior` (`gerar_ksb1_mensal.py`) e na construção de `pasta_saida` no botão "Atualizar Pivot KSB1" (`atualizar_ksb1_gui.py`).
 
 **Validado:** meses 1-8/2026 resolvem certo agora (antes, mes=4 e mes=5 davam `FileNotFoundError` em `localizar_ksb1_actual_anterior`).
+
+---
+
+## 2026-08-21 (continuação) — Confirmação completa Fev-Jul/2026 (Actual): todos os meses batem 100% com o valor real fechado
+
+**Pedido da usuária:** estender a mesma checagem linha a linha (feita antes só pra Jan/Jul) para Fev-Jul/2026, Ciclo Actual.
+
+**Resultado (mesmo método: KSB1 bruto agrupado por (Conta Fiscal, Centro de Custo) vs coluna do mês na `Intermediária` real):**
+
+| Mês | Diferença total | Combinações c/ diferença | Explicação |
+|---|---|---|---|
+| Fev | R$ 286.477,34 | 31 | 100% unidade encerrada |
+| Mar | R$ 299.116,79 | 36 | 100% unidade encerrada |
+| Abr | R$ 133.298,22 | 19 | 100% unidade encerrada |
+| Mai | R$ 116.537,77 | 17 | 100% unidade encerrada |
+| Jun | R$ 186.692,70 | 18 (16 unid. encerrada + 2 que se cancelam) | ver abaixo |
+| Jul | R$ 112.275,58 | 16 | 100% unidade encerrada (reconfirma 2026-08-19) |
+
+**Único ponto que não é "unidade encerrada" (Junho):** par `N151420000` nos centros `8295` (-R$354,60) e `8297` (+R$354,60), líquido R$ 0,00 — **não é problema novo**, é a mesma inconsistência já documentada em 2026-08-11 (linha 752 da planilha manual: "REVISAR TODOS OS MESES, TROCAR DE 8297 PARA CC FIXO 8295"). Ajuste manual conhecido, efeito líquido zero.
+
+**Conclusão:** Jan-Jul/2026 (Ciclo Actual) batem 100% com o valor real fechado — toda diferença é explicada por regra de negócio já documentada (unidades encerradas + a inconsistência conhecida do centro 8295/8297). Zero diferença sem explicação em qualquer um dos 7 meses. A mudança do Ciclo e a correção da lacuna de dados (Jan/Fev/Mar/Jun extraídos nesta sessão) não introduziram nenhum problema de valor.
