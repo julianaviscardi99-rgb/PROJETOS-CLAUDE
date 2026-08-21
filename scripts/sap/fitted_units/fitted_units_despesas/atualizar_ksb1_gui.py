@@ -193,7 +193,7 @@ PASSOS = [
             "Usa o Ciclo selecionado (Actual/Flash) pra escolher a extração certa do "
             "Passo 1 e também no nome do arquivo final."
         ),
-        "botao": "Atualizar KSB1 Pivot",
+        "botao": "Atualizar Pivot KSB1",
     },
 ]
 
@@ -320,15 +320,18 @@ def main():
     painel = ttk.Frame(corpo, style="Card.TFrame", padding=16)
     painel.pack(fill=tk.X, side=tk.TOP)
 
-    ttk.Label(painel, text="MÊS", style="Card.TLabel", font=("Consolas", 8, "bold")).grid(row=0, column=0, sticky="w")
+    ttk.Label(painel, text="ANO", style="Card.TLabel", font=("Consolas", 8, "bold")).grid(row=0, column=0, sticky="w")
+    ano_var = tk.StringVar(value=str(ano_padrao))
+    anos_disponiveis = [str(a) for a in range(hoje.year - 2, hoje.year + 2)]
+    ttk.Combobox(
+        painel, textvariable=ano_var, values=anos_disponiveis, width=8
+    ).grid(row=1, column=0, sticky="w", padx=(0, 24), pady=(2, 0))
+
+    ttk.Label(painel, text="MÊS", style="Card.TLabel", font=("Consolas", 8, "bold")).grid(row=0, column=1, sticky="w")
     mes_var = tk.StringVar(value=MESES_NOMES[mes_padrao])
     ttk.Combobox(
         painel, textvariable=mes_var, values=list(MESES_NOMES.values()), state="readonly", width=12
-    ).grid(row=1, column=0, sticky="w", padx=(0, 24), pady=(2, 0))
-
-    ttk.Label(painel, text="ANO", style="Card.TLabel", font=("Consolas", 8, "bold")).grid(row=0, column=1, sticky="w")
-    ano_var = tk.StringVar(value=str(ano_padrao))
-    ttk.Entry(painel, textvariable=ano_var, width=8).grid(row=1, column=1, sticky="w", padx=(0, 24), pady=(2, 0))
+    ).grid(row=1, column=1, sticky="w", padx=(0, 24), pady=(2, 0))
 
     ttk.Label(painel, text="CICLO", style="Card.TLabel", font=("Consolas", 8, "bold")).grid(row=0, column=2, sticky="w")
     ciclo_var = tk.StringVar(value="Actual")
@@ -423,7 +426,7 @@ def main():
             _todos_botoes("normal")
 
     def ao_clicar_pivot():
-        from gerar_base_intermediaria import atualizar_base_intermediaria
+        from gerar_ksb1_mensal import gerar_ksb1_mensal
 
         mes_ano = ler_mes_ano()
         if mes_ano is None:
@@ -431,16 +434,21 @@ def main():
         mes, ano = mes_ano
         ciclo = ciclo_var.get()
 
+        # Pasta de rede oficial do ciclo (mesmo padrao ja usado pra localizar o
+        # Actual do mes anterior em gerar_ksb1_mensal.localizar_ksb1_actual_anterior).
+        mes_abrev = MESES_PASTA[mes].split(" - ")[1]
+        pasta_saida = REDE_BASE / str(ano) / MESES_PASTA[mes] / f"{mes:02d}_{mes_abrev}_{ciclo}"
+
         log_widget.delete("1.0", tk.END)
         _todos_botoes("disabled")
         try:
-            caminho = atualizar_base_intermediaria(mes, ano, ciclo, log=log)
+            caminho = gerar_ksb1_mensal(mes, ano, ciclo, pasta_saida, log=log)
             messagebox.showinfo(
                 "Concluído",
-                f"Base Intermediária gerada:\n{caminho}\n\nConfira a aba 'Pendências' antes de colar no arquivo de trabalho.",
+                f"Pivot KSB1 atualizado:\n{caminho}",
             )
         except Exception as e:
-            messagebox.showerror("Erro ao atualizar a Base Intermediária", str(e))
+            messagebox.showerror("Erro ao atualizar o Pivot KSB1", str(e))
         finally:
             _todos_botoes("normal")
 

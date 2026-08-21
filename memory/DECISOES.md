@@ -247,3 +247,22 @@
 **Estado do arquivo:** `saprules.xml` não foi alterado. Existe um backup (`saprules.xml.backup_2026-08-21`, mesma pasta `AppData\Roaming\SAP\Common\`) que pode ser removido a qualquer momento — não tem mais uso previsto.
 
 **Se o assunto voltar no futuro:** a regra proposta (não aplicada) era um `<rule>` com diretório em curinga `.../Resultados Fitted/2026/00.Extração Base KSB1/*`, mesmo formato/contexto (KSB1, SAPLSLVC_FULLSCREEN/0200) das regras já existentes — texto completo já formulado, ver histórico desta sessão se precisar retomar.
+
+---
+
+## 2026-08-21 (continuação) — Cockpit em produção: botão "Atualizar Pivot KSB1" trocado pra gerar_ksb1_mensal.py + rede oficial; Ano vira seletor, antes do Mês
+
+**Decisão:** promovido o Passo 3 pra produção de fato, fechando a pendência que vinha desde 2026-08-14/2026-08-19.
+
+**Mudanças em `atualizar_ksb1_gui.py`:**
+1. Botão da aba ③ renomeado de "Atualizar KSB1 Pivot" pra **"Atualizar Pivot KSB1"** (só o nome do botão — usuária pediu explicitamente não mexer no resto da aba por enquanto, um segundo botão pra "arquivo colorido" fica pra depois, ainda sem escopo definido).
+2. `ao_clicar_pivot` trocado: chamava `gerar_base_intermediaria.atualizar_base_intermediaria` (script antigo/revertido, pré-BASE_KSB1); agora chama `gerar_ksb1_mensal.gerar_ksb1_mensal` (o validado com julho/2026 Actual em 2026-08-19), com `pasta_saida` apontando pra pasta de rede oficial do ciclo: `<REDE_BASE>/<ano>/<MM - Mês>/<MM>_<Mês3>_<Ciclo>/` (mesmo padrão que `localizar_ksb1_actual_anterior` já usa pra achar o Actual do mês anterior). Antes escrevia em `data/processed/fitted_units_despesas/base_ksb1_teste/` (pasta local de teste).
+3. Painel superior: **Ano agora vem antes do Mês** (pedido explícito da usuária) e virou um Combobox **selecionável** (lista de anos gerada dinamicamente, ano atual -2 a +1, mas ainda editável — não travado em "readonly" como Mês/Ciclo, pra não bloquear um ano fora da lista se precisar). Antes era um campo de texto livre (`ttk.Entry`).
+
+**Validado antes de aplicar:** `py_compile` + import real + checagem de que o rótulo do botão e a ordem Ano/Mês ficaram corretos, mais teste isolado da montagem do caminho de saída (`REDE_BASE/<ano>/<MM - Mês>/<MM>_<Mês3>_<Ciclo>/`) contra 3 casos reais (Jul/2026 Actual, Jan/2026 Flash, Ago/2026 Actual) — todos os 3 caminhos batem com pastas que já existem de verdade na rede.
+
+**Atenção operacional pra próxima vez que a usuária rodar isso de verdade:** a pasta de destino de meses já fechados (ex: julho) já tem o arquivo oficial (`KSB1 July Actual 2026.xlsx`) dentro. `nome_com_versao` NUNCA sobrescreve — se rodar de novo pra um mês/ciclo que já tem arquivo, gera um `..._v2.xlsx` do lado, não substitui o oficial. A usuária precisa saber disso e decidir manualmente se promove o `_v2` a oficial (renomear) ou não.
+
+**Ainda não fechado (fora do escopo desta mudança):** segundo botão da aba ③ pra "atualizar arquivo colorido" — usuária mencionou mas decidiu adiar a definição do escopo exato ("vamos fazer assim, altera o nome do primeiro botão apenas e vamos passar pra produção"). Retomar quando ela quiser detalhar o que esse botão deve fazer.
+
+**Nota:** a janela do cockpit já estava aberta (lançada mais cedo nesta sessão) quando essas mudanças foram feitas no código — como é uma aplicação Tkinter carregada em memória, a usuária precisa **fechar e abrir de novo** a janela pra ver essas mudanças (não há hot-reload).
