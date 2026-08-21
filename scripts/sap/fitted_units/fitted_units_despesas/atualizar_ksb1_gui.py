@@ -274,8 +274,8 @@ def _configurar_estilo(root):
 def main():
     root = tk.Tk()
     root.title("Fitted Units · Cockpit Fechamento")
-    root.geometry("860x640")
-    root.minsize(780, 560)
+    root.geometry("1317x800")
+    root.minsize(1000, 650)
     root.configure(bg=BG_ROOT)
 
     logo_img = tk.PhotoImage(data=LOGO_PIRELLI_B64)

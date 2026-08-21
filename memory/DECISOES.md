@@ -440,3 +440,9 @@
 ## 2026-08-21 (continuação) — Cores do cockpit: vermelho removido, botões/abas em amarelo claro
 
 **Decisão:** a pedido da usuária ("tem que ficar gostoso de ver"), o vermelho Pirelli (`#DA291C`, usado nos botões, aba selecionada, seleção de combobox e na linha de trim do cabeçalho) foi substituído por um amarelo claro (`#FFE9A8`) em todo o cockpit. Constante renomeada de `VERMELHO_PIRELLI` pra `AMARELO_CLARO`. Cor de botão desabilitado também ajustada pra combinar (`#ecdfb0`, antes era um marrom-avermelhado escuro).
+
+---
+
+## 2026-08-21 (continuação) — Tamanho padrão da janela do cockpit fixado em 1317x800
+
+**Decisão:** a pedido da usuária, a janela do cockpit sempre abre no tamanho `1317x800` (medido a partir de um print que ela mandou, 1317x835 incluindo a barra de título do Windows — descontei ~35px pra chegar no tamanho da área da janela em si). `minsize` ajustado proporcionalmente pra `1000x650` (antes era `780x560`, do tempo da janela pequena 860x640).
