@@ -39,6 +39,7 @@ from ksb1_core import (  # noqa: E402
     MESES_PASTA,
     REDE_BASE,
     encontrar_arquivo_ksb1,
+    encontrar_arquivo_mais_recente,
     nome_com_versao,
     resolver_pasta_ciclo,
 )
@@ -115,9 +116,9 @@ def localizar_ksb1_actual_anterior(mes: int, ano: int) -> Path:
     pasta_mes = REDE_BASE / str(ano_ant) / MESES_PASTA[mes_ant]
     pasta = resolver_pasta_ciclo(pasta_mes, mes_ant, "Actual")
     nome = f"KSB1 {MESES_INGLES[mes_ant]} Actual {ano_ant}.xlsx"
-    caminho = pasta / nome
-    if not caminho.exists():
-        raise FileNotFoundError(f"Não encontrei o KSB1 Actual do mês anterior: {caminho}")
+    caminho = encontrar_arquivo_mais_recente(pasta, nome)
+    if caminho is None:
+        raise FileNotFoundError(f"Não encontrei o KSB1 Actual do mês anterior: {pasta / nome}")
     return caminho
 
 

@@ -189,6 +189,25 @@ def encontrar_arquivo_ksb1(pasta: Path, bu_nome: str, mes: int, ano: int, agrup_
     return candidatos_antigos[-1]
 
 
+def encontrar_arquivo_mais_recente(pasta: Path, nome_base: str) -> Path | None:
+    """Acha a versão mais recente de um arquivo gerado via nome_com_versao
+    (nome_base.xlsx, nome_base_v2.xlsx, nome_base_v3.xlsx, ...) — usada
+    pelos passos que LEEM um arquivo gerado por um passo anterior do mesmo
+    fluxo (ex: Finalização lê o BASE_KSB1 que "Atualizar Pivot KSB1" acabou
+    de gerar, ou o passo do mês seguinte lê o Actual do mês anterior).
+    Achado real em 2026-08-22: essas leituras buscavam só o nome exato
+    (sem "_v2" etc.), então se o passo anterior fosse rodado de novo (ex:
+    pra corrigir algo), o resultado corrigido ficava "invisível" pros
+    passos seguintes, que continuavam lendo a versão antiga em silêncio.
+    Devolve None se nenhuma versão existir — quem chama decide o erro."""
+    base = Path(nome_base)
+    stem, ext = base.stem, base.suffix
+    candidatos = list(pasta.glob(f"{stem}*{ext}")) if pasta.exists() else []
+    if not candidatos:
+        return None
+    return max(candidatos, key=lambda p: p.stat().st_mtime)
+
+
 def nome_com_versao(pasta: Path, nome_base: str) -> str:
     # Nunca sobrescrever um arquivo ja existente na pasta: se ja existe um
     # arquivo com esse nome, salva como "_v2", se "_v2" tambem ja existir,
