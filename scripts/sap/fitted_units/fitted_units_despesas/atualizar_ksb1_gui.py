@@ -13,12 +13,16 @@ Pre-requisitos na maquina de quem for rodar:
 - SAP GUI aberto e logada (nao precisa estar na KSB1, o script abre a transacao sozinho)
 """
 import ctypes
+import queue
 import sys
+import threading
 import time
 import tkinter as tk
 from datetime import datetime
 from pathlib import Path
 from tkinter import messagebox, ttk
+
+import pythoncom
 
 # Sem isso, o Windows nao sabe que o Tkinter lida com DPI sozinho e "estica"
 # a janela como bitmap pra bater com o zoom da tela (125%/150% etc.) — e' o
@@ -104,44 +108,46 @@ def extrair_um(session, mes, ano, ciclo, koagr, agrup_label, log):
     voltar_para_selecao(session, log)
 
 
-def rodar(mes, ano, ciclo, log_widget):
-    def log(msg):
-        log_widget.insert(tk.END, msg + "\n")
-        log_widget.see(tk.END)
-        log_widget.update()
+class ErroComTitulo(Exception):
+    """Erro com titulo proprio pro messagebox (a mensagem de erro do SAP
+    sozinha, sem contexto, nao ajuda a usuaria a saber o que fazer). Usado
+    pra 'rodar' poder levantar excecao em vez de chamar messagebox direto -
+    precisa ser assim pra rodar numa thread separada (ver rodar_em_thread em
+    main() - so' a thread principal do Tk pode mostrar messagebox)."""
 
-    log_widget.delete("1.0", tk.END)
+    def __init__(self, titulo, mensagem):
+        super().__init__(mensagem)
+        self.titulo = titulo
+        self.mensagem = mensagem
 
+
+def rodar(mes, ano, ciclo, log):
     try:
         session = connect_session()
     except Exception as e:
-        messagebox.showerror(
+        raise ErroComTitulo(
             "Erro de conexão",
             f"Não consegui conectar ao SAP GUI.\n\nDetalhe: {e}\n\n"
             "Verifique se o SAP GUI está aberto e logada, e se o Scripting está "
             "habilitado (Alt+F12 > Opções > Acessibilidade e Scripting > Scripting).",
-        )
-        return
+        ) from e
 
     try:
         abrir_ksb1(session, log)
     except RuntimeError as e:
-        messagebox.showerror(
+        raise ErroComTitulo(
             "Não consegui abrir a KSB1",
             f"{e}\n\nConfirme se seu usuário tem acesso à transação KSB1 e tente de novo.",
-        )
-        return
+        ) from e
 
     log(f"Extraindo KSB1 - {MESES_NOMES[mes]}/{ano} (Ciclo {ciclo})...")
     try:
         extrair_um(session, mes, ano, ciclo, "gestoriais", "Gestoriais", log)
         extrair_um(session, mes, ano, ciclo, "", "Sem Agrupamento", log)
     except Exception as e:
-        messagebox.showerror("Erro durante a extração", str(e))
-        return
+        raise ErroComTitulo("Erro durante a extração", str(e)) from e
 
     log("\nConcluído!")
-    messagebox.showinfo("Concluído", "Extração da KSB1 finalizada (Gestoriais + Sem Agrupamento).")
 
 
 AMARELO_CLARO = "#FFE9A8"
@@ -249,6 +255,12 @@ def _configurar_estilo(root):
         foreground=[("!disabled", "black"), ("disabled", "#8a8a8a")],
     )
 
+    style.configure(
+        "Cockpit.Horizontal.TProgressbar",
+        troughcolor=BG_CAMPO, background=AMARELO_CLARO, bordercolor=BORDA,
+        lightcolor=AMARELO_CLARO, darkcolor=AMARELO_CLARO,
+    )
+
     # Notebook (abas) — tema "clam" permite recolorir tab a tab, o padrao do
     # Windows (vista/xpnative) ignora essas cores.
     style.configure("TNotebook", background=BG_PAINEL, borderwidth=0, tabmargins=(8, 8, 8, 0))
@@ -301,7 +313,24 @@ def main():
         font=("Consolas", 9, "bold"),
     ).pack(anchor="w", pady=(4, 0))
 
+    # Status/spinner fica no cabecalho (canto direito, area escura fixa) em
+    # vez de no corpo - o corpo tem conteudo que varia de altura (descricao
+    # de cada aba) e o console de log e' expansivel, entao um indicador
+    # colado la embaixo corre risco de ser espremido pra fora da janela
+    # visivel. O cabecalho nunca encolhe, garante que sempre aparece.
+    status_var = tk.StringVar(value="")
+    tk.Label(
+        header, textvariable=status_var, bg=BG_ROOT, fg=AMARELO_CLARO,
+        font=("Consolas", 10, "bold"),
+    ).pack(side=tk.RIGHT, padx=(0, 24), pady=16)
+
     tk.Frame(root, bg=AMARELO_CLARO, height=3).pack(fill=tk.X, side=tk.TOP)
+
+    # Barra de progresso indeterminada - sempre visivel logo abaixo do trim
+    # (nao usa pack/pack_forget: fica sempre no mesmo lugar, so' anima ou nao
+    # via start()/stop(), pra nunca correr risco de ficar escondida).
+    progresso = ttk.Progressbar(root, mode="indeterminate", style="Cockpit.Horizontal.TProgressbar")
+    progresso.pack(fill=tk.X, side=tk.TOP)
 
     corpo = ttk.Frame(root, padding=(24, 18, 24, 18), style="TFrame")
     corpo.pack(fill=tk.BOTH, expand=True)
@@ -363,7 +392,7 @@ def main():
         widgets = []
         rotulos = passo["botoes"]
         for i, rotulo in enumerate(rotulos):
-            btn = ttk.Button(aba, text=rotulo, style="Pirelli.TButton")
+            btn = ttk.Button(aba, text=rotulo, style="Pirelli.TButton", cursor="hand2")
             btn.pack(fill=tk.X, ipady=8, pady=(0, 8) if i < len(rotulos) - 1 else 0)
             widgets.append(btn)
         botoes[indice] = widgets
@@ -384,15 +413,96 @@ def main():
     )
     log_widget.pack(fill=tk.BOTH, expand=True)
 
+    # Icone girando (spinner) junto do texto de status - roda em loop
+    # independente (root.after) e so' mexe no texto quando "ativo" (setado
+    # por rodar_em_thread), pra nao gastar ciclo a toa quando esta ocioso.
+    FRAMES_SPINNER = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+    _spinner = {"indice": 0, "ativo": False, "descricao": ""}
+
+    def _animar_spinner():
+        if _spinner["ativo"]:
+            frame = FRAMES_SPINNER[_spinner["indice"] % len(FRAMES_SPINNER)]
+            _spinner["indice"] += 1
+            status_var.set(f"{frame}  Processando: {_spinner['descricao']}...")
+        root.after(120, _animar_spinner)
+
+    root.after(120, _animar_spinner)
+
+    # --- Log thread-safe -----------------------------------------------
+    # As operacoes rodam numa thread separada (ver rodar_em_thread) pra
+    # janela nao travar - so' a thread principal do Tk pode mexer em widget,
+    # entao 'log' so' enfileira e quem escreve de verdade e' _drenar_fila,
+    # chamada em loop via root.after (sempre na thread principal).
+    fila_log = queue.Queue()
+
     def log(msg):
-        log_widget.insert(tk.END, msg + "\n")
-        log_widget.see(tk.END)
-        log_widget.update()
+        fila_log.put(msg)
+
+    def _drenar_fila():
+        try:
+            while True:
+                msg = fila_log.get_nowait()
+                log_widget.insert(tk.END, msg + "\n")
+                log_widget.see(tk.END)
+        except queue.Empty:
+            pass
+        root.after(80, _drenar_fila)
+
+    root.after(80, _drenar_fila)
 
     def _todos_botoes(estado):
         for lista in botoes.values():
             for btn in lista:
                 btn.config(state=estado)
+
+    def rodar_em_thread(descricao, func, ao_concluir):
+        """Roda func(log) numa thread separada (com CoInitialize/
+        CoUninitialize pro COM do SAP/Excel funcionar isolado por thread),
+        mantendo a janela responsiva. func deve so' aceitar 'log' e devolver
+        o resultado (ou levantar excecao). ao_concluir(resultado, erro) roda
+        de volta na thread principal, via root.after - nunca mexe em widget
+        Tk fora da thread principal (trava ou corrompe a interface)."""
+        log_widget.delete("1.0", tk.END)
+        log_widget.insert(tk.END, f"⏳ Processando: {descricao}...\n")
+        log_widget.see(tk.END)
+        _todos_botoes("disabled")
+        root.config(cursor="watch")
+        _spinner["ativo"] = True
+        _spinner["descricao"] = descricao
+        progresso.start(12)
+        # Forca redesenhar AGORA (cursor, botoes desabilitados, barra e texto
+        # do log) antes de iniciar a thread - sem isso, se a operacao for
+        # rapida (ex: Excel ja "aquecido" de uma rodada anterior), a janela
+        # podia pular direto pro "Concluido" sem o usuario ver o estado
+        # "processando" nem por um instante.
+        root.update_idletasks()
+
+        caixa_resultado = {}
+
+        def alvo():
+            pythoncom.CoInitialize()
+            try:
+                caixa_resultado["valor"] = func(log)
+            except Exception as e:
+                caixa_resultado["erro"] = e
+            finally:
+                pythoncom.CoUninitialize()
+
+        thread = threading.Thread(target=alvo, daemon=True)
+        thread.start()
+
+        def checar():
+            if thread.is_alive():
+                root.after(150, checar)
+                return
+            progresso.stop()
+            _spinner["ativo"] = False
+            status_var.set("")
+            root.config(cursor="")
+            _todos_botoes("normal")
+            ao_concluir(caixa_resultado.get("valor"), caixa_resultado.get("erro"))
+
+        root.after(150, checar)
 
     def ao_clicar_extrair():
         mes_ano = ler_mes_ano()
@@ -400,12 +510,20 @@ def main():
             return
         mes, ano = mes_ano
         ciclo = ciclo_var.get()
-        log_widget.delete("1.0", tk.END)
-        _todos_botoes("disabled")
-        try:
-            rodar(mes, ano, ciclo, log_widget)
-        finally:
-            _todos_botoes("normal")
+
+        def func(log):
+            rodar(mes, ano, ciclo, log)
+
+        def ao_concluir(resultado, erro):
+            if erro is not None:
+                if isinstance(erro, ErroComTitulo):
+                    messagebox.showerror(erro.titulo, erro.mensagem)
+                else:
+                    messagebox.showerror("Erro durante a extração", str(erro))
+                return
+            messagebox.showinfo("Concluído", "Extração da KSB1 finalizada (Gestoriais + Sem Agrupamento).")
+
+        rodar_em_thread("Extraindo KSB1 do SAP", func, ao_concluir)
 
     def ao_clicar_check():
         from check_agrupamentos_ksb1 import gerar_check
@@ -416,15 +534,16 @@ def main():
         mes, ano = mes_ano
         ciclo = ciclo_var.get()
 
-        log_widget.delete("1.0", tk.END)
-        _todos_botoes("disabled")
-        try:
-            caminho = gerar_check(mes, ano, ciclo, log=log)
-            messagebox.showinfo("Concluído", f"Check de agrupamentos gerado:\n{caminho}")
-        except Exception as e:
-            messagebox.showerror("Erro ao gerar o check", str(e))
-        finally:
-            _todos_botoes("normal")
+        def func(log):
+            return gerar_check(mes, ano, ciclo, log=log)
+
+        def ao_concluir(resultado, erro):
+            if erro is not None:
+                messagebox.showerror("Erro ao gerar o check", str(erro))
+                return
+            messagebox.showinfo("Concluído", f"Check de agrupamentos gerado:\n{resultado}")
+
+        rodar_em_thread("Gerando Check de Agrupamentos", func, ao_concluir)
 
     def ao_clicar_lancar_provisoes():
         from gerar_base_intermediaria import lancar_provisoes
@@ -438,15 +557,16 @@ def main():
         # painel compartilhado (esse passo nem existe pro Actual).
         pasta_saida = resolver_pasta_ciclo(REDE_BASE / str(ano) / MESES_PASTA[mes], mes, "Flash")
 
-        log_widget.delete("1.0", tk.END)
-        _todos_botoes("disabled")
-        try:
-            caminho = lancar_provisoes(mes, ano, pasta_saida, log=log)
-            messagebox.showinfo("Concluído", f"Provisões lançadas:\n{caminho}")
-        except Exception as e:
-            messagebox.showerror("Erro ao lançar as provisões", str(e))
-        finally:
-            _todos_botoes("normal")
+        def func(log):
+            return lancar_provisoes(mes, ano, pasta_saida, log=log)
+
+        def ao_concluir(resultado, erro):
+            if erro is not None:
+                messagebox.showerror("Erro ao lançar as provisões", str(erro))
+                return
+            messagebox.showinfo("Concluído", f"Provisões lançadas:\n{resultado}")
+
+        rodar_em_thread("Lançando Provisões", func, ao_concluir)
 
     def ao_clicar_atualizar_provisoes():
         from gerar_base_intermediaria import atualizar_provisoes
@@ -458,15 +578,16 @@ def main():
 
         pasta_saida = resolver_pasta_ciclo(REDE_BASE / str(ano) / MESES_PASTA[mes], mes, "Flash")
 
-        log_widget.delete("1.0", tk.END)
-        _todos_botoes("disabled")
-        try:
-            caminho = atualizar_provisoes(mes, ano, pasta_saida, log=log)
-            messagebox.showinfo("Concluído", f"Provisões atualizadas:\n{caminho}")
-        except Exception as e:
-            messagebox.showerror("Erro ao atualizar as provisões", str(e))
-        finally:
-            _todos_botoes("normal")
+        def func(log):
+            return atualizar_provisoes(mes, ano, pasta_saida, log=log)
+
+        def ao_concluir(resultado, erro):
+            if erro is not None:
+                messagebox.showerror("Erro ao atualizar as provisões", str(erro))
+                return
+            messagebox.showinfo("Concluído", f"Provisões atualizadas:\n{resultado}")
+
+        rodar_em_thread("Atualizando Provisões", func, ao_concluir)
 
     def ao_clicar_pivot():
         from gerar_ksb1_mensal import gerar_ksb1_mensal
@@ -481,18 +602,16 @@ def main():
         # de marco/abril usam o mes por extenso em vez da abreviacao padrao).
         pasta_saida = resolver_pasta_ciclo(REDE_BASE / str(ano) / MESES_PASTA[mes], mes, ciclo)
 
-        log_widget.delete("1.0", tk.END)
-        _todos_botoes("disabled")
-        try:
-            caminho = gerar_ksb1_mensal(mes, ano, ciclo, pasta_saida, log=log)
-            messagebox.showinfo(
-                "Concluído",
-                f"Pivot KSB1 atualizado:\n{caminho}",
-            )
-        except Exception as e:
-            messagebox.showerror("Erro ao atualizar o Pivot KSB1", str(e))
-        finally:
-            _todos_botoes("normal")
+        def func(log):
+            return gerar_ksb1_mensal(mes, ano, ciclo, pasta_saida, log=log)
+
+        def ao_concluir(resultado, erro):
+            if erro is not None:
+                messagebox.showerror("Erro ao atualizar o Pivot KSB1", str(erro))
+                return
+            messagebox.showinfo("Concluído", f"Pivot KSB1 atualizado:\n{resultado}")
+
+        rodar_em_thread("Atualizando Pivot KSB1", func, ao_concluir)
 
     def ao_clicar_finalizar_intermediaria():
         from gerar_base_intermediaria import atualizar_base_intermediaria
@@ -505,22 +624,22 @@ def main():
 
         pasta_saida = resolver_pasta_ciclo(REDE_BASE / str(ano) / MESES_PASTA[mes], mes, ciclo)
 
-        log_widget.delete("1.0", tk.END)
-        _todos_botoes("disabled")
-        try:
-            caminho, caminho_historico, aviso_comparacao = atualizar_base_intermediaria(
-                mes, ano, ciclo, pasta_saida, log=log
-            )
+        def func(log):
+            return atualizar_base_intermediaria(mes, ano, ciclo, pasta_saida, log=log)
+
+        def ao_concluir(resultado, erro):
+            if erro is not None:
+                messagebox.showerror("Erro ao finalizar a Base Intermediária", str(erro))
+                return
+            caminho, caminho_historico, aviso_comparacao = resultado
             msg = f"Base Intermediária finalizada:\n{caminho}"
             if caminho_historico:
                 msg += f"\n\nHistórico de unidades encerradas (enviar pra contabilidade):\n{caminho_historico}"
             messagebox.showinfo("Concluído", msg)
             if aviso_comparacao:
                 messagebox.showwarning("Quadro de comparação", aviso_comparacao)
-        except Exception as e:
-            messagebox.showerror("Erro ao finalizar a Base Intermediária", str(e))
-        finally:
-            _todos_botoes("normal")
+
+        rodar_em_thread("Finalizando a Base Intermediária", func, ao_concluir)
 
     botoes[0][0].config(command=ao_clicar_extrair)
     botoes[1][0].config(command=ao_clicar_check)
