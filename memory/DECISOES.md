@@ -553,3 +553,13 @@
 - **Teste forçando inserção** (3 linhas amarelas novas): antes `ultima_amarela=47, ultima_colorida=67`; depois `ultima_amarela=50, ultima_colorida=70` (deslocamento de exatamente 3, correto). Verde (era linha 48) passou pra 51, ainda verde, ainda vazia. Roxa (era 67) passou pra 70, ainda roxa — e a fórmula molde se AUTO-AJUSTOU sozinha (`=VLOOKUP(C67,...)` virou `=VLOOKUP(C70,...)`, o próprio Excel corrigiu a referência interna, comportamento nativo de inserção de linha de verdade — não aconteceria assim numa cópia manual de célula, é uma confirmação a mais de que o `Rows().Insert()` nativo foi a escolha certa em vez de manipular linhas na mão). Área branca também deslocou corretamente (era linha 68, passou pra 71).
 
 **Pendente, tema à parte (a usuária vai detalhar depois):** como as linhas VERDES (reclassificações) devem ser preenchidas/atualizadas automaticamente — hoje a automação nunca escreve nelas, só desloca a posição quando insere amarela nova acima.
+
+---
+
+## 2026-08-22 (continuação) — Linhas verdes (reclassificações) deprecadas — decisão da usuária
+
+**Decisão:** o bloco verde (reclassificações) na aba Intermediária nunca mais será usado. Motivo confirmado pela usuária: reclassificações já são feitas diretamente no SAP antes do fechamento ("já vai estar tudo dentro do SAP"), então o mecanismo de linha verde na Excel ficou obsoleto — ela já reclassifica antes do fechamento, não durante.
+
+**Decisão de implementação:** NÃO automatizar a remoção física das linhas verdes do template. Motivo: a automação já ignora 100% esse bloco (nunca escreve nem apaga nada nele, só desloca a posição quando insere linha amarela nova acima) — apagar as linhas de vez seria uma operação estrutural (mesmo tipo de risco/teste da inserção de linha) só por um ganho cosmético (espaço vazio no meio da planilha). Proposto à usuária como alternativa: se ela quiser, apaga manualmente uma vez no arquivo-modelo atual (o Actual do mês corrente, que toda Flash futura copia) — depois disso os próximos meses já nascem sem a área verde, sem precisar de automação nenhuma. Ela aceitou deixar como está (ignorado).
+
+**Roxa continua sendo mantida** — confirmado que é o "molde" de fórmula usado pela inserção automática de linha amarela (ver decisão anterior), não é a mesma situação da verde.

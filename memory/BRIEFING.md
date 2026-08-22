@@ -45,8 +45,15 @@
 - **Bug real achado (não relacionado ao pedido original) investigando as cores das linhas coloridas:** o cálculo de "capacidade" de provisões e a limpeza de conteúdo (`limpar_provisoes`) contavam TODA a área colorida (amarelo+verde+roxo) como se fosse capacidade de provisão, e `limpar_provisoes` apagava até a fórmula "molde" da linha roxa antes de tentar copiá-la. Não causou dano real ainda (verde/roxo estavam vazios em todos os testes), mas ia aparecer no primeiro mês com reclassificação de verdade. Corrigido com detecção de cor real via `Interior.Color` (amarelo=65535), não `Pattern`/`ColorIndex` (não discriminam bem). Detalhe completo em `memory/DECISOES.md` → "2026-08-22 (continuação) — Bug real corrigido + inserção automática".
 - **Inserção automática implementada:** quando as provisões do mês excedem as linhas amarelas disponíveis, insere linhas amarelas novas automaticamente (nunca verde/roxo), sempre antes da primeira verde, via `Rows().Insert()` nativo do Excel (não copia/cola manual). Confirmado com a usuária: sempre amarela, frequência imprevisível mas real ("pode acontecer todos os meses"), sempre antes das verdes, roxa mantém só 1 linha de propósito como molde.
 - **Validado com sucesso numa cópia local do arquivo real de julho** (regressão sem forçar inserção + teste forçando 3 linhas novas) — verde/roxo deslocaram certinho sem perder nada, e a fórmula molde da roxa se auto-ajustou sozinha (confirma que usar `Insert()` nativo, não manipulação manual, foi a escolha certa).
-- **Pendente, tema à parte que a usuária quer detalhar depois:** como as linhas VERDES (reclassificações) devem ser preenchidas/atualizadas — ela disse explicitamente "depois vamos falar das linhas verdes".
 - **Nenhum dado real de produção foi tocado** — todos os testes rodaram em cópias locais.
+
+### Continuação (mesmo dia) — Linhas verdes deprecadas (decisão final da usuária)
+
+- **Decisão:** bloco verde (reclassificações) nunca mais será usado — ela já reclassifica direto no SAP antes do fechamento, então o mecanismo ficou obsoleto.
+- **Não vamos automatizar remoção física das linhas** — proposto e aceito por ela: já que a automação ignora 100% esse bloco (só desloca posição quando insere amarela nova), não vale o risco de mexer em estrutura de arquivo por um ganho cosmético. Se ela quiser, apaga manualmente uma vez no arquivo-modelo atual.
+- **Roxa continua sendo mantida** (é o "molde" de fórmula, papel diferente da verde).
+- Detalhe em `memory/DECISOES.md` → "2026-08-22 (continuação) — Linhas verdes deprecadas".
+- **Todos os itens da lista de pendências de Fitted Units Despesas estão fechados por ora** (Faturamento adiado por decisão dela, linha colorida com inserção automática implementada, verde deprecada). Próximo passo fica em aberto pra usuária decidir.
 
 ---
 ## Continuação 2026-08-22 — Quadro de comparação (linhas 18/19) implementado pro Ciclo Flash: fonte vira Forecast (R<mês>), não outro Flash
