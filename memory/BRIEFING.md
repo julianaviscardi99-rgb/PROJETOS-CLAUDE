@@ -55,6 +55,16 @@
 - Detalhe em `memory/DECISOES.md` → "2026-08-22 (continuação) — Linhas verdes deprecadas".
 - **Todos os itens da lista de pendências de Fitted Units Despesas estão fechados por ora** (Faturamento adiado por decisão dela, linha colorida com inserção automática implementada, verde deprecada). Próximo passo fica em aberto pra usuária decidir.
 
+### Continuação (mesmo dia) — Revisão completa do processo (Actual + Flash), pedida pela usuária — EM ANDAMENTO
+
+- **Pedido da usuária:** revisar TODO o processo de fechamento (Teste, Actual, Flash), achar fragilidades/erros, testar, deixar tudo certo — "preciso que isso esteja funcionando no fechamento."
+- **Achado real (em correção agora):** 3 pontos do código buscam arquivo pelo NOME EXATO (sem considerar `_v2`/`_v3`), inconsistente com o resto do sistema que sempre pega a versão mais recente — `localizar_ksb1_actual_anterior` (gerar_ksb1_mensal.py), `localizar_base_ksb1_do_mes` e `localizar_base_intermediaria_mes_anterior` (gerar_base_intermediaria.py). Risco real: se algum passo for rerodado pra corrigir algo (gera `_v2`), os passos seguintes (mesmo mês ou mês seguinte) continuariam lendo a versão antiga em silêncio.
+- **Corrigido:** nova função `encontrar_arquivo_mais_recente(pasta, nome_base)` em `ksb1_core.py`, aplicada nas 4 leituras que tinham o problema (KSB1 mês anterior, BASE_KSB1 do mês, Base Intermediária mês anterior, Base Intermediária Flash do mesmo mês). Testada isoladamente.
+- **Testado de ponta a ponta, Julho/2026, Actual E Flash, sem tocar rede:** Pivot KSB1 (Actual e Flash), Finalização (Actual e Flash), Lançar/Atualizar Provisões — tudo rodou sem erro, todos os valores bateram exatamente com o que já era conhecido (Actual R$ 6.655.041,91 / Flash R$ 6.760.751,46, quadros de comparação idênticos aos validados antes). Log confirmou que a correção de cor das linhas (sessão anterior) está ativa.
+- **Não foi possível testar o Passo 1 (extração SAP) de ponta a ponta** — depende de sessão SAP ao vivo. Revisão de código não achou problema óbvio ali.
+- **Risco conhecido, não resolvido:** sem timeout/vigia se o Excel travar de verdade (hang, não erro) durante uma automação — já documentado desde 2026-08-14, baixa probabilidade.
+- Detalhe completo em `memory/DECISOES.md` → "2026-08-22 (continuação) — Revisão completa do processo de fechamento". **Commitado.**
+
 ---
 ## Continuação 2026-08-22 — Quadro de comparação (linhas 18/19) implementado pro Ciclo Flash: fonte vira Forecast (R<mês>), não outro Flash
 

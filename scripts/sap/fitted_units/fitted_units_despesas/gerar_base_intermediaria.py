@@ -55,8 +55,12 @@ colorida do arquivo. As provisoes SEMPRE comecam do zero a cada mes (a
 contabilidade estorna a provisao do mes anterior, entao nao ha nada
 acumulado pra herdar - o arquivo de origem, sempre o Actual do mes anterior,
 ja vem com essas linhas em branco). Se as provisoes nao couberem nas linhas
-coloridas existentes, para com erro claro (inserir linha nova ainda nao esta
-automatizado). O quadro de comparacao (passo 8) roda normalmente pro Flash
+amarelas existentes, insere linhas amarelas novas automaticamente logo antes
+da primeira linha verde (nunca mexe no conteudo das verdes/roxas - ver
+inserir_linhas_amarelas_novas, 2026-08-22). Linhas verdes (reclassificacoes)
+estao DEPRECADAS por decisao da usuaria (2026-08-22) - reclassificacoes ja
+acontecem direto no SAP antes do fechamento. O quadro de comparacao (passo 8)
+roda normalmente pro Flash
 tambem, mas comparando contra o Forecast em vez de outro Flash - ver
 atualizar_comparacao_forecast.
 
@@ -73,7 +77,13 @@ import win32com.client
 from openpyxl import Workbook
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "_shared"))
-from ksb1_core import MESES_PASTA, REDE_BASE, nome_com_versao, resolver_pasta_ciclo  # noqa: E402
+from ksb1_core import (  # noqa: E402
+    MESES_PASTA,
+    REDE_BASE,
+    encontrar_arquivo_mais_recente,
+    nome_com_versao,
+    resolver_pasta_ciclo,
+)
 
 MESES_INGLES = {
     1: "January", 2: "February", 3: "March", 4: "April",
@@ -180,8 +190,8 @@ def carregar_centros_encerrados() -> dict:
 def localizar_base_ksb1_do_mes(mes: int, ano: int, ciclo: str) -> Path:
     pasta = resolver_pasta_ciclo(REDE_BASE / str(ano) / MESES_PASTA[mes], mes, ciclo)
     nome = f"KSB1 {MESES_INGLES[mes]} {ciclo} {ano}.xlsx"
-    caminho = pasta / nome
-    if not caminho.exists():
+    caminho = encontrar_arquivo_mais_recente(pasta, nome)
+    if caminho is None:
         raise FileNotFoundError(
             f"Não encontrei '{nome}' em {pasta} — rode o Passo 4 (Atualizar Pivot KSB1) "
             "pra esse mês/Ciclo antes de rodar a Base Intermediária."
@@ -196,8 +206,7 @@ def localizar_base_intermediaria_flash_do_mes(mes: int, ano: int) -> Path | None
     erro fatal - o resto da Base Intermediária já foi gerado igual)."""
     pasta = resolver_pasta_ciclo(REDE_BASE / str(ano) / MESES_PASTA[mes], mes, "Flash")
     nome = f"Base Intermediária Fitted {MESES_INGLES[mes]} Flash {ano}.xlsx"
-    caminho = pasta / nome
-    return caminho if caminho.exists() else None
+    return encontrar_arquivo_mais_recente(pasta, nome)
 
 
 def atualizar_comparacao_flash(excel, wb, mes: int, ano: int, log):
@@ -418,9 +427,9 @@ def localizar_base_intermediaria_mes_anterior(mes: int, ano: int) -> Path:
     mes_ant, ano_ant = (mes - 1, ano) if mes > 1 else (12, ano - 1)
     pasta = resolver_pasta_ciclo(REDE_BASE / str(ano_ant) / MESES_PASTA[mes_ant], mes_ant, "Actual")
     nome = f"Base Intermediária Fitted {MESES_INGLES[mes_ant]} Actual {ano_ant}.xlsx"
-    caminho = pasta / nome
-    if not caminho.exists():
-        raise FileNotFoundError(f"Não encontrei a Base Intermediária Actual do mês anterior: {caminho}")
+    caminho = encontrar_arquivo_mais_recente(pasta, nome)
+    if caminho is None:
+        raise FileNotFoundError(f"Não encontrei a Base Intermediária Actual do mês anterior: {pasta / nome}")
     return caminho
 
 

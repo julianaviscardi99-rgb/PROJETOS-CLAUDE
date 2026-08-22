@@ -563,3 +563,31 @@
 **Decisão de implementação:** NÃO automatizar a remoção física das linhas verdes do template. Motivo: a automação já ignora 100% esse bloco (nunca escreve nem apaga nada nele, só desloca a posição quando insere linha amarela nova acima) — apagar as linhas de vez seria uma operação estrutural (mesmo tipo de risco/teste da inserção de linha) só por um ganho cosmético (espaço vazio no meio da planilha). Proposto à usuária como alternativa: se ela quiser, apaga manualmente uma vez no arquivo-modelo atual (o Actual do mês corrente, que toda Flash futura copia) — depois disso os próximos meses já nascem sem a área verde, sem precisar de automação nenhuma. Ela aceitou deixar como está (ignorado).
 
 **Roxa continua sendo mantida** — confirmado que é o "molde" de fórmula usado pela inserção automática de linha amarela (ver decisão anterior), não é a mesma situação da verde.
+
+---
+
+## 2026-08-22 (continuação) — Revisão completa do processo de fechamento (pedida pela usuária): 1 bug real corrigido, tudo testado de ponta a ponta
+
+**Pedido da usuária:** revisar todo o processo (Passo 1-4, Actual e Flash), achar fragilidades/erros, testar, "preciso que isso esteja funcionando no fechamento."
+
+**Bug real encontrado (revisão de código):** 4 funções de leitura buscavam arquivo pelo **nome exato**, sem considerar versões `_v2`/`_v3` geradas por `nome_com_versao` — inconsistente com o resto do sistema, que sempre versiona na escrita mas nem sempre considera versão na leitura:
+1. `localizar_ksb1_actual_anterior` (gerar_ksb1_mensal.py) — lê o KSB1 Actual do mês anterior.
+2. `localizar_base_ksb1_do_mes` (gerar_base_intermediaria.py) — lê o BASE_KSB1 do próprio mês/ciclo (usado pela Finalização).
+3. `localizar_base_intermediaria_mes_anterior` (gerar_base_intermediaria.py) — lê a Base Intermediária Actual do mês anterior.
+4. `localizar_base_intermediaria_flash_do_mes` (gerar_base_intermediaria.py) — lê a Base Intermediária Flash do mesmo mês (fonte de comparação do Actual).
+
+**Risco real:** se qualquer um desses arquivos fosse regenerado por qualquer motivo (ex: corrigir um erro, rodar de novo por engano), o resultado ficava "invisível" pros passos seguintes — que continuavam lendo a versão antiga (`_v1`) em silêncio, sem erro nem aviso, porque o nome exato dela ainda existia. Isso poderia levar a um fechamento usando dado desatualizado sem ninguém perceber.
+
+**Correção:** nova função `encontrar_arquivo_mais_recente(pasta, nome_base)` em `ksb1_core.py` (glob pelo padrão `nome_v*.xlsx` + pega o de `mtime` mais recente — mesmo método já usado com sucesso em `localizar_base_intermediaria_flash_existente`), aplicada nas 4 funções acima. Testada isoladamente (pasta vazia → None; só v1 → v1; v1+v2 → escolhe v2). Os arquivos de Forecast/Budget/Fast Provisão (que vêm de OUTROS processos, não da nossa automação, e não seguem esse padrão de versão) continuam com busca por nome exato/versão-com-`_`, que é o comportamento certo pra eles.
+
+**Testado de ponta a ponta (Julho/2026, Actual E Flash, sem tocar rede — pasta de teste local, arquivos de origem lidos direto da rede real):**
+- Passo 4a (Atualizar Pivot KSB1) Actual: 6.063 linhas coladas, sem erro.
+- Passo 4b (Finalização) Actual: Intermediária com soma R$ 6.655.041,91 (bate exatamente com o valor real já validado antes), quadro de comparação (Flash) trazendo Despesas R$ 4.334.644,06 / Mão de Obra R$ 2.426.107,40 (idem).
+- Passo 4a (Atualizar Pivot KSB1) Flash: 6.063 linhas coladas, sem erro.
+- Passo 3 (Lançar Provisões): 28 provisões, linhas 2-29, sem erro.
+- Passo 3 (Atualizar Provisões, testando a correção de cor de novo): log confirma "Linhas amarelas (2-47) limpas... verdes/roxas não são tocadas" — a correção do bug de 2026-08-22 anterior está ativa e funcionando.
+- Passo 4b (Finalização) Flash: Intermediária com soma R$ 6.760.751,46 (bate exatamente), quadro de comparação (Forecast R7) trazendo Despesas R$ 3.940.062,77 / Mão de Obra R$ 2.380.392,91 (idem).
+
+**Conclusão da revisão:** nenhum outro bug de correção encontrado na parte que dá pra testar sem SAP ao vivo (Passos 3 e 4, Actual e Flash). O Passo 1 (extração via SAP GUI Scripting) não pôde ser testado de ponta a ponta nesta revisão por depender de sessão SAP ao vivo — revisão de código não achou problema óbvio ali, mas não é o mesmo nível de confiança dos passos testados de verdade.
+
+**Risco conhecido, não resolvido nesta revisão (já documentado antes, 2026-08-14):** se o Excel travar/hangar de verdade durante uma automação (não um erro, um hang de verdade), não existe timeout/vigia — o processo ficaria preso indefinidamente. Baixa probabilidade, mas não é zero. Caso queira, dá pra endereçar depois com um watchdog externo.
