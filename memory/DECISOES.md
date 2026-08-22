@@ -488,3 +488,17 @@
 **Nova dependência:** Pillow adicionado a `requirements.txt`.
 
 **Validação:** testado ao vivo pela GUI de verdade (não só linha de comando, primeira vez), contra pasta de teste local (REDE_BASE do módulo da GUI trocado via script auxiliar fora do repo, sem tocar rede) — janela permaneceu responsiva durante "Atualizar Pivot KSB1" real (Julho/Flash), indicadores visíveis e aprovados pela usuária ("ficou maravilhoso").
+
+---
+
+## 2026-08-22 (continuação) — Fallback de Agosto (R8→R7) confirmado end-to-end pela GUI real
+
+**Contexto:** último item pendente de teste do quadro de comparação Forecast (ver decisão "Quadro de comparação... fonte vira Forecast" acima) — o fallback R8→R7 só tinha sido testado via função isolada, não pela GUI de ponta a ponta.
+
+**Problema:** Agosto/2026 ainda não tem nenhum dado real na rede (pasta `2026/08 - Aug` totalmente vazia — nem KSB1 extraído nem Fast Provisão) porque o fechamento real de agosto ainda não aconteceu. Pra testar o mecanismo sem esperar o mês fechar de verdade nem escrever nada na rede, foram "emprestados" o KSB1 e a Base Intermediária REAIS de julho (só leitura da rede), copiados pra pasta de teste local e rotulados como se fossem de agosto (`gerar_base_intermediaria.localizar_base_ksb1_do_mes` interceptado por monkeypatch só pra esse caso específico `(8, 2026, "Flash")`). **A busca do Forecast (R8/R7) em si não foi mockada** — continuou 100% real, direto na rede, que é exatamente o mecanismo sendo validado.
+
+**Resultado:** rodando "Finalização da Base Intermediária" pela GUI real com Mês=August/Ciclo=Flash, o popup apareceu corretamente: *"Fechamento de August/2026: não existe Forecast R8 — usei o Forecast de July (R7) como comparação."* Confirma que a busca (`localizar_forecast_para_comparacao`), o fallback e a exibição do aviso (`ao_clicar_finalizar_intermediaria` → `messagebox.showwarning`) funcionam corretamente de ponta a ponta pela interface real, não só via chamada direta de função.
+
+**Nota:** os valores em R$ gerados nesse teste (Despesas/Mão de Obra) não têm significado real — são de julho, só com rótulo de agosto. Arquivos de teste (`_fontes_fake_agosto/`, Base Intermediária "de agosto" em `gui_teste_rede/`) removidos depois da validação — nada disso é dado oficial nem foi escrito na rede.
+
+**Item de teste concluído** — o quadro de comparação Forecast (Actual e Flash) está validado em todas as frentes: lógica de valores (bate com o real de julho), rótulos de texto, GUI ao vivo, e agora o fallback R8→R7.

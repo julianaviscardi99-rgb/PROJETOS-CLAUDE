@@ -21,6 +21,14 @@
 - **Metodologia de teste usada (sem tocar rede):** script fora do repo (`lancar_cockpit_teste.py`, scratchpad da sessão) importa `atualizar_ksb1_gui`, troca só o atributo `REDE_BASE` desse módulo (não o de `ksb1_core.py` nem o de `gerar_base_intermediaria.py`, que ficam intocados) pra uma pasta local (`data/processed/fitted_units_despesas/gui_teste_rede/`) antes de chamar `main()` — assim toda ESCRITA da GUI cai na pasta local, mas as LEITURAS de fonte (KSB1, Fast Provisão, Forecast, template do mês anterior) continuam vindo da rede real, porque `gerar_base_intermediaria.py` importou seu próprio `REDE_BASE` separadamente. Testado com sucesso o fluxo "Atualizar Pivot KSB1" (Julho, Flash) rodando pela GUI de verdade, log real aparecendo, janela responsiva durante o processamento.
 - **Commitado nesta sessão** (junto com o quadro de comparação Forecast). **Nenhum dado real de produção foi tocado** — todo teste rodou na pasta local via o script de teste com REDE_BASE trocado.
 
+### Continuação (mesmo dia) — Fallback de Agosto (R8→R7) testado e confirmado pela GUI real, sem tocar rede
+
+- Como Agosto/2026 ainda não tem nenhum dado real na rede (fechamento real ainda não aconteceu), o teste "emprestou" o KSB1 e a Base Intermediária reais de julho (só leitura), rotulados como agosto via monkeypatch pontual (só intercepta a busca do KSB1 — a busca do Forecast R8/R7 continuou 100% real). Detalhe completo em `memory/DECISOES.md` → "2026-08-22 (continuação) — Fallback de Agosto".
+- **Resultado: popup apareceu certinho** — "Fechamento de August/2026: não existe Forecast R8 — usei o Forecast de July (R7) como comparação."
+- **Item de teste fechado.** O quadro de comparação Forecast (implementado mais cedo hoje) está validado em todas as frentes: lógica de valores, rótulos, GUI ao vivo, e agora o fallback R8→R7.
+- Arquivos de teste (`gui_teste_rede/`) removidos depois da validação — nada é dado oficial, nada foi escrito na rede.
+- **Pendências que seguem em aberto** (nenhuma tocada nesta parte): Janeiro/Budget-MP, Faturamento (linha 25), inserção automática de linha colorida se provisões excederem capacidade.
+
 ---
 ## Continuação 2026-08-22 — Quadro de comparação (linhas 18/19) implementado pro Ciclo Flash: fonte vira Forecast (R<mês>), não outro Flash
 
