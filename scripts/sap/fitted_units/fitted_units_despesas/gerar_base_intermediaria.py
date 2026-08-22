@@ -504,6 +504,47 @@ def localizar_fast_provisao(mes: int, ano: int) -> Path:
     return escolhido
 
 
+COR_AMARELA_PROVISAO = 65535  # Interior.Color do amarelo puro (RGB 255,255,0) - so' linhas de provisao
+XL_SHIFT_DOWN = -4121
+XL_FORMAT_FROM_ABOVE = 0
+
+
+def encontrar_ultima_linha_amarela(ws) -> int:
+    """Acha a última linha amarela (provisão) a partir de
+    LINHA_INTER_PROVISAO_INICIO — distinta das verdes/roxas que vêm depois
+    (mesma área "colorida", cores diferentes). Usada pra calcular a
+    capacidade REAL de provisões (só as amarelas contam, não a área
+    verde/roxa) e pra saber onde inserir uma linha nova, sem nunca tocar
+    nas verdes/roxas (confirmado pela usuária em 2026-08-22). Usa
+    Interior.Color direto (não Pattern, que é igual pras 3 cores, nem
+    ColorIndex, que não discrimina bem cores customizadas/tema — confirmado
+    inspecionando ao vivo: verde e roxo têm o mesmo ColorIndex mas Color
+    diferente)."""
+    r = LINHA_INTER_PROVISAO_INICIO
+    while ws.Cells(r, 1).Interior.Color == COR_AMARELA_PROVISAO:
+        r += 1
+    return r - 1
+
+
+def inserir_linhas_amarelas_novas(ws, n_linhas: int, ultima_linha_amarela: int, log):
+    """Insere n_linhas novas linhas amarelas (provisão) logo antes da
+    primeira linha verde, empurrando verde/roxa/branca (área de dados) pra
+    baixo — nunca mexe no CONTEÚDO das linhas verdes/roxas, só desloca a
+    posição delas (efeito colateral inevitável de inserir linha acima).
+    Cada linha nova recebe o mesmo formato (cor/borda) da última linha
+    amarela existente, via CopyOrigin (sem usar área de transferência).
+    Confirmado com a usuária: sempre amarela por padrão, nunca verde/roxa."""
+    ponto_insercao = ultima_linha_amarela + 1
+    for _ in range(n_linhas):
+        ws.Rows(ponto_insercao).Insert(Shift=XL_SHIFT_DOWN, CopyOrigin=XL_FORMAT_FROM_ABOVE)
+    log(
+        f"  AVISO: {n_linhas} provisão(ões) a mais do que as linhas amarelas disponíveis — "
+        f"inserida(s) {n_linhas} linha(s) amarela(s) nova(s) (linhas {ponto_insercao}-"
+        f"{ponto_insercao + n_linhas - 1}), empurrando as linhas verdes/roxas/brancas pra baixo. "
+        "Nenhum conteúdo das linhas verdes/roxas foi alterado."
+    )
+
+
 def preencher_provisoes_flash(wb, mes: int, ano: int, log):
     """Preenche as linhas coloridas (provisões/reclassificações) da aba
     Intermediária a partir do Fast Provisão do mês (aba 'Ficha de
@@ -511,7 +552,11 @@ def preencher_provisoes_flash(wb, mes: int, ano: int, log):
     Cada linha da ficha vira uma linha colorida (linha 13 -> Intermediária
     linha 2, linha 14 -> linha 3, ...). Preenche só C, E e a coluna do mês
     atual; arrasta pra cada linha nova a fórmula VLOOKUP (A, B, D, F, G) que
-    já existe na última linha colorida do arquivo (o "molde")."""
+    já existe na última linha COLORIDA do arquivo (a roxa — mantida de
+    propósito só como "molde" de fórmula, confirmado pela usuária). Se as
+    provisões não couberem nas linhas amarelas já existentes, insere linhas
+    amarelas novas automaticamente (ver inserir_linhas_amarelas_novas) —
+    nunca toca no conteúdo das linhas verdes/roxas."""
     caminho_provisao = localizar_fast_provisao(mes, ano)
     log(f"Lendo provisões de {caminho_provisao.name}...")
 
@@ -535,21 +580,22 @@ def preencher_provisoes_flash(wb, mes: int, ano: int, log):
         return
 
     ws = wb.Worksheets("Intermediária")
-    ultima_linha_colorida = encontrar_primeira_linha_sem_cor(ws) - 1
-    capacidade = ultima_linha_colorida - LINHA_INTER_PROVISAO_INICIO + 1
-    if len(provisoes) > capacidade:
-        raise RuntimeError(
-            f"{len(provisoes)} provisões não cabem nas {capacidade} linhas coloridas disponíveis "
-            f"(linhas {LINHA_INTER_PROVISAO_INICIO}-{ultima_linha_colorida}) — inserir linhas novas "
-            "ainda não está automatizado. Insira manualmente (Ctrl+ com a linha inteira selecionada, "
-            "copiando o formato/cor da última linha colorida) e rode de novo."
-        )
 
-    col_mes = N_COLS_LABEL + mes
+    # Captura ANTES de qualquer insercao: a fórmula "molde" (última linha
+    # colorida = roxa) precisa do número de linha ORIGINAL (a regex troca
+    # a referência interna da fórmula, ex: C67 -> C<nova linha>) - se
+    # capturasse depois de inserir, o número já teria mudado.
+    ultima_linha_colorida = encontrar_primeira_linha_sem_cor(ws) - 1
     formulas_modelo = {
         c: ws.Cells(ultima_linha_colorida, c).Formula for c in COL_FORMULA_MODELO
     }
 
+    ultima_linha_amarela = encontrar_ultima_linha_amarela(ws)
+    capacidade = ultima_linha_amarela - LINHA_INTER_PROVISAO_INICIO + 1
+    if len(provisoes) > capacidade:
+        inserir_linhas_amarelas_novas(ws, len(provisoes) - capacidade, ultima_linha_amarela, log)
+
+    col_mes = N_COLS_LABEL + mes
     for i, (conta, centro, valor) in enumerate(provisoes):
         r = LINHA_INTER_PROVISAO_INICIO + i
         ws.Cells(r, COL_INTER_CONTA_FISCAL).Value = conta
@@ -567,15 +613,19 @@ COL_PROVISAO_LIMPAR_FIM = N_COLS_LABEL + 12  # T - todos os 12 meses, alem dos r
 
 
 def limpar_provisoes(ws, log):
-    """Apaga o conteúdo das linhas coloridas (rótulos A-H + os 12 meses),
-    sem tocar na formatação/cor — usado pelo 'Atualizar Provisões' antes de
-    preencher de novo, mesmo espírito do full-rebuild da área branca (evita
-    sobrar provisão antiga se a lista nova tiver menos linhas que a anterior)."""
-    ultima_linha_colorida = encontrar_primeira_linha_sem_cor(ws) - 1
+    """Apaga o conteúdo das linhas AMARELAS (provisão), sem tocar na
+    formatação/cor nem nas linhas verdes/roxas (confirmado explicitamente
+    pela usuária em 2026-08-22 — bug real corrigido nesta data: a versão
+    anterior apagava até a última linha COLORIDA, incluindo verde/roxa, e
+    isso também destruía a fórmula "molde" da roxa antes dela ser copiada).
+    Usado pelo 'Atualizar Provisões' antes de preencher de novo, mesmo
+    espírito do full-rebuild da área branca (evita sobrar provisão antiga
+    se a lista nova tiver menos linhas que a anterior)."""
+    ultima_linha_amarela = encontrar_ultima_linha_amarela(ws)
     ws.Range(
-        ws.Cells(LINHA_INTER_PROVISAO_INICIO, 1), ws.Cells(ultima_linha_colorida, COL_PROVISAO_LIMPAR_FIM)
+        ws.Cells(LINHA_INTER_PROVISAO_INICIO, 1), ws.Cells(ultima_linha_amarela, COL_PROVISAO_LIMPAR_FIM)
     ).ClearContents()
-    log(f"  Linhas coloridas (2-{ultima_linha_colorida}) limpas antes de preencher de novo.")
+    log(f"  Linhas amarelas (2-{ultima_linha_amarela}) limpas antes de preencher de novo (verdes/roxas não são tocadas).")
 
 
 def localizar_base_intermediaria_flash_existente(mes: int, ano: int, pasta_saida: Path) -> Path:

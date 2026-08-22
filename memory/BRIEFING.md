@@ -39,6 +39,15 @@
 - **Todos os cenários do quadro de comparação Forecast agora estão fechados e testados:** Actual, Flash normal, fallback R8/R12, e Janeiro/Budget.
 - **Pendências que seguem em aberto** (sem relação com este quadro): Faturamento (linha 25), inserção automática de linha colorida se provisões excederem capacidade.
 
+### Continuação (mesmo dia) — Faturamento adiado por decisão da usuária; inserção automática de linha amarela implementada + bug real corrigido
+
+- **Faturamento (linha 25):** usuária decidiu explicitamente deixar de lado por enquanto — "hoje quem me envia é o time da Fitted mesmo, eu sou da controladoria... pretendo primeiro otimizar meu processo e depois rever isso." Não é mais prioridade da lista de pendências, só retomar se ela pedir.
+- **Bug real achado (não relacionado ao pedido original) investigando as cores das linhas coloridas:** o cálculo de "capacidade" de provisões e a limpeza de conteúdo (`limpar_provisoes`) contavam TODA a área colorida (amarelo+verde+roxo) como se fosse capacidade de provisão, e `limpar_provisoes` apagava até a fórmula "molde" da linha roxa antes de tentar copiá-la. Não causou dano real ainda (verde/roxo estavam vazios em todos os testes), mas ia aparecer no primeiro mês com reclassificação de verdade. Corrigido com detecção de cor real via `Interior.Color` (amarelo=65535), não `Pattern`/`ColorIndex` (não discriminam bem). Detalhe completo em `memory/DECISOES.md` → "2026-08-22 (continuação) — Bug real corrigido + inserção automática".
+- **Inserção automática implementada:** quando as provisões do mês excedem as linhas amarelas disponíveis, insere linhas amarelas novas automaticamente (nunca verde/roxo), sempre antes da primeira verde, via `Rows().Insert()` nativo do Excel (não copia/cola manual). Confirmado com a usuária: sempre amarela, frequência imprevisível mas real ("pode acontecer todos os meses"), sempre antes das verdes, roxa mantém só 1 linha de propósito como molde.
+- **Validado com sucesso numa cópia local do arquivo real de julho** (regressão sem forçar inserção + teste forçando 3 linhas novas) — verde/roxo deslocaram certinho sem perder nada, e a fórmula molde da roxa se auto-ajustou sozinha (confirma que usar `Insert()` nativo, não manipulação manual, foi a escolha certa).
+- **Pendente, tema à parte que a usuária quer detalhar depois:** como as linhas VERDES (reclassificações) devem ser preenchidas/atualizadas — ela disse explicitamente "depois vamos falar das linhas verdes".
+- **Nenhum dado real de produção foi tocado** — todos os testes rodaram em cópias locais.
+
 ---
 ## Continuação 2026-08-22 — Quadro de comparação (linhas 18/19) implementado pro Ciclo Flash: fonte vira Forecast (R<mês>), não outro Flash
 

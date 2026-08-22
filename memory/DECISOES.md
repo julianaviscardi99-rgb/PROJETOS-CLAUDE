@@ -525,3 +525,31 @@
 **Falso alarme no meio da sessão:** um teste inicial "não funcionou" (nenhum popup, arquivo de teste intocado) — investigado e confirmado que foi a usuária esquecer de trocar o Ciclo/Mês da rodada anterior (estava em Julho/Actual) antes de clicar Finalização, não um bug. Repetindo com Janeiro/Flash selecionado corretamente, funcionou de primeira.
 
 **Todos os itens do quadro de comparação Forecast agora estão fechados:** Actual (Flash como referência), Flash normal (Forecast R<mês>), fallback R8/R12→mês anterior, e Janeiro (Budget/MP). Só Faturamento (linha 25) e inserção automática de linha colorida continuam pendentes, sem relação com este quadro.
+
+---
+
+## 2026-08-22 (continuação) — Bug real corrigido + inserção automática de linha amarela quando provisões excedem capacidade
+
+**Contexto:** último item pendente da lista — hoje o script para com erro claro quando as provisões do mês não cabem nas linhas amarelas já existentes, pedindo inserção manual (Ctrl+).
+
+**Bug real encontrado ANTES de implementar a inserção (não relacionado ao pedido original, achado investigando as cores):** o cálculo de "capacidade" e a limpeza de conteúdo (`limpar_provisoes`, usada por "Atualizar Provisões") usavam `encontrar_primeira_linha_sem_cor` — que encontra o fim de TODA a área colorida (amarelo+verde+roxo), não só do amarelo. Duas consequências:
+1. **Capacidade contava errado:** em julho, a "capacidade" calculada era 66 linhas (2-67, incluindo verde+roxo), quando a capacidade REAL de provisões (só amarelo) é 46 (2-47).
+2. **`limpar_provisoes` apagava verde+roxo também** — incluindo a fórmula "molde" da última linha roxa, que era apagada ANTES do código tentar copiá-la pra novas linhas (bug duplo: a cópia sempre pegaria uma fórmula vazia).
+
+**Por que não causou dano real ainda:** em todos os testes até agora (julho/2026), as linhas verde/roxo estavam vazias (nenhuma reclassificação de verdade esse ano) — então "apagar" conteúdo vazio não perdeu nada visível. Mas o bug era real e ia aparecer no primeiro mês com reclassificação de verdade, ou se as provisões um dia passassem de 46.
+
+**Correção:** nova função `encontrar_ultima_linha_amarela(ws)` — detecta o fim do bloco amarelo via `Interior.Color` (não `Pattern`, que é igual pras 3 cores, nem `ColorIndex`, que não discrimina bem cores customizadas — confirmado inspecionando ao vivo que verde e roxo têm o mesmo ColorIndex, só o Color numérico difere: amarelo=65535, verde=10213316, roxo=14336204 no arquivo real de julho). `limpar_provisoes` e o cálculo de `capacidade` em `preencher_provisoes_flash` passaram a usar essa função em vez de `encontrar_primeira_linha_sem_cor`. A fórmula "molde" da roxa (`ultima_linha_colorida`, ainda calculada do jeito antigo — é o comportamento CORRETO, roxa é o molde de propósito) agora é capturada ANTES de qualquer limpeza/inserção, nunca depois.
+
+**Inserção automática implementada:** `inserir_linhas_amarelas_novas(ws, n_linhas, ultima_linha_amarela, log)` — insere `n_linhas` linhas via `Rows(...).Insert(Shift=xlShiftDown, CopyOrigin=xlFormatFromLeftOrAbove)` (nativo do Excel, não copia/cola por área de transferência), sempre logo antes da primeira linha verde, copiando o formato da última amarela. **Nunca mexe no conteúdo das linhas verdes/roxas** — só a posição delas muda (efeito colateral inevitável de inserir linha acima, mas o Excel ajusta sozinho).
+
+**Confirmado com a usuária antes de implementar:**
+1. Linha nova é sempre amarela (nunca verde/roxa) — confirmado.
+2. Frequência imprevisível ("pode acontecer todos os meses... não tem como prever, mas pode acontecer") — confirma que vale a pena automatizar, não é caso raro descartável.
+3. Inserção sempre antes das linhas verdes, empurrando verde+roxo+branco pra baixo — confirmado, bate com a implementação.
+4. Roxa mantém só 1 linha, de propósito, com as fórmulas de molde — confirmado, não é bug a ausência de dado real na roxa.
+
+**Validação forte (cópia local do arquivo real de julho, sem tocar rede):**
+- **Teste de regressão** (sem forçar inserção, 28 provisões reais dentro da capacidade de 46): `limpar_provisoes` + `preencher_provisoes_flash` rodados — verde/roxo permaneceram exatamente como antes (mesma cor, mesmo conteúdo vazio, fórmula molde da roxa intacta).
+- **Teste forçando inserção** (3 linhas amarelas novas): antes `ultima_amarela=47, ultima_colorida=67`; depois `ultima_amarela=50, ultima_colorida=70` (deslocamento de exatamente 3, correto). Verde (era linha 48) passou pra 51, ainda verde, ainda vazia. Roxa (era 67) passou pra 70, ainda roxa — e a fórmula molde se AUTO-AJUSTOU sozinha (`=VLOOKUP(C67,...)` virou `=VLOOKUP(C70,...)`, o próprio Excel corrigiu a referência interna, comportamento nativo de inserção de linha de verdade — não aconteceria assim numa cópia manual de célula, é uma confirmação a mais de que o `Rows().Insert()` nativo foi a escolha certa em vez de manipular linhas na mão). Área branca também deslocou corretamente (era linha 68, passou pra 71).
+
+**Pendente, tema à parte (a usuária vai detalhar depois):** como as linhas VERDES (reclassificações) devem ser preenchidas/atualizadas automaticamente — hoje a automação nunca escreve nelas, só desloca a posição quando insere amarela nova acima.
