@@ -3,6 +3,21 @@
 > Manter apenas as últimas 2 sessões inline — sessões mais antigas vão para long_term/.
 
 ---
+## Continuação 2026-08-22 — Quadro de comparação (linhas 18/19) implementado pro Ciclo Flash: fonte vira Forecast (R<mês>), não outro Flash
+
+- **Retomada:** pendência #1 do fim de 2026-08-21 — o quadro de comparação `atualizar_comparacao_flash` só rodava pro Actual (comparando contra o Flash do mês). Usuária explicou a lógica do Ciclo Flash: comparar contra o **Forecast mais recente** (nomenclatura Pirelli: R+número do mês = REFRESH, ex R7=refresh de julho; não existem R1/R8/R12).
+- **Implementado e validado** (detalhe técnico completo em `memory/DECISOES.md` → "2026-08-22"): `localizar_forecast_para_comparacao` + `ler_forecast_despesas_mao_de_obra` + `atualizar_comparacao_forecast`, tudo em `gerar_base_intermediaria.py`. Busca R<mês fechando> na pasta do mês; se não achar (R1/R8/R12), cai pro mês anterior (ex: Agosto usa R7) e **avisa via popup na GUI** qual R foi usado. Janeiro (sem R1, usa Budget/MP) fica pendente — fonte ainda não mapeada, quadro não preenchido nesse caso, com aviso.
+- **Estrutura da fonte mapeada inspecionando ao vivo o arquivo real de julho (R7)** — aba "Resumo Resultado Ano": linha 19=Variable Cost, 20=Labour(var), 30=Fixed Cost, 31=Labour(fixo), 38=Total Costs (confirmado = 19+30 nos 12 meses, com check em runtime que avisa se não bater, pedido explícito da usuária). Valores em '000 BRL negativos — fórmula converte pra BRL absoluto positivo.
+- **Validação forte:** o valor calculado pra Julho bateu EXATAMENTE com o que a usuária já tinha colado à mão no arquivo real (`Base Intermediária Fitted July Flash 2026.xlsx`: Despesas R$ 3.940.062,77 / Mão de Obra R$ 2.380.392,91). Rodado de ponta a ponta (Lançar Provisões → Finalização) contra pasta de teste local, mesmo resultado.
+- **Achado extra confirmado com a usuária:** rótulos de texto do quadro (herdados errados do template Actual do mês anterior) também são corrigidos agora — linha 15/A "Actual"→"Flash", linha 18/A "Flash"→"Forecast", cabeçalho linha 24 H/I "Flash"/"Actual"→"Forecast"/"Flash".
+- **Registrado em `ontology/fitted_units.json`** → `ciclos.forecast` (nomenclatura R, cenários que não existem, estrutura de pastas/arquivo) e `quadro_comparacao_pivot` (lógica completa dos dois casos, Actual e Flash).
+- **Nenhum dado real de produção foi alterado** — todo teste rodou contra pasta de teste local (`data/processed/fitted_units_despesas/base_intermediaria_teste/`), lendo arquivos reais da rede só como fonte (ReadOnly).
+- **Pendências que seguem em aberto (herdadas de 2026-08-21, nenhuma delas foi tocada nesta sessão):**
+  1. Fonte de Budget/MP pra Janeiro (sem R1) — retomar perto do fechamento de Janeiro.
+  2. Faturamento (linha 25 do quadro amarelo) — ainda manual nos dois ciclos.
+  3. Inserção automática de linha colorida se as provisões excederem a capacidade existente (hoje para com erro claro).
+
+---
 ## Continuação 2026-08-21 — Fitted Units Despesas: implementada a opção 1 (Ciclo já na extração), decisão pendente de 2026-08-19 fechada
 
 - **Retomada rápida no início da sessão:** recapitulei pra usuária o estado de 2026-08-19 (Passo 3 validado com julho Actual, GUI cockpit aprovada visualmente, mas ainda não em produção) e a decisão pendente das 3 opções pra resolver o risco de o Passo 3 pegar a extração errada (Flash vs Actual) do mesmo mês. Ela confirmou direto: **opção 1 (recomendada) — marcar o Ciclo já na extração.**

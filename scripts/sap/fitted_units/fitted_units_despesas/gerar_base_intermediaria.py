@@ -29,14 +29,19 @@ preenchimento de provisoes do Flash ganhou seu proprio Passo 3):
    ate Conta Geral) da primeira linha pra todas as linhas coladas.
 7. Da refresh nas Pivot Tables da aba "Pivot" (wb.RefreshAll()), que nao se
    atualizam sozinhas so porque os dados da Intermediária mudaram.
-8. Traz da Base Intermediária FLASH do mesmo mes os valores de Despesas e
-   Mao de Obra pro quadro "(+) gain" da aba Pivot (linhas 18/19) - e' o que
-   a usuaria hoje faz manualmente (abre o Flash, copia, cola aqui). So roda
-   se o ciclo sendo gerado for Actual (nao teria sentido comparar Flash
-   contra Flash). Nao e' fatal se o arquivo Flash do mes nao existir.
+8. Traz os valores de Despesas e Mao de Obra pro quadro "(+) gain" da aba
+   Pivot (linhas 18/19) - e' o que a usuaria hoje faz manualmente. Se o
+   ciclo sendo gerado for Actual, a fonte e' a Base Intermediária FLASH do
+   mesmo mes (linhas 15/16 da aba Pivot dela). Se for Flash, nao faria
+   sentido comparar Flash com Flash - a fonte passa a ser o Forecast mais
+   recente (R<mes>, com fallback pro Forecast do mes anterior quando R<mes>
+   nao existe - R1/R8/R12 nunca sao feitos - avisando qual foi usado; ver
+   atualizar_comparacao_forecast). Nao e' fatal se a fonte nao existir.
    Tambem corrige as formulas de Custos (H26/I26) do quadro amarelo
    "Month/Flash/Actual/delta", que ficavam travadas na coluna do ultimo mes
-   editado a mao - passam a apontar sempre pra coluna do mes atual.
+   editado a mao - passam a apontar sempre pra coluna do mes atual - e, so
+   no caso Flash, os rotulos de texto herdados do template (linha 15/18 e
+   cabecalho da linha 24) que precisam virar "Flash"/"Forecast".
    Faturamento (linha 25) fica de fora, ainda e' manual.
 
 Ciclo Flash (confirmado com a usuaria em 2026-08-21): antes do passo 3 acima,
@@ -51,8 +56,9 @@ contabilidade estorna a provisao do mes anterior, entao nao ha nada
 acumulado pra herdar - o arquivo de origem, sempre o Actual do mes anterior,
 ja vem com essas linhas em branco). Se as provisoes nao couberem nas linhas
 coloridas existentes, para com erro claro (inserir linha nova ainda nao esta
-automatizado). O quadro de comparacao Flash x Actual (passo 8) fica de fora
-de proposito quando o ciclo e' Flash - a usuaria vai detalhar depois.
+automatizado). O quadro de comparacao (passo 8) roda normalmente pro Flash
+tambem, mas comparando contra o Forecast em vez de outro Flash - ver
+atualizar_comparacao_forecast.
 
 Depende de Excel instalado (pywin32) - abre uma instancia oculta e isolada
 (DispatchEx), igual ao gerar_ksb1_mensal.py.
@@ -108,6 +114,28 @@ LINHA_QUADRO_CUSTOS = 26
 # de la, celula por celula (nao depende da coluna do mes, e' fixo).
 LINHA_CAMBIO = 25
 COL_CAMBIO = 12  # L
+
+# Cabecalho do quadro amarelo (linha 24, mesmas colunas H/I de LINHA_QUADRO_
+# CUSTOS) - rotulo texto que precisa virar "Forecast"/"Flash" quando o
+# arquivo sendo gerado e' Flash (herda "Flash"/"Actual" do template copiado,
+# que e' sempre o Actual do mes anterior).
+LINHA_QUADRO_HEADER = 24
+
+# Aba "Resumo Resultado Ano" do arquivo de Forecast (P&L Fitted Units_
+# Forecast_<Mes>_<AA>_.xlsx - versao com "_" no final, sem formula, pedido
+# explicito da usuaria em 2026-08-22 pra nao perder a base se alguem mexer
+# por engano). Estrutura confirmada inspecionando ao vivo o arquivo real de
+# julho/2026 (R7): coluna D = Janeiro, avancando 1 coluna por mes. "Total
+# Costs" (linha 38) sempre bateu exatamente com Variable Cost (19) + Fixed
+# Cost (30) nos 12 meses testados - mas o check roda em runtime mesmo assim,
+# a usuaria pediu pra sempre confirmar antes de confiar.
+ABA_FORECAST_RESUMO = "Resumo Resultado Ano"
+COL_FORECAST_JANEIRO = 4        # D
+LINHA_FORECAST_VARIABLE_COST = 19
+LINHA_FORECAST_LABOUR_VARIAVEL = 20
+LINHA_FORECAST_FIXED_COST = 30
+LINHA_FORECAST_LABOUR_FIXO = 31
+LINHA_FORECAST_TOTAL_COSTS = 38
 
 XL_UP = -4162
 XL_TO_LEFT = -4159
@@ -211,6 +239,150 @@ def atualizar_comparacao_flash(excel, wb, mes: int, ano: int, log):
     )
     ws.Cells(LINHA_QUADRO_CUSTOS, COL_QUADRO_CUSTOS_ACTUAL).Formula = f"={letra_mes}{LINHA_PIVOT_GRAND_TOTAL}/1000"
     log(f"  Fórmulas de Custos (linha {LINHA_QUADRO_CUSTOS}) apontando pra coluna {letra_mes} ({MESES_INGLES[mes]}).")
+
+
+def localizar_arquivo_forecast(mes: int, ano: int) -> Path | None:
+    """Acha o arquivo de Forecast (R<mes>) do mes, versao sem formula (com
+    "_" no final do nome - recomendado pela usuaria em 2026-08-22, protege
+    contra alteracao acidental). Devolve None se a pasta ou o arquivo nao
+    existir (R1, R8 e R12 nunca sao feitos; R9-R11 do ano corrente podem
+    ainda nao existir se o mes nao chegou)."""
+    pasta = resolver_pasta_ciclo(REDE_BASE / str(ano) / MESES_PASTA[mes], mes, "Forecast")
+    nome = f"{mes:02d}_P&L Fitted Units_Forecast_{MESES_INGLES[mes]}_{str(ano)[-2:]}_.xlsx"
+    caminho = pasta / nome
+    return caminho if caminho.exists() else None
+
+
+def localizar_forecast_para_comparacao(mes: int, ano: int, log):
+    """Acha o Forecast pra comparar no fechamento do Flash do mes: primeiro
+    tenta R<mes> (o Forecast feito com o mes em aberto, cobrindo Janeiro-
+    Dezembro); se nao existir (caso conhecido de Agosto/R8 e Dezembro/R12,
+    que a Pirelli nao produz), cai pro Forecast do mes anterior (R<mes-1>),
+    que tambem projeta o mes atual. Janeiro (R1) nao tem fallback dentro do
+    Forecast - usa Budget/MP (fonte ainda nao mapeada, confirmar com a
+    usuaria quando chegar perto do fechamento de Janeiro).
+
+    Devolve (caminho, mes_do_forecast_usado, houve_fallback) ou None se
+    nao achou nenhuma fonte (nao e' erro fatal - o quadro de comparacao so
+    fica sem preencher nesta rodada, mesmo tratamento ja usado quando o
+    Flash do mes nao existe pro caso do Actual)."""
+    caminho = localizar_arquivo_forecast(mes, ano)
+    if caminho is not None:
+        return caminho, mes, False
+
+    if mes == 1:
+        log(
+            "AVISO: fechamento de Janeiro usa Budget/MP como comparação (R1 não existe) — "
+            "essa fonte ainda não está mapeada, o quadro de comparação Forecast não foi preenchido."
+        )
+        return None
+
+    mes_ant = mes - 1
+    caminho_ant = localizar_arquivo_forecast(mes_ant, ano)
+    if caminho_ant is None:
+        log(
+            f"AVISO: não encontrei o Forecast de {MESES_INGLES[mes]}/{ano} nem o de "
+            f"{MESES_INGLES[mes_ant]}/{ano} — o quadro de comparação Forecast não foi preenchido."
+        )
+        return None
+
+    return caminho_ant, mes_ant, True
+
+
+def ler_forecast_despesas_mao_de_obra(excel, caminho_forecast: Path, mes_coluna: int, log):
+    """Le a aba 'Resumo Resultado Ano' do arquivo de Forecast, na coluna do
+    MES QUE ESTA SENDO FECHADO (nao necessariamente o mes do proprio R -
+    no fallback, ex: fechando Agosto com o R7, a coluna lida e' Agosto
+    mesmo, que dentro do R7 e' a coluna de Forecast pra frente).
+
+    Devolve (despesas, mao_de_obra) em BRL absoluto positivo (o arquivo de
+    Forecast guarda em '000 BRL, custo como numero negativo - precisa
+    multiplicar por 1000 e inverter o sinal pra bater com o padrao das
+    linhas 18/19 da aba Pivot, que sao sempre positivas e em BRL cheio).
+
+    Antes de confiar no valor, confere se Total Costs bate com Variable
+    Cost + Fixed Cost (pedido explicito da usuaria - avisar sempre que nao
+    bater, nao so na implementacao)."""
+    col = COL_FORECAST_JANEIRO + mes_coluna - 1
+    wb = excel.Workbooks.Open(str(caminho_forecast), ReadOnly=True, UpdateLinks=0)
+    try:
+        excel.CalculateFullRebuild()
+        ws = wb.Worksheets(ABA_FORECAST_RESUMO)
+        variable_cost = ws.Cells(LINHA_FORECAST_VARIABLE_COST, col).Value
+        labour_variavel = ws.Cells(LINHA_FORECAST_LABOUR_VARIAVEL, col).Value
+        fixed_cost = ws.Cells(LINHA_FORECAST_FIXED_COST, col).Value
+        labour_fixo = ws.Cells(LINHA_FORECAST_LABOUR_FIXO, col).Value
+        total_costs = ws.Cells(LINHA_FORECAST_TOTAL_COSTS, col).Value
+    finally:
+        wb.Close(SaveChanges=False)
+
+    soma_var_fixo = variable_cost + fixed_cost
+    if abs(soma_var_fixo - total_costs) > 0.01:
+        log(
+            f"AVISO: no Forecast ({caminho_forecast.name}), Total Costs ({total_costs:,.2f}) não bate "
+            f"com Variable Cost + Fixed Cost ({soma_var_fixo:,.2f}) — confira o arquivo antes de confiar "
+            "no quadro de comparação."
+        )
+
+    mao_de_obra = -(labour_variavel + labour_fixo) * 1000
+    despesas = -total_costs * 1000 - mao_de_obra
+    return despesas, mao_de_obra
+
+
+def atualizar_comparacao_forecast(excel, wb, mes: int, ano: int, log) -> str | None:
+    """Equivalente ao atualizar_comparacao_flash, mas pro ciclo Flash: nao
+    faria sentido comparar Flash com Flash, entao traz do Forecast mais
+    recente (ver localizar_forecast_para_comparacao) os valores de Despesas/
+    Mão de Obra pro quadro "(+) gain" (linhas 18/19) e recalcula as fórmulas
+    de Custos (H26/I26) - mesma mecânica já usada pro Actual, que é genérica
+    o bastante pra servir os dois casos sem mudança.
+
+    Também corrige os rótulos de texto que o arquivo herda do template
+    copiado (sempre o Actual do mês anterior): linha 15/coluna A "Actual" ->
+    "Flash" (é o próprio ciclo do arquivo agora), linha 18/coluna A "Flash"
+    -> "Forecast", cabeçalho do quadro amarelo (linha 24, colunas H/I)
+    "Flash"/"Actual" -> "Forecast"/"Flash". Confirmado em 2026-08-22
+    inspecionando o arquivo real 'Base Intermediária Fitted July Flash
+    2026.xlsx' - é exatamente assim que a usuária já preenchia à mão.
+
+    Devolve uma string de aviso (fallback de Forecast usado, ou fonte não
+    encontrada) pra virar popup na GUI, ou None se não houve nenhuma
+    ressalva."""
+    ws = wb.Worksheets("Pivot")
+    ws.Cells(LINHA_PIVOT_DESPESAS_PROPRIO, 1).Value = "Flash"
+    ws.Cells(LINHA_PIVOT_DESPESAS_COMPARACAO, 1).Value = "Forecast"
+    ws.Cells(LINHA_QUADRO_HEADER, COL_QUADRO_CUSTOS_FLASH).Value = "Forecast"
+    ws.Cells(LINHA_QUADRO_HEADER, COL_QUADRO_CUSTOS_ACTUAL).Value = "Flash"
+
+    resultado = localizar_forecast_para_comparacao(mes, ano, log)
+    if resultado is None:
+        return (
+            f"Não encontrei Forecast pra comparar no fechamento de {MESES_INGLES[mes]}/{ano} — "
+            "o quadro de comparação (linhas 18/19 da aba Pivot) ficou vazio nesta rodada."
+        )
+    caminho_forecast, mes_forecast_usado, houve_fallback = resultado
+
+    log(f"Trazendo Despesas/Mão de Obra do Forecast pro quadro de comparação: {caminho_forecast.name}...")
+    despesas, mao_de_obra = ler_forecast_despesas_mao_de_obra(excel, caminho_forecast, mes, log)
+
+    col = COL_PIVOT_MES_JANEIRO + mes - 1
+    ws.Cells(LINHA_PIVOT_DESPESAS_COMPARACAO, col).Value = despesas
+    ws.Cells(LINHA_PIVOT_MAO_DE_OBRA_COMPARACAO, col).Value = mao_de_obra
+    log(f"  Despesas={despesas:,.2f} | Mão de Obra={mao_de_obra:,.2f}")
+
+    letra_mes = _letra_coluna_mes(mes)
+    ws.Cells(LINHA_QUADRO_CUSTOS, COL_QUADRO_CUSTOS_FLASH).Formula = (
+        f"=({letra_mes}{LINHA_PIVOT_DESPESAS_COMPARACAO}+{letra_mes}{LINHA_PIVOT_MAO_DE_OBRA_COMPARACAO})/1000"
+    )
+    ws.Cells(LINHA_QUADRO_CUSTOS, COL_QUADRO_CUSTOS_ACTUAL).Formula = f"={letra_mes}{LINHA_PIVOT_GRAND_TOTAL}/1000"
+    log(f"  Fórmulas de Custos (linha {LINHA_QUADRO_CUSTOS}) apontando pra coluna {letra_mes} ({MESES_INGLES[mes]}).")
+
+    if houve_fallback:
+        return (
+            f"Fechamento de {MESES_INGLES[mes]}/{ano}: não existe Forecast R{mes} — usei o Forecast de "
+            f"{MESES_INGLES[mes_forecast_usado]} (R{mes_forecast_usado}) como comparação."
+        )
+    return None
 
 
 def localizar_base_intermediaria_mes_anterior(mes: int, ano: int) -> Path:
@@ -629,8 +801,11 @@ def atualizar_base_intermediaria(mes: int, ano: int, ciclo: str, pasta_saida: Pa
         wb.RefreshAll()
         excel.CalculateUntilAsyncQueriesDone()
 
+        aviso_comparacao = None
         if ciclo == "Actual":
             atualizar_comparacao_flash(excel, wb, mes, ano, log)
+        else:
+            aviso_comparacao = atualizar_comparacao_forecast(excel, wb, mes, ano, log)
 
         log("Recalculando de novo (Total Ano das linhas zeradas)...")
         excel.CalculateFullRebuild()
@@ -649,7 +824,7 @@ def atualizar_base_intermediaria(mes: int, ano: int, ciclo: str, pasta_saida: Pa
     )
 
     log(f"\nBase Intermediária atualizada: {caminho_saida}")
-    return caminho_saida, caminho_historico
+    return caminho_saida, caminho_historico, aviso_comparacao
 
 
 if __name__ == "__main__":

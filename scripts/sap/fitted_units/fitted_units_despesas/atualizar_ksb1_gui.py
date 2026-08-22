@@ -508,11 +508,15 @@ def main():
         log_widget.delete("1.0", tk.END)
         _todos_botoes("disabled")
         try:
-            caminho, caminho_historico = atualizar_base_intermediaria(mes, ano, ciclo, pasta_saida, log=log)
+            caminho, caminho_historico, aviso_comparacao = atualizar_base_intermediaria(
+                mes, ano, ciclo, pasta_saida, log=log
+            )
             msg = f"Base Intermediária finalizada:\n{caminho}"
             if caminho_historico:
                 msg += f"\n\nHistórico de unidades encerradas (enviar pra contabilidade):\n{caminho_historico}"
             messagebox.showinfo("Concluído", msg)
+            if aviso_comparacao:
+                messagebox.showwarning("Quadro de comparação", aviso_comparacao)
         except Exception as e:
             messagebox.showerror("Erro ao finalizar a Base Intermediária", str(e))
         finally:

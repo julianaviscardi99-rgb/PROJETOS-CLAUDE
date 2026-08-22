@@ -446,3 +446,28 @@
 ## 2026-08-21 (continuação) — Tamanho padrão da janela do cockpit fixado em 1317x800
 
 **Decisão:** a pedido da usuária, a janela do cockpit sempre abre no tamanho `1317x800` (medido a partir de um print que ela mandou, 1317x835 incluindo a barra de título do Windows — descontei ~35px pra chegar no tamanho da área da janela em si). `minsize` ajustado proporcionalmente pra `1000x650` (antes era `780x560`, do tempo da janela pequena 860x640).
+
+---
+
+## 2026-08-22 — Quadro de comparação (linhas 18/19 da aba Pivot) implementado pro caso Flash: fonte passa a ser o Forecast (R<mês>), não outro Flash
+
+**Contexto:** pendência #1 da lista de fim de sessão de 2026-08-21 — o quadro `atualizar_comparacao_flash` (implementado em 2026-08-21) só rodava quando o ciclo gerado era Actual, comparando contra o Flash do mesmo mês. Não fazia sentido comparar Flash contra Flash, então esse quadro ficava vazio pro Ciclo Flash.
+
+**Decisão/lógica confirmada pela usuária:** pro Ciclo Flash, o cenário de referência (linhas 18/19) passa a ser o **Forecast mais recente**. Na Pirelli, Forecast = "R" + número do mês em que foi feito (REFRESH) — ex: R7 = refresh feito em julho. Não existem R1 (usa Budget/MP do ano anterior), R8 (time de HQ da Itália de férias) e R12 (time trabalhando no budget do ano seguinte) — confirmado que R2-R7 e R9-R11 cobrem o restante do ano.
+
+**Regra de busca (implementada em `localizar_forecast_para_comparacao`, `gerar_base_intermediaria.py`):** procura primeiro o Forecast do próprio mês que está fechando (pasta `<MM>_<Mês3>_Forecast`, arquivo `<MM>_P&L Fitted Units_Forecast_<MêsInglês>_<AA>_.xlsx` — versão com `_` no final, recomendada pela usuária por não ter fórmula e não correr risco de perder a informação original se alguém mexer por engano). Se não existir, cai pro Forecast do mês anterior (ex: fechamento de Agosto usa R7) e **abre um popup de aviso na GUI** dizendo qual Forecast foi usado. Janeiro (R1) não tem fallback dentro do Forecast — usa Budget/MP, fonte ainda não mapeada (fica pendente, quadro não preenchido nesse caso, com aviso).
+
+**Estrutura da fonte, confirmada inspecionando ao vivo o arquivo real de julho/2026 (R7)** — aba "Resumo Resultado Ano", cabeçalho de mês na linha 4 (coluna D=Janeiro...O=Dezembro), valores em '000 BRL com custo negativo:
+- Linha 19 = Variable Cost (total), Linha 20 = Labour (dentro do Variable)
+- Linha 30 = Fixed Cost (total), Linha 31 = Labour (dentro do Fixed)
+- **Linha 38 = Total Costs** — confirmado bater exatamente com Linha19+Linha30 nos 12 meses testados. A usuária pediu que esse check rode em runtime sempre (não só na implementação) e avise se não bater — implementado em `ler_forecast_despesas_mao_de_obra`.
+- Lê-se sempre a coluna do **mês que está fechando** (não do mês do próprio R) — ex: fechando Agosto com fallback pro R7, lê a coluna Agosto dentro do arquivo R7 (R7 projeta jul-dez).
+- Fórmula: Mão de Obra = -(L20+L31)×1000; Despesas = -(L38)×1000 − Mão de Obra (inverte sinal e converte de '000 BRL negativo pra BRL absoluto positivo, mesmo padrão das linhas 18/19 da Intermediária).
+
+**Validação forte:** os valores calculados pela fórmula acima pro R7/coluna Julho bateram **exatamente** com o que a usuária já tinha colado manualmente no arquivo real `Base Intermediária Fitted July Flash 2026.xlsx` (Despesas R$ 3.940.062,77 / Mão de Obra R$ 2.380.392,91) — confirma a lógica sem dúvida. Rodado também de ponta a ponta (Lançar Provisões → Finalização) contra pasta de teste local, mesmo resultado.
+
+**Achado extra (confirmado com a usuária antes de implementar):** o arquivo Flash é copiado do Actual do mês anterior, que carrega rótulos de texto errados (herdados do Actual). Corrigido em `atualizar_comparacao_forecast`: linha 15/coluna A "Actual"→"Flash" (próprio ciclo do arquivo), linha 18/coluna A "Flash"→"Forecast" (cenário de referência), cabeçalho do quadro amarelo (linha 24, colunas H/I) "Flash"/"Actual"→"Forecast"/"Flash". Confirmado batendo com o arquivo real de julho.
+
+**Reaproveitado sem mudança:** a escrita das fórmulas de Custos H26/I26 (que sempre apontam pra coluna do mês atual) já era genérica — passou a rodar também pro caso Flash sem precisar de nenhuma alteração.
+
+**Ainda pendente:** fonte de Budget/MP pra Janeiro (sem R1) — retomar quando ficar mais perto do fechamento de Janeiro. Faturamento (linha 25) continua manual, fora do escopo desta mudança.
