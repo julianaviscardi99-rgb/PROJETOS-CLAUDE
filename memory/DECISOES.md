@@ -502,3 +502,26 @@
 **Nota:** os valores em R$ gerados nesse teste (Despesas/Mão de Obra) não têm significado real — são de julho, só com rótulo de agosto. Arquivos de teste (`_fontes_fake_agosto/`, Base Intermediária "de agosto" em `gui_teste_rede/`) removidos depois da validação — nada disso é dado oficial nem foi escrito na rede.
 
 **Item de teste concluído** — o quadro de comparação Forecast (Actual e Flash) está validado em todas as frentes: lógica de valores (bate com o real de julho), rótulos de texto, GUI ao vivo, e agora o fallback R8→R7.
+
+---
+
+## 2026-08-22 (continuação) — Janeiro/Budget-MP implementado e validado: fecha o último item pendente do quadro de comparação Forecast
+
+**Contexto:** último item pendente desde 2026-08-21 — Janeiro (mes=1) não tem Forecast R1 (a Pirelli não produz), a usuária confirmou que usa o Budget/MP do ano.
+
+**Confirmado com a usuária:**
+1. **Propósito:** é a mesma fonte de comparação do quadro (linhas 18/19), só que pra Janeiro em vez de usar Forecast.
+2. **Budget e MP são a mesma coisa** (nomes alternativos).
+3. **Caminho:** `\\FSS024-01BR.group.pirelli.com\GFU_DAC\Management Plan\MP <ano>\P&L Fitted Units_Budget<AA>_.xlsx` (AA = 2 últimos dígitos do ano) — área de rede totalmente separada da dos outros ciclos.
+4. **Ano da pasta = MESMO ano que está sendo fechado, não o anterior** — corrige uma suposição errada que eu tinha registrado antes ("Budget/MP do ano anterior"). A usuária confirmou explicitamente: "nós construímos o MP27, no final de 2026, mas é referente 2027" — ou seja, o MP é PREPARADO no fim do ano anterior mas ARQUIVADO sob o ano que ele cobre.
+5. **Estrutura idêntica ao Forecast** — confirmado inspecionando ao vivo o arquivo real de 2026: mesma aba "Resumo Resultado Ano", mesmas linhas (19/20/30/31/38), mesmo cabeçalho de mês. Único diferencial: linha 5 (rótulo do cenário) diz "Budget" em todas as 12 colunas (o arquivo inteiro é projeção, nenhum mês é Actual quando foi criado, ao contrário do Forecast que vai "ganhando" meses Actual conforme o ano avança).
+
+**Implementado:** `localizar_arquivo_budget(ano)` (novo) + `localizar_forecast_para_comparacao` reescrita pra tratar mes=1 como caso especial (vai direto pro Budget, sem tentar Forecast/fallback) — devolve `(caminho, aviso)`, simplificado de 3 pra 2 elementos já que a coluna a ler é sempre `mes` independente da fonte. `atualizar_comparacao_forecast` ajustada: rótulo do quadro vira "Budget" (em vez de "Forecast") quando mes=1.
+
+**Validação forte (GUI real, sem tocar rede):** Janeiro/2026 já tinha fechamento real (mês passado) — copiada a Base Intermediária Flash REAL de Janeiro pra pasta de teste local (única mudança: destino de escrita), sem precisar emprestar dado de outro mês como no teste de Agosto. Rodando "Finalização" pela GUI real: popup apareceu certinho ("Fechamento de January/2026: não existe Forecast R1 — usei o Budget/MP 2026 como comparação"), rótulo "Budget" escrito corretamente na célula, e o valor calculado (Despesas R$ 2.983.872,25) bateu **exatamente** com o que já estava na célula do arquivo original antes do teste (rotulada "MP'26" — a usuária já tinha feito essa mesma conta à mão, usando a mesma fonte, quando Janeiro fechou de verdade).
+
+**Achado no meio do teste (não é bug, só curiosidade registrada):** a pasta `01_Jan_Forecast` na rede tem arquivos com "R1" no nome (`Base_Book_Fitted Units_Forecast R1'26.xlsx`, etc.) — mas NENHUM segue o padrão `P&L Fitted Units_Forecast_...` que a automação procura, então não interfere em nada. Parece ser resíduo de outro processo/relatório, não o Forecast formal que estamos automatizando.
+
+**Falso alarme no meio da sessão:** um teste inicial "não funcionou" (nenhum popup, arquivo de teste intocado) — investigado e confirmado que foi a usuária esquecer de trocar o Ciclo/Mês da rodada anterior (estava em Julho/Actual) antes de clicar Finalização, não um bug. Repetindo com Janeiro/Flash selecionado corretamente, funcionou de primeira.
+
+**Todos os itens do quadro de comparação Forecast agora estão fechados:** Actual (Flash como referência), Flash normal (Forecast R<mês>), fallback R8/R12→mês anterior, e Janeiro (Budget/MP). Só Faturamento (linha 25) e inserção automática de linha colorida continuam pendentes, sem relação com este quadro.

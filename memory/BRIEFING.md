@@ -29,10 +29,15 @@
 - Arquivos de teste (`gui_teste_rede/`) removidos depois da validação — nada é dado oficial, nada foi escrito na rede.
 - **Pendências que seguem em aberto** (nenhuma tocada nesta parte): Janeiro/Budget-MP, Faturamento (linha 25), inserção automática de linha colorida se provisões excederem capacidade.
 
-### Continuação (mesmo dia) — Iniciando Janeiro/Budget-MP (EM ANDAMENTO, nada implementado ainda)
+### Continuação (mesmo dia) — Janeiro/Budget-MP implementado e validado — fecha o quadro de comparação Forecast por completo
 
-- Usuária confirmou seguir com o último item pendente: a fonte de comparação pro fechamento de Janeiro (R1 não existe, usa "Budget ou MP do ano anterior").
-- **Nada perguntado/respondido ainda sobre isso** além do que já estava registrado (`ontology/fitted_units.json` → `ciclos.forecast.cenarios_que_nao_existem`: "fonte/caminho ainda não mapeado"). Retomar perguntando: (1) onde fica o arquivo (caminho de rede), (2) Budget e MP são a mesma coisa/nomes alternativos ou são duas fontes diferentes com prioridade entre elas, (3) a estrutura da aba é igual ao Forecast ("Resumo Resultado Ano", mesmas linhas 19/20/30/31/38) ou é diferente.
+- **Confirmado com a usuária:** Budget = MP (mesma coisa). Caminho: `\\FSS024-01BR.group.pirelli.com\GFU_DAC\Management Plan\MP <ano>\P&L Fitted Units_Budget<AA>_.xlsx` — **mesmo ano** que está sendo fechado (não o anterior; o MP é preparado no fim do ano anterior mas arquivado sob o ano que cobre — ex: MP27 é feito no fim de 2026). Estrutura idêntica ao Forecast (mesma aba, mesmas linhas 19/20/30/31/38), confirmado inspecionando ao vivo.
+- **Implementado:** `localizar_arquivo_budget` + `localizar_forecast_para_comparacao` reescrita (mes=1 vira caso especial, direto pro Budget). Rótulo do quadro vira "Budget" (não "Forecast") quando mes=1.
+- **Validado pela GUI real, sem tocar rede** — Janeiro/2026 já tinha fechamento de verdade, então copiei a Base Intermediária Flash REAL de Janeiro pra pasta de teste local (não precisou emprestar dado de outro mês, diferente do teste de Agosto). Popup apareceu certinho, rótulo "Budget" e valor (R$ 2.983.872,25) bateram exatamente com o que a usuária já tinha calculado à mão, na época, com o rótulo "MP'26". Detalhe completo em `memory/DECISOES.md` → "2026-08-22 (continuação) — Janeiro/Budget-MP".
+- **Achado à parte, sem impacto:** pasta `01_Jan_Forecast` na rede tem arquivos com "R1" no nome, mas nenhum no padrão que a automação procura — não interfere.
+- **Corrigido na ontologia:** uma suposição errada anterior ("Budget/MP do ano anterior") foi trocada por "mesmo ano", confirmado explicitamente pela usuária.
+- **Todos os cenários do quadro de comparação Forecast agora estão fechados e testados:** Actual, Flash normal, fallback R8/R12, e Janeiro/Budget.
+- **Pendências que seguem em aberto** (sem relação com este quadro): Faturamento (linha 25), inserção automática de linha colorida se provisões excederem capacidade.
 
 ---
 ## Continuação 2026-08-22 — Quadro de comparação (linhas 18/19) implementado pro Ciclo Flash: fonte vira Forecast (R<mês>), não outro Flash

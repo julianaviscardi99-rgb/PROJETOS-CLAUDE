@@ -137,6 +137,15 @@ LINHA_FORECAST_FIXED_COST = 30
 LINHA_FORECAST_LABOUR_FIXO = 31
 LINHA_FORECAST_TOTAL_COSTS = 38
 
+# Budget/MP - usado so' no fechamento de Janeiro (R1 nunca e' feito, ver
+# localizar_forecast_para_comparacao). Fica numa area de rede totalmente
+# separada da dos outros ciclos (Management Plan, nao Resultados Fitted),
+# preparado ANTES do ano comecar mas arquivado sob o ano que ele cobre -
+# confirmado pela usuaria em 2026-08-22: fechamento de Janeiro/2026 usa a
+# pasta "MP 2026" (mesmo ano, nao o anterior). Mesma aba/linhas do Forecast
+# (Resumo Resultado Ano, 19/20/30/31/38) - confirmado inspecionando ao vivo.
+PASTA_BUDGET_BASE = Path(r"\\FSS024-01BR.group.pirelli.com\GFU_DAC\Management Plan")
+
 XL_UP = -4162
 XL_TO_LEFT = -4159
 XL_FILL_DEFAULT = 0
@@ -253,29 +262,49 @@ def localizar_arquivo_forecast(mes: int, ano: int) -> Path | None:
     return caminho if caminho.exists() else None
 
 
-def localizar_forecast_para_comparacao(mes: int, ano: int, log):
-    """Acha o Forecast pra comparar no fechamento do Flash do mes: primeiro
-    tenta R<mes> (o Forecast feito com o mes em aberto, cobrindo Janeiro-
-    Dezembro); se nao existir (caso conhecido de Agosto/R8 e Dezembro/R12,
-    que a Pirelli nao produz), cai pro Forecast do mes anterior (R<mes-1>),
-    que tambem projeta o mes atual. Janeiro (R1) nao tem fallback dentro do
-    Forecast - usa Budget/MP (fonte ainda nao mapeada, confirmar com a
-    usuaria quando chegar perto do fechamento de Janeiro).
+def localizar_arquivo_budget(ano: int) -> Path | None:
+    """Acha o arquivo de Budget/MP do ano (fonte de comparação so' pro
+    fechamento de Janeiro, que nao tem R1). Devolve None se a pasta ou o
+    arquivo nao existir."""
+    pasta = PASTA_BUDGET_BASE / f"MP {ano}"
+    nome = f"P&L Fitted Units_Budget{str(ano)[-2:]}_.xlsx"
+    caminho = pasta / nome
+    return caminho if caminho.exists() else None
 
-    Devolve (caminho, mes_do_forecast_usado, houve_fallback) ou None se
-    nao achou nenhuma fonte (nao e' erro fatal - o quadro de comparacao so
-    fica sem preencher nesta rodada, mesmo tratamento ja usado quando o
-    Flash do mes nao existe pro caso do Actual)."""
+
+def localizar_forecast_para_comparacao(mes: int, ano: int, log):
+    """Acha a fonte de comparacao pro fechamento do Flash do mes:
+    - Janeiro (mes=1): usa direto o Budget/MP do ano (R1 nunca e' feito) -
+      ver localizar_arquivo_budget.
+    - Outros meses: tenta R<mes> (o Forecast feito com o mes em aberto,
+      cobrindo Janeiro-Dezembro); se nao existir (caso conhecido de
+      Agosto/R8 e Dezembro/R12, que a Pirelli nao produz), cai pro Forecast
+      do mes anterior (R<mes-1>), que tambem projeta o mes atual.
+
+    Devolve (caminho, aviso) - aviso e' None quando achou a fonte esperada
+    sem ressalva (R<mes> direto), ou uma string explicando o que foi usado
+    (Budget/MP, ou fallback de Forecast) pra virar popup na GUI. Devolve
+    None (sem tupla) se nao achou nenhuma fonte - nao e' erro fatal, o
+    quadro de comparacao so fica sem preencher nesta rodada, mesmo
+    tratamento ja usado quando o Flash do mes nao existe pro caso do
+    Actual."""
+    if mes == 1:
+        caminho = localizar_arquivo_budget(ano)
+        if caminho is None:
+            log(
+                f"AVISO: não encontrei o Budget/MP de {ano} "
+                f"({PASTA_BUDGET_BASE / f'MP {ano}'}) — o quadro de comparação não foi preenchido."
+            )
+            return None
+        aviso = (
+            f"Fechamento de {MESES_INGLES[mes]}/{ano}: não existe Forecast R1 — usei o "
+            f"Budget/MP {ano} como comparação."
+        )
+        return caminho, aviso
+
     caminho = localizar_arquivo_forecast(mes, ano)
     if caminho is not None:
-        return caminho, mes, False
-
-    if mes == 1:
-        log(
-            "AVISO: fechamento de Janeiro usa Budget/MP como comparação (R1 não existe) — "
-            "essa fonte ainda não está mapeada, o quadro de comparação Forecast não foi preenchido."
-        )
-        return None
+        return caminho, None
 
     mes_ant = mes - 1
     caminho_ant = localizar_arquivo_forecast(mes_ant, ano)
@@ -286,7 +315,11 @@ def localizar_forecast_para_comparacao(mes: int, ano: int, log):
         )
         return None
 
-    return caminho_ant, mes_ant, True
+    aviso = (
+        f"Fechamento de {MESES_INGLES[mes]}/{ano}: não existe Forecast R{mes} — usei o Forecast de "
+        f"{MESES_INGLES[mes_ant]} (R{mes_ant}) como comparação."
+    )
+    return caminho_ant, aviso
 
 
 def ler_forecast_despesas_mao_de_obra(excel, caminho_forecast: Path, mes_coluna: int, log):
@@ -348,22 +381,23 @@ def atualizar_comparacao_forecast(excel, wb, mes: int, ano: int, log) -> str | N
     Devolve uma string de aviso (fallback de Forecast usado, ou fonte não
     encontrada) pra virar popup na GUI, ou None se não houve nenhuma
     ressalva."""
+    rotulo_fonte = "Budget" if mes == 1 else "Forecast"
     ws = wb.Worksheets("Pivot")
     ws.Cells(LINHA_PIVOT_DESPESAS_PROPRIO, 1).Value = "Flash"
-    ws.Cells(LINHA_PIVOT_DESPESAS_COMPARACAO, 1).Value = "Forecast"
-    ws.Cells(LINHA_QUADRO_HEADER, COL_QUADRO_CUSTOS_FLASH).Value = "Forecast"
+    ws.Cells(LINHA_PIVOT_DESPESAS_COMPARACAO, 1).Value = rotulo_fonte
+    ws.Cells(LINHA_QUADRO_HEADER, COL_QUADRO_CUSTOS_FLASH).Value = rotulo_fonte
     ws.Cells(LINHA_QUADRO_HEADER, COL_QUADRO_CUSTOS_ACTUAL).Value = "Flash"
 
     resultado = localizar_forecast_para_comparacao(mes, ano, log)
     if resultado is None:
         return (
-            f"Não encontrei Forecast pra comparar no fechamento de {MESES_INGLES[mes]}/{ano} — "
+            f"Não encontrei Forecast/Budget pra comparar no fechamento de {MESES_INGLES[mes]}/{ano} — "
             "o quadro de comparação (linhas 18/19 da aba Pivot) ficou vazio nesta rodada."
         )
-    caminho_forecast, mes_forecast_usado, houve_fallback = resultado
+    caminho_fonte, aviso = resultado
 
-    log(f"Trazendo Despesas/Mão de Obra do Forecast pro quadro de comparação: {caminho_forecast.name}...")
-    despesas, mao_de_obra = ler_forecast_despesas_mao_de_obra(excel, caminho_forecast, mes, log)
+    log(f"Trazendo Despesas/Mão de Obra pro quadro de comparação: {caminho_fonte.name}...")
+    despesas, mao_de_obra = ler_forecast_despesas_mao_de_obra(excel, caminho_fonte, mes, log)
 
     col = COL_PIVOT_MES_JANEIRO + mes - 1
     ws.Cells(LINHA_PIVOT_DESPESAS_COMPARACAO, col).Value = despesas
@@ -377,12 +411,7 @@ def atualizar_comparacao_forecast(excel, wb, mes: int, ano: int, log) -> str | N
     ws.Cells(LINHA_QUADRO_CUSTOS, COL_QUADRO_CUSTOS_ACTUAL).Formula = f"={letra_mes}{LINHA_PIVOT_GRAND_TOTAL}/1000"
     log(f"  Fórmulas de Custos (linha {LINHA_QUADRO_CUSTOS}) apontando pra coluna {letra_mes} ({MESES_INGLES[mes]}).")
 
-    if houve_fallback:
-        return (
-            f"Fechamento de {MESES_INGLES[mes]}/{ano}: não existe Forecast R{mes} — usei o Forecast de "
-            f"{MESES_INGLES[mes_forecast_usado]} (R{mes_forecast_usado}) como comparação."
-        )
-    return None
+    return aviso
 
 
 def localizar_base_intermediaria_mes_anterior(mes: int, ano: int) -> Path:
