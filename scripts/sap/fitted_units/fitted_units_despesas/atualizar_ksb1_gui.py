@@ -13,6 +13,7 @@ Pre-requisitos na maquina de quem for rodar:
 - SAP GUI aberto e logada (nao precisa estar na KSB1, o script abre a transacao sozinho)
 """
 import ctypes
+import math
 import queue
 import sys
 import threading
@@ -23,6 +24,7 @@ from pathlib import Path
 from tkinter import messagebox, ttk
 
 import pythoncom
+from PIL import Image, ImageDraw, ImageTk
 
 # Sem isso, o Windows nao sabe que o Tkinter lida com DPI sozinho e "estica"
 # a janela como bitmap pra bater com o zoom da tela (125%/150% etc.) — e' o
@@ -56,6 +58,71 @@ from ksb1_core import (  # noqa: E402
 LOGO_PIRELLI_B64 = (
     "iVBORw0KGgoAAAANSUhEUgAAAJsAAAAvCAYAAAD0OrjvAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAU4SURBVHhe7Zvri1VlFIcnm5qpbLLLt7KLlpk5Y4ZI6nwIDE0s8MOEgiRFN0UKTJQUu2AYo0KW1HRRpMuoYVaa1hBdUCu7Rx+ke/0rb8+PMweOb2vfztTrmWF9eEBnr7X23u969n735ey28HdbcJwUuGxOMlw2Jxkum5MMl81JhsvmJMNlc5LhsjnJcNmcZFSX7c2zQrjvvBD6upyxzLILQ3ikI4Q99PynyIEmqS7bdmS7iQ25/DJnLDMRrrs4hDmIt7YzhC8NFyrisjn5XAHTkW4js9nPhg8VSCPbVZeGsJSNffQcJxVr4EGYx7hbPamChFs0PoRDhg8VSCPb5EtCGDg3hB/Id9LxDbzaHsKNE+y+VGEWPd9BPcuJkqSR7Vpkex3ZrHrO/8vRcYjCWcnqSxXU836jfgXSyHYN0+gzyDZEvpOGD+EtWMVUqssYqy9VmEvPX6Ge5URJ0simOf8Gzm4zuNB00tENmlWsnlSlj55/bvhQgTSyOaOb3q4QdtH3Pw0fKuCyOdlM4qy45PwQ9tHz3wwXKpLumm1DRwiD5DqjgwPwGZyCPwwPmiCNbHr08Ro3CDoNO6OHv8ByoEnSyOaPPhw4s7I9BYv4+/xOm6Fx/87ZVJBThsXtIWykzteQdfTeRcxtRm5ZFsL+qKamo/2MnxUvFnCpsSrKyeIkLGd8rDribsbo4yjH4ivYkFNHbyE+inKa5MzKtpKLT02xVo54hx2Nc+6nzmRu6a34qkyfEMJBBtq6JrmZZXpkY+WV4WquU3dFNX+Hl1mfFS+uJGfx+NNzsjhGnbmMn1VH9F4UwvtGXsxxuIcxtWqIhfT6cJTTJGNPNj3AVKPr6P950sykKSfZp/gMVySbxFDtLLTPu6OaLpu9IJNWl63/7BD2ErdvmGdhNgOvn8xY8aKfxv1KXON6imR7gJjnctgJJ6CxpstmL8ik1WU7gmy6k2rM2Q5Tc3LupXGnopwi2V4gRtNvHvHZ0mWzF2TS6rK9i2z63ZXOVEL/fprGXJ+znhVNyLaenLdz0LXg91FNl81ekEmry/YYOc/TiJ3DPAkzcsTR3zcT80u0Hr9BqOGy5chWFb2w/pR9iqdel62Gy/YfyKbGzqTOAE2z3vsVyaZfVNySQy/5g1FNl81ekEmryzaLZfNo9DSYSPOsGDGNuD0Zooki2bYR810B8dTsstkLMml12Qa5QdDPoR+HvDtQPQsbIDZ+5FGnSLatxHxbgIRrlLmMbAsYW6tWnfpndUWyzUG2NxryYn4EbZvLNkwzstUffehV1Hy2Uw204sRsziJDxvWaKJLtDrZtZQEPt5/+rK1INq2vh/VatcRq6m1j/1SrSLap1Flq1KjzBHWOUcdlG2YksilWU52mSyuuzoqO2pFe9Q1CGSYheuNUViRbEbrp6LugVqtItiJu7QrhIHVaWrYdyKadnEITy9LDKX0vR2VcS19cd7PMyhGHjJzVCNjDQFnx4oMG2fSF0Z2cvXSUW7FCU+2L7FN87dbLIE/JyStDN/lHG2pKtt2sy4otg65Dl3fWah2njl6UW3FluJ1xeY86+qn3Q4ypFSOWIPcRYur7MAKqy6YN3ERD13A0lGUd0nzC4MS19O5Qy6wcccLI0UcXeTnxe05dt6xnMK3YOluIiS/mNc3o20srvizryG/8klwHgT5GsWLLsJZ6ehWmWjqQNrOvVlwZtjCGmuJV5yXOklaM2ErcF8PrHCHVZXOcJnHZnGS4bE4yXDYnGS6bkwyXzUmGy+Ykw2VzkuGyOclw2ZxEtIV/AAlejwcdSLwvAAAAAElFTkSuQmCC"
 )
+
+
+def _gerar_frames_pneu(diametro=18, n_frames=12):
+    """Gera os frames (ImageTk.PhotoImage) de um icone de pneu com calota
+    (banda preta com marcas de sulco, aro prateado com raios e miolo escuro
+    com detalhe amarelo claro - cores do cockpit) girando, usado como
+    indicador de "processando" na barra abaixo do cabecalho. Desenhado em
+    runtime via PIL em vez de arquivo/base64 separado, pra manter o script
+    autossuficiente - mesma filosofia do logo Pirelli embutido acima."""
+    escala = 8  # desenha bem maior e reduz depois (raios da calota ficam limpos)
+    d_grande = diametro * escala
+    img = Image.new("RGBA", (d_grande, d_grande), (0, 0, 0, 0))
+    desenho = ImageDraw.Draw(img)
+    raio = d_grande / 2
+    centro = (raio, raio)
+
+    # Banda do pneu (preta, com sulcos)
+    desenho.ellipse(
+        [d_grande * 0.04, d_grande * 0.04, d_grande * 0.96, d_grande * 0.96],
+        fill=(20, 20, 20, 255),
+    )
+    for i in range(12):
+        ang = math.radians(i * 30)
+        x1 = centro[0] + raio * 0.87 * math.cos(ang)
+        y1 = centro[1] + raio * 0.87 * math.sin(ang)
+        x2 = centro[0] + raio * 0.70 * math.cos(ang)
+        y2 = centro[1] + raio * 0.70 * math.sin(ang)
+        desenho.line([x1, y1, x2, y2], fill=(60, 60, 60, 255), width=max(1, escala // 3))
+
+    # Calota (aro prateado com raios, miolo escuro com detalhe amarelo claro)
+    raio_calota = raio * 0.62
+    desenho.ellipse(
+        [centro[0] - raio_calota, centro[1] - raio_calota, centro[0] + raio_calota, centro[1] + raio_calota],
+        fill=(196, 199, 204, 255), outline=(120, 122, 126, 255), width=max(1, escala // 4),
+    )
+    n_raios = 6
+    largura_raio = math.radians(10)
+    for i in range(n_raios):
+        ang = math.radians(i * (360 / n_raios))
+        pontos = []
+        for delta in (-largura_raio, largura_raio):
+            a = ang + delta
+            pontos.append((centro[0] + raio_calota * 0.94 * math.cos(a), centro[1] + raio_calota * 0.94 * math.sin(a)))
+        pontos.insert(1, (
+            centro[0] + raio_calota * 0.94 * math.cos(ang), centro[1] + raio_calota * 0.94 * math.sin(ang)
+        ))
+        desenho.polygon([centro, pontos[0], pontos[1], pontos[2]], fill=(146, 149, 155, 255))
+
+    raio_miolo = raio_calota * 0.34
+    desenho.ellipse(
+        [centro[0] - raio_miolo, centro[1] - raio_miolo, centro[0] + raio_miolo, centro[1] + raio_miolo],
+        fill=(30, 30, 30, 255),
+    )
+    raio_logo = raio_miolo * 0.4
+    desenho.ellipse(
+        [centro[0] - raio_logo, centro[1] - raio_logo, centro[0] + raio_logo, centro[1] + raio_logo],
+        fill=(255, 233, 168, 255),
+    )
+
+    frames = []
+    for i in range(n_frames):
+        rotacionado = img.rotate(-i * (360 / n_frames), resample=Image.BICUBIC)
+        reduzido = rotacionado.resize((diametro, diametro), Image.LANCZOS)
+        frames.append(ImageTk.PhotoImage(reduzido))
+    return frames
 
 
 def extrair_um(session, mes, ano, ciclo, koagr, agrup_label, log):
@@ -255,12 +322,6 @@ def _configurar_estilo(root):
         foreground=[("!disabled", "black"), ("disabled", "#8a8a8a")],
     )
 
-    style.configure(
-        "Cockpit.Horizontal.TProgressbar",
-        troughcolor=BG_CAMPO, background=AMARELO_CLARO, bordercolor=BORDA,
-        lightcolor=AMARELO_CLARO, darkcolor=AMARELO_CLARO,
-    )
-
     # Notebook (abas) — tema "clam" permite recolorir tab a tab, o padrao do
     # Windows (vista/xpnative) ignora essas cores.
     style.configure("TNotebook", background=BG_PAINEL, borderwidth=0, tabmargins=(8, 8, 8, 0))
@@ -326,11 +387,46 @@ def main():
 
     tk.Frame(root, bg=AMARELO_CLARO, height=3).pack(fill=tk.X, side=tk.TOP)
 
-    # Barra de progresso indeterminada - sempre visivel logo abaixo do trim
-    # (nao usa pack/pack_forget: fica sempre no mesmo lugar, so' anima ou nao
-    # via start()/stop(), pra nunca correr risco de ficar escondida).
-    progresso = ttk.Progressbar(root, mode="indeterminate", style="Cockpit.Horizontal.TProgressbar")
-    progresso.pack(fill=tk.X, side=tk.TOP)
+    # Barra de "progresso" (indeterminada, sem %) - sempre visivel logo abaixo
+    # do trim, mesmo lugar/altura o tempo todo (nunca pack/pack_forget, pra
+    # nunca correr risco de ficar escondida). Em vez do bloco padrao do
+    # ttk.Progressbar, desenha o pneuzinho Pirelli girando, deslizando de um
+    # lado a outro - pedido explicito da usuaria.
+    ALTURA_BARRA_PROGRESSO = 32
+    canvas_progresso = tk.Canvas(root, height=ALTURA_BARRA_PROGRESSO, bg=BG_CAMPO, highlightthickness=0)
+    canvas_progresso.pack(fill=tk.X, side=tk.TOP)
+
+    _frames_pneu = _gerar_frames_pneu(diametro=ALTURA_BARRA_PROGRESSO - 2)
+    _pneu = {"ativo": False, "x": 4.0, "direcao": 1, "indice_frame": 0}
+
+    def _animar_pneu():
+        canvas_progresso.delete("pneu")
+        if _pneu["ativo"]:
+            largura = canvas_progresso.winfo_width() or 400
+            tam = _frames_pneu[0].width()
+            limite = max(4, largura - tam - 4)
+            _pneu["x"] += _pneu["direcao"] * 5
+            if _pneu["x"] >= limite:
+                _pneu["x"] = limite
+                _pneu["direcao"] = -1
+            elif _pneu["x"] <= 4:
+                _pneu["x"] = 4
+                _pneu["direcao"] = 1
+            _pneu["indice_frame"] = (_pneu["indice_frame"] + 1) % len(_frames_pneu)
+            canvas_progresso.create_image(
+                _pneu["x"], ALTURA_BARRA_PROGRESSO // 2,
+                anchor="w", image=_frames_pneu[_pneu["indice_frame"]], tags="pneu",
+            )
+        root.after(40, _animar_pneu)
+
+    root.after(40, _animar_pneu)
+
+    def iniciar_progresso():
+        _pneu["ativo"] = True
+
+    def parar_progresso():
+        _pneu["ativo"] = False
+        canvas_progresso.delete("pneu")
 
     corpo = ttk.Frame(root, padding=(24, 18, 24, 18), style="TFrame")
     corpo.pack(fill=tk.BOTH, expand=True)
@@ -469,7 +565,7 @@ def main():
         root.config(cursor="watch")
         _spinner["ativo"] = True
         _spinner["descricao"] = descricao
-        progresso.start(12)
+        iniciar_progresso()
         # Forca redesenhar AGORA (cursor, botoes desabilitados, barra e texto
         # do log) antes de iniciar a thread - sem isso, se a operacao for
         # rapida (ex: Excel ja "aquecido" de uma rodada anterior), a janela
@@ -495,7 +591,7 @@ def main():
             if thread.is_alive():
                 root.after(150, checar)
                 return
-            progresso.stop()
+            parar_progresso()
             _spinner["ativo"] = False
             status_var.set("")
             root.config(cursor="")

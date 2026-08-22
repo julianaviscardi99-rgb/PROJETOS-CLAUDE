@@ -471,3 +471,20 @@
 **Reaproveitado sem mudança:** a escrita das fórmulas de Custos H26/I26 (que sempre apontam pra coluna do mês atual) já era genérica — passou a rodar também pro caso Flash sem precisar de nenhuma alteração.
 
 **Ainda pendente:** fonte de Budget/MP pra Janeiro (sem R1) — retomar quando ficar mais perto do fechamento de Janeiro. Faturamento (linha 25) continua manual, fora do escopo desta mudança.
+
+---
+
+## 2026-08-22 (continuação) — Cockpit: operações rodam em thread separada + indicadores visuais (pneuzinho girando, cursor)
+
+**Contexto:** testando o quadro de comparação Forecast pela GUI de verdade (primeira vez que a GUI era testada ao vivo, não só via linha de comando), a usuária notou que a janela "travava" durante operações longas (Excel via COM) — era o comportamento já conhecido/nunca resolvido (arquitetura 100% síncrona numa thread só).
+
+**Decisão:** as 6 operações da GUI (`atualizar_ksb1_gui.py`) passam a rodar numa `threading.Thread` separada, via um helper novo `rodar_em_thread(descricao, func, ao_concluir)` — mantém a janela respondendo. Requereu refatorar `rodar()` (Passo 1/Extração) pra não chamar `messagebox` direto de dentro da função (só a thread principal do Tk pode) — nova exceção `ErroComTitulo` preserva o título específico de cada erro. Log agora é thread-safe via `queue.Queue` (fila) + drenagem em loop (`root.after`).
+
+**Indicadores visuais pedidos pela usuária, nesta ordem de refinamento:**
+1. Barra de progresso "na parte de baixo" → depois "não precisa de %" (indeterminada tá bom) → "um ícone rodando" (spinner) → cursor "ocupado" durante processamento → cursor de mãozinha em qualquer botão → **pneuzinho Pirelli com calota** (não um bloco/spinner genérico) → barra maior (32px) pra ficar mais visível.
+2. **Bug de posicionamento encontrado e corrigido durante o próprio teste:** a primeira versão (status/barra dentro do corpo, embaixo do log) não aparecia pra usuária — o log tem `expand=True` e a janela (800px) não sobrava espaço quando a descrição da aba era longa, empurrando o indicador pra fora da área visível. Corrigido movendo pro cabeçalho (área fixa, nunca encolhe): texto de status no canto superior direito do cabeçalho escuro, barra de progresso logo abaixo do trim amarelo.
+3. **Pneuzinho final:** `Canvas` (não `ttk.Progressbar`) com um ícone de pneu desenhado via PIL em runtime (`_gerar_frames_pneu` em `atualizar_ksb1_gui.py`) — banda preta com sulcos, calota prateada com 6 raios, miolo escuro com detalhe amarelo claro (cor do cockpit) — 12 frames pré-rotacionados, anima girando e deslizando de um lado a outro da barra (`root.after(40, ...)`). Desenhado em runtime (não arquivo/base64 separado) pra manter o script autossuficiente, mesma filosofia do logo Pirelli já embutido.
+
+**Nova dependência:** Pillow adicionado a `requirements.txt`.
+
+**Validação:** testado ao vivo pela GUI de verdade (não só linha de comando, primeira vez), contra pasta de teste local (REDE_BASE do módulo da GUI trocado via script auxiliar fora do repo, sem tocar rede) — janela permaneceu responsiva durante "Atualizar Pivot KSB1" real (Julho/Flash), indicadores visíveis e aprovados pela usuária ("ficou maravilhoso").
