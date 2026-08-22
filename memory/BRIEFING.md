@@ -29,6 +29,11 @@
 - Arquivos de teste (`gui_teste_rede/`) removidos depois da validação — nada é dado oficial, nada foi escrito na rede.
 - **Pendências que seguem em aberto** (nenhuma tocada nesta parte): Janeiro/Budget-MP, Faturamento (linha 25), inserção automática de linha colorida se provisões excederem capacidade.
 
+### Continuação (mesmo dia) — Iniciando Janeiro/Budget-MP (EM ANDAMENTO, nada implementado ainda)
+
+- Usuária confirmou seguir com o último item pendente: a fonte de comparação pro fechamento de Janeiro (R1 não existe, usa "Budget ou MP do ano anterior").
+- **Nada perguntado/respondido ainda sobre isso** além do que já estava registrado (`ontology/fitted_units.json` → `ciclos.forecast.cenarios_que_nao_existem`: "fonte/caminho ainda não mapeado"). Retomar perguntando: (1) onde fica o arquivo (caminho de rede), (2) Budget e MP são a mesma coisa/nomes alternativos ou são duas fontes diferentes com prioridade entre elas, (3) a estrutura da aba é igual ao Forecast ("Resumo Resultado Ano", mesmas linhas 19/20/30/31/38) ou é diferente.
+
 ---
 ## Continuação 2026-08-22 — Quadro de comparação (linhas 18/19) implementado pro Ciclo Flash: fonte vira Forecast (R<mês>), não outro Flash
 
