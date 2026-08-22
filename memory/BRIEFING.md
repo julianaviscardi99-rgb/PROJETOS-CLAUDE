@@ -66,6 +66,45 @@
 - Detalhe completo em `memory/DECISOES.md` → "2026-08-22 (continuação) — Revisão completa do processo de fechamento". **Commitado.**
 
 ---
+## PRÓXIMA SESSÃO (retomar na segunda-feira) — usuária pediu explicitamente
+
+**Primeira coisa a fazer:** resolver o risco conhecido do "vigia"/timeout — hoje, se o Excel travar de verdade (hang, não erro) durante qualquer automação (Passo 3 ou 4, Actual ou Flash), o processo COM fica preso indefinidamente, sem timeout nem aviso. A usuária confirmou explicitamente no fim desta sessão ("vamos fazer isso, me notifica da próxima vez que eu voltar pra resolver esse risco conhecido") que quer resolver isso — não implementado ainda, é o próximo item da lista.
+
+**Estado do projeto ao encerrar esta sessão (2026-08-22):** todo o processo de fechamento (Passos 1-4, Actual e Flash) foi revisado, testado de ponta a ponta e está funcionando — ver resumo completo logo abaixo. Nenhuma pendência funcional aberta além do watchdog acima (Faturamento foi adiado por decisão dela, linhas verdes deprecadas por decisão dela, Janeiro/Budget-MP e inserção automática de linha implementados e validados).
+
+**Tudo commitado e enviado ao GitHub** (commit `2493fef`, push confirmado pela usuária via `! git push`).
+
+---
+## RESUMO DO DIA 2026-08-22 — Quadro de comparação Forecast/Budget completo, cockpit com feedback visual, bug de linhas coloridas corrigido, revisão geral aprovada
+
+**Sessão longa (vários alertas de 45 ações) — resumo consolidado de tudo, na ordem em que aconteceu. Detalhe técnico completo de cada item em `memory/DECISOES.md`, todas datadas 2026-08-22.**
+
+### 1. Quadro de comparação (linhas 18/19) completo pro Ciclo Flash
+- Implementado `atualizar_comparacao_forecast`: pro Ciclo Flash, compara contra o Forecast mais recente (nomenclatura Pirelli R+mês=REFRESH) em vez de outro Flash. Fallback pro mês anterior quando R<mês> não existe (R8/R12), com popup avisando qual foi usado.
+- **Janeiro (sem R1) resolvido:** usa direto o Budget/MP do mesmo ano (`\\...\Management Plan\MP <ano>\...`) — confirmado que MP é preparado no fim do ano anterior mas arquivado sob o ano que cobre.
+- Validado com dado real: julho (R7) e janeiro (Budget) bateram exatamente com os valores que a usuária já tinha calculado manualmente. Fallback de Agosto (R8→R7) testado e confirmado pela GUI real.
+
+### 2. Cockpit: feedback visual durante processamento
+- Operações passaram a rodar em thread separada (janela não trava mais durante Excel/SAP via COM).
+- Indicadores: cursor "ocupado", cursor de mãozinha nos botões, e um pneuzinho Pirelli (com calota, desenhado via PIL) girando/deslizando numa barra sempre visível no cabeçalho — aprovado pela usuária ("ficou maravilhoso").
+
+### 3. Bug real corrigido: linhas coloridas (provisões)
+- Capacidade de provisões contava TODA a área colorida (amarelo+verde+roxo) por engano, e "Atualizar Provisões" apagava a fórmula "molde" da roxa antes de copiá-la. Sem dano real até agora (verde/roxo sempre vazios), mas ia quebrar no primeiro mês com reclassificação de verdade.
+- Corrigido com detecção de cor real via `Interior.Color`. Implementada inserção automática de linha amarela quando as provisões excedem a capacidade (nunca mexe em verde/roxo) — testado inserindo linhas numa cópia real, tudo deslocou certinho.
+- **Linhas verdes deprecadas** por decisão da usuária (reclassificações já acontecem no SAP antes do fechamento) — não automatizamos remoção, só ficam ignoradas.
+- **Faturamento (linha 25) adiado** por decisão da usuária (time da Fitted envia, ela quer otimizar o processo primeiro).
+
+### 4. Revisão completa do processo, pedida pela usuária
+- Achado e corrigido 1 bug real: 4 leituras de arquivo ignoravam versões `_v2`/`_v3`, podendo silenciosamente usar dado desatualizado se algum passo fosse rerodado.
+- Testado de ponta a ponta (Julho, Actual E Flash, sem tocar rede): tudo bateu exatamente com os valores já validados.
+
+### Estado final: processo de fechamento revisado, testado e funcionando
+- Passos 1-4 (Actual e Flash) prontos pra uso real. Nenhum dado de produção foi alterado incorretamente hoje.
+
+### Pendência pra próxima sessão (segunda-feira)
+1. **Watchdog/timeout** — se o Excel travar de verdade (hang) durante uma automação, hoje não há timeout. Usuária pediu explicitamente pra resolver isso na próxima sessão.
+
+---
 ## Continuação 2026-08-22 — Quadro de comparação (linhas 18/19) implementado pro Ciclo Flash: fonte vira Forecast (R<mês>), não outro Flash
 
 - **Retomada:** pendência #1 do fim de 2026-08-21 — o quadro de comparação `atualizar_comparacao_flash` só rodava pro Actual (comparando contra o Flash do mês). Usuária explicou a lógica do Ciclo Flash: comparar contra o **Forecast mais recente** (nomenclatura Pirelli: R+número do mês = REFRESH, ex R7=refresh de julho; não existem R1/R8/R12).
