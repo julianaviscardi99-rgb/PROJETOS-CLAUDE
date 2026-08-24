@@ -566,6 +566,52 @@ def main():
         root.config(cursor="")
         _todos_botoes("normal")
 
+    def _perguntar_sim_nao(titulo, mensagem):
+        """Dialogo Sim/Nao em portugues. O messagebox.askyesno padrao do Tk
+        usa botoes fixos em ingles ('Yes'/'No'), mesmo com o resto do texto
+        em portugues - quebra a regra do projeto de manter tudo em
+        portugues (REGRAS_RAPIDAS #11, pedido explicito da usuaria). Modal
+        (grab_set + wait_window), devolve True (Sim) ou False (Nao/fechar)."""
+        dialogo = tk.Toplevel(root)
+        dialogo.title(titulo)
+        dialogo.configure(bg=BG_CARD)
+        dialogo.resizable(False, False)
+        dialogo.transient(root)
+        dialogo.grab_set()
+
+        resposta = {"valor": False}
+
+        corpo = tk.Frame(dialogo, bg=BG_CARD, padx=24, pady=20)
+        corpo.pack(fill=tk.BOTH, expand=True)
+        tk.Label(
+            corpo, text=f"⚠  {mensagem}", bg=BG_CARD, fg=TEXTO_CLARO,
+            font=("Segoe UI", 10), justify="left", wraplength=420,
+        ).pack(anchor="w")
+
+        botoes_frame = tk.Frame(corpo, bg=BG_CARD)
+        botoes_frame.pack(fill=tk.X, pady=(20, 0))
+
+        def responder(valor):
+            resposta["valor"] = valor
+            dialogo.destroy()
+
+        ttk.Button(
+            botoes_frame, text="Não", cursor="hand2", command=lambda: responder(False)
+        ).pack(side=tk.RIGHT, padx=(8, 0))
+        ttk.Button(
+            botoes_frame, text="Sim", style="Pirelli.TButton", cursor="hand2",
+            command=lambda: responder(True),
+        ).pack(side=tk.RIGHT)
+
+        dialogo.protocol("WM_DELETE_WINDOW", lambda: responder(False))
+        dialogo.update_idletasks()
+        x = root.winfo_rootx() + (root.winfo_width() - dialogo.winfo_width()) // 2
+        y = root.winfo_rooty() + (root.winfo_height() - dialogo.winfo_height()) // 2
+        dialogo.geometry(f"+{max(0, x)}+{max(0, y)}")
+
+        dialogo.wait_window()
+        return resposta["valor"]
+
     def _avisar_travamento(descricao, decorrido_s, caixa_resultado, estado, permite_forcar_excel):
         """Mostra o aviso de possivel travamento (watchdog). Se a operacao
         usa Excel isolado (DispatchEx) E ja capturamos o PID dessa instancia
@@ -578,7 +624,7 @@ def main():
         pid = caixa_resultado.get("excel_pid") if permite_forcar_excel else None
 
         if pid:
-            forcar = messagebox.askyesno(
+            forcar = _perguntar_sim_nao(
                 "Pode estar travado",
                 f"'{descricao}' está rodando há mais de {minutos} minuto(s) sem terminar.\n\n"
                 "Pode ser normal (bases grandes demoram) ou um travamento real do Excel.\n\n"
@@ -586,7 +632,6 @@ def main():
                 "operação (processo próprio, não afeta outros Excel que você tenha aberto) "
                 "e cancelar a operação.\n"
                 "NÃO = continuar aguardando.",
-                icon="warning",
             )
             if not forcar:
                 return

@@ -591,3 +591,24 @@
 **Conclusão da revisão:** nenhum outro bug de correção encontrado na parte que dá pra testar sem SAP ao vivo (Passos 3 e 4, Actual e Flash). O Passo 1 (extração via SAP GUI Scripting) não pôde ser testado de ponta a ponta nesta revisão por depender de sessão SAP ao vivo — revisão de código não achou problema óbvio ali, mas não é o mesmo nível de confiança dos passos testados de verdade.
 
 **Risco conhecido, não resolvido nesta revisão (já documentado antes, 2026-08-14):** se o Excel travar/hangar de verdade durante uma automação (não um erro, um hang de verdade), não existe timeout/vigia — o processo ficaria preso indefinidamente. Baixa probabilidade, mas não é zero. Caso queira, dá pra endereçar depois com um watchdog externo.
+
+---
+
+## 2026-08-24 — Watchdog de travamento (Excel isolado, 12 min): implementado, testado ao vivo e confirmado
+
+**Decisão (design confirmado com a usuária antes de implementar, via pergunta direta):** se uma operação que usa Excel (Passos 3/4) ficar mais de **12 minutos** sem terminar, a GUI avisa e oferece **forçar o encerramento só da instância isolada do Excel** dessa operação (processo próprio, identificado por PID, não afeta outro Excel que a usuária tenha aberto). No Passo 1 (SAP) e Passo 2 (Check, sem COM), o aviso é só informativo, sem oferecer matar nada — decisão explícita de não automatizar o encerramento do SAP GUI, porque isso fecharia TODAS as sessões abertas dele, não só a desta automação.
+
+**Como funciona:**
+- `ksb1_core.abrir_excel_isolado(log, pid_callback)` centraliza a abertura do Excel isolado (`DispatchEx`, `Visible=False`, já existia repetida em 4 lugares) e captura o PID do processo via `win32process.GetWindowThreadProcessId(excel.Hwnd)` — funciona mesmo com a janela invisível.
+- Os 4 pontos que abrem Excel (`gerar_ksb1_mensal.py` e os 3 em `gerar_base_intermediaria.py`) ganharam parâmetro opcional `pid_callback`, repassado até essa função.
+- Na GUI, `rodar_em_thread` mede o tempo decorrido (`time.monotonic()`); passado o limite, mostra o aviso (dedup por intervalo de 12 min, não fica repetindo). Se a usuária confirmar "forçar", mata o processo via `psutil.Process(pid).terminate()` — só depois de checar que o processo ainda se chama `EXCEL.EXE` (proteção contra PID reciclado) — e libera a janela na hora.
+
+**Bug real encontrado e corrigido durante o próprio teste desta implementação:** a primeira versão usava `messagebox.askyesno` pro aviso Sim/Não — o Tk usa botões fixos em **inglês** ("Yes"/"No") nesse widget, mesmo com todo o resto do texto em português, quebrando a regra do projeto (REGRAS_RAPIDAS #11, pedido explícito da usuária 2026-08-10: tudo em português). Corrigido com um diálogo customizado (`_perguntar_sim_nao`, `tk.Toplevel` com botões "Sim"/"Não" de verdade), no mesmo estilo visual do resto da GUI.
+
+**Testado ao vivo, ponta a ponta, sem tocar rede/dados reais:** script de teste isolado (fora do repo) substituiu `gerar_ksb1_mensal.gerar_ksb1_mensal` por uma versão falsa que abre uma instância Excel isolada REAL (mesma chamada de produção) e trava de propósito, com `TIMEOUT_AVISO_SEGUNDOS` reduzido pra 15s só no teste. Automação de clique (via travessia da árvore de widgets do Tk) clicou "Atualizar Pivot KSB1" e depois "Sim" no aviso, sem precisar de interação manual. Resultado confirmado por monitoramento direto de processos (`tasklist`, antes/durante/depois):
+- Um segundo `EXCEL.EXE` (instância isolada do teste) apareceu e, ~15s depois, foi encerrado sozinho.
+- O Excel real da usuária, que estava aberto no fundo o tempo todo (arquivo de trabalho dela), **nunca foi tocado** (mesmo PID do início ao fim).
+- A janela do cockpit voltou ao estado normal depois do "Sim" (botões e cursor recuperados), sem erro, sem travar.
+- O aviso disparou no tempo esperado (~15s) e o diálogo em português foi encontrado e clicado normalmente pela automação, confirmando que o fix do idioma renderiza certo.
+
+**Conclusão:** item pendente desde 2026-08-22 está fechado — implementado, corrigido (idioma) e validado ao vivo, sem qualquer risco ao Excel real da usuária ou a dados de produção.
