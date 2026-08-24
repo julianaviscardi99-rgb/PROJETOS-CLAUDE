@@ -38,8 +38,8 @@ from ksb1_core import (  # noqa: E402
     MESES_PASTA,
     REDE_BASE,
     abrir_excel_isolado,
-    encontrar_arquivo_ksb1,
     encontrar_arquivo_mais_recente,
+    localizar_extracao_ksb1,
     nome_com_versao,
     resolver_pasta_ciclo,
 )
@@ -74,8 +74,8 @@ def decidir_fonte_e_ler_linhas(mes: int, ano: int, ciclo: str, log=print):
     "a mais recente por data de modificacao", que podia pegar por engano a
     extracao de outro Ciclo do mesmo mes."""
     pasta_mes = REDE_BASE / str(ano) / "00.Extração Base KSB1" / MESES_PASTA[mes]
-    arquivo_gest = encontrar_arquivo_ksb1(pasta_mes, BU["nome"], mes, ano, "Gestoriais", ciclo)
-    arquivo_sem = encontrar_arquivo_ksb1(pasta_mes, BU["nome"], mes, ano, "Sem Agrupamento", ciclo)
+    arquivo_gest = localizar_extracao_ksb1(pasta_mes, BU["nome"], mes, ano, "Gestoriais", ciclo)
+    arquivo_sem = localizar_extracao_ksb1(pasta_mes, BU["nome"], mes, ano, "Sem Agrupamento", ciclo)
 
     def linhas_completas(caminho):
         wb = load_workbook(caminho, data_only=True)

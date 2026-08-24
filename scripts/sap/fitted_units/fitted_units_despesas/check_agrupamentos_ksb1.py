@@ -27,7 +27,7 @@ from openpyxl import Workbook, load_workbook
 from atualizar_ksb1_gui import BU, MESES_PASTA, REDE_BASE, nome_com_versao
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "_shared"))
-from ksb1_core import localizar_extracao_ksb1, resolver_pasta_ciclo  # noqa: E402
+from ksb1_core import localizar_extracao_ksb1  # noqa: E402
 
 IGNORAR_EXATAS = {
     "C23020JJ15",
