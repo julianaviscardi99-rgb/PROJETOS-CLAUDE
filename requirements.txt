@@ -1,3 +1,4 @@
 pywin32
 openpyxl
 Pillow
+psutil

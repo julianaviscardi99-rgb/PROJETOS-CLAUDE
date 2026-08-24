@@ -9,6 +9,7 @@ import time
 from pathlib import Path
 
 import win32com.client
+import win32process
 
 BU = {"nome": "Fitted Units", "kstgr": "0495", "disvar": "/DESPFITTED"}
 
@@ -206,6 +207,28 @@ def encontrar_arquivo_mais_recente(pasta: Path, nome_base: str) -> Path | None:
     if not candidatos:
         return None
     return max(candidatos, key=lambda p: p.stat().st_mtime)
+
+
+def abrir_excel_isolado(log=print, pid_callback=None):
+    """Abre uma instancia isolada e invisivel do Excel (DispatchEx - nao
+    interfere com o Excel que a usuaria tiver aberto) e captura o PID do
+    processo EXCEL.EXE correspondente, via o Hwnd da propria instancia
+    (existe mesmo com Visible=False). Se pid_callback for passado, e'
+    chamado com esse PID assim que capturado - usado pelo watchdog de
+    travamento da GUI (rodar_em_thread em atualizar_ksb1_gui.py) pra saber
+    qual processo encerrar se essa instancia travar de verdade."""
+    log("Abrindo Excel (instância isolada, oculta)...")
+    excel = win32com.client.DispatchEx("Excel.Application")
+    excel.Visible = False
+    excel.DisplayAlerts = False
+    excel.AskToUpdateLinks = False
+    if pid_callback is not None:
+        try:
+            pid = win32process.GetWindowThreadProcessId(excel.Hwnd)[1]
+        except Exception:
+            pid = None
+        pid_callback(pid)
+    return excel
 
 
 def nome_com_versao(pasta: Path, nome_base: str) -> str:

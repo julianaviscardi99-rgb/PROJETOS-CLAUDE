@@ -73,13 +73,13 @@ import shutil
 import sys
 from pathlib import Path
 
-import win32com.client
 from openpyxl import Workbook
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "_shared"))
 from ksb1_core import (  # noqa: E402
     MESES_PASTA,
     REDE_BASE,
+    abrir_excel_isolado,
     encontrar_arquivo_mais_recente,
     nome_com_versao,
     resolver_pasta_ciclo,
@@ -652,7 +652,9 @@ def localizar_base_intermediaria_flash_existente(mes: int, ano: int, pasta_saida
     return max(candidatos, key=lambda p: p.stat().st_mtime)
 
 
-def lancar_provisoes(mes: int, ano: int, pasta_saida: Path, sufixo_nome: str = "", log=print) -> Path:
+def lancar_provisoes(
+    mes: int, ano: int, pasta_saida: Path, sufixo_nome: str = "", log=print, pid_callback=None
+) -> Path:
     """Passo 3 (Provisões), botão 'Lançar Provisões': cria a Base
     Intermediária Flash do mês (cópia do Actual do mês anterior) e preenche
     as linhas coloridas pela primeira vez a partir do Fast Provisão."""
@@ -665,11 +667,7 @@ def lancar_provisoes(mes: int, ano: int, pasta_saida: Path, sufixo_nome: str = "
     log(f"Copiando {caminho_origem.name} -> {caminho_saida.name} ...")
     shutil.copy2(caminho_origem, caminho_saida)
 
-    log("Abrindo Excel (instância isolada, oculta)...")
-    excel = win32com.client.DispatchEx("Excel.Application")
-    excel.Visible = False
-    excel.DisplayAlerts = False
-    excel.AskToUpdateLinks = False
+    excel = abrir_excel_isolado(log, pid_callback)
     try:
         wb = excel.Workbooks.Open(str(caminho_saida), UpdateLinks=0, ReadOnly=False)
         if wb.ReadOnly:
@@ -688,18 +686,14 @@ def lancar_provisoes(mes: int, ano: int, pasta_saida: Path, sufixo_nome: str = "
     return caminho_saida
 
 
-def atualizar_provisoes(mes: int, ano: int, pasta_saida: Path, log=print) -> Path:
+def atualizar_provisoes(mes: int, ano: int, pasta_saida: Path, log=print, pid_callback=None) -> Path:
     """Passo 3 (Provisões), botão 'Atualizar Provisões': relê o Fast
     Provisão (versão mais alta no momento) e atualiza as linhas coloridas
     da Base Intermediária Flash já existente (não cria cópia nova)."""
     caminho_saida = localizar_base_intermediaria_flash_existente(mes, ano, pasta_saida)
     log(f"Atualizando provisões em: {caminho_saida.name}")
 
-    log("Abrindo Excel (instância isolada, oculta)...")
-    excel = win32com.client.DispatchEx("Excel.Application")
-    excel.Visible = False
-    excel.DisplayAlerts = False
-    excel.AskToUpdateLinks = False
+    excel = abrir_excel_isolado(log, pid_callback)
     try:
         wb = excel.Workbooks.Open(str(caminho_saida), UpdateLinks=0, ReadOnly=False)
         if wb.ReadOnly:
@@ -753,7 +747,9 @@ def gerar_historico_unidades_encerradas(mes, ano, ciclo, cabecalho_historico, li
     return caminho_saida
 
 
-def atualizar_base_intermediaria(mes: int, ano: int, ciclo: str, pasta_saida: Path, sufixo_nome: str = "", log=print):
+def atualizar_base_intermediaria(
+    mes: int, ano: int, ciclo: str, pasta_saida: Path, sufixo_nome: str = "", log=print, pid_callback=None
+):
     if ciclo not in ("Actual", "Flash"):
         raise ValueError(f"Ciclo '{ciclo}' desconhecido — só Actual e Flash são suportados.")
 
@@ -777,11 +773,7 @@ def atualizar_base_intermediaria(mes: int, ano: int, ciclo: str, pasta_saida: Pa
         caminho_saida = localizar_base_intermediaria_flash_existente(mes, ano, pasta_saida)
         log(f"Continuando na Base Intermediária Flash já criada pelo Passo 3: {caminho_saida.name}")
 
-    log("Abrindo Excel (instância isolada, oculta)...")
-    excel = win32com.client.DispatchEx("Excel.Application")
-    excel.Visible = False
-    excel.DisplayAlerts = False
-    excel.AskToUpdateLinks = False
+    excel = abrir_excel_isolado(log, pid_callback)
     try:
         cabecalho_pivot, linhas_pivot, n_meses = ler_pivot_inter(caminho_base_ksb1, excel, log)
 

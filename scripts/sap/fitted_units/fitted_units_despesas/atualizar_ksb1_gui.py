@@ -23,6 +23,7 @@ from datetime import datetime
 from pathlib import Path
 from tkinter import messagebox, ttk
 
+import psutil
 import pythoncom
 from PIL import Image, ImageDraw, ImageTk
 
@@ -219,6 +220,13 @@ def rodar(mes, ano, ciclo, log):
 
 AMARELO_CLARO = "#FFE9A8"
 CINZA_TEXTO = "#555555"
+
+# Watchdog de travamento (ver rodar_em_thread): se uma operacao ficar rodando
+# mais tempo que isso sem terminar, avisa que pode estar travada. 12 min foi
+# escolhido pra dar folga a operacoes grandes (colagem linha a linha em meses
+# com muitas linhas), sem deixar a usuaria esperando longe demais sem
+# feedback - confirmado com ela em 2026-08-24.
+TIMEOUT_AVISO_SEGUNDOS = 12 * 60
 
 # Paleta "cockpit": cabecalho escuro com logo Pirelli (trim vermelho/amarelo);
 # corpo abaixo do trim em fundo branco/letras pretas, a pedido da usuaria.
@@ -551,13 +559,95 @@ def main():
             for btn in lista:
                 btn.config(state=estado)
 
-    def rodar_em_thread(descricao, func, ao_concluir):
-        """Roda func(log) numa thread separada (com CoInitialize/
-        CoUninitialize pro COM do SAP/Excel funcionar isolado por thread),
-        mantendo a janela responsiva. func deve so' aceitar 'log' e devolver
-        o resultado (ou levantar excecao). ao_concluir(resultado, erro) roda
-        de volta na thread principal, via root.after - nunca mexe em widget
-        Tk fora da thread principal (trava ou corrompe a interface)."""
+    def _liberar_janela():
+        parar_progresso()
+        _spinner["ativo"] = False
+        status_var.set("")
+        root.config(cursor="")
+        _todos_botoes("normal")
+
+    def _avisar_travamento(descricao, decorrido_s, caixa_resultado, estado, permite_forcar_excel):
+        """Mostra o aviso de possivel travamento (watchdog). Se a operacao
+        usa Excel isolado (DispatchEx) E ja capturamos o PID dessa instancia
+        (via pid_callback - ver abrir_excel_isolado em ksb1_core.py), oferece
+        forcar o encerramento so' desse processo especifico. Nunca oferece
+        encerrar o SAP GUI automaticamente: mataria TODAS as sessoes abertas
+        dele, nao so' a desta automacao - decisao confirmada com a usuaria em
+        2026-08-24."""
+        minutos = int(decorrido_s // 60)
+        pid = caixa_resultado.get("excel_pid") if permite_forcar_excel else None
+
+        if pid:
+            forcar = messagebox.askyesno(
+                "Pode estar travado",
+                f"'{descricao}' está rodando há mais de {minutos} minuto(s) sem terminar.\n\n"
+                "Pode ser normal (bases grandes demoram) ou um travamento real do Excel.\n\n"
+                "SIM = forçar o encerramento da instância isolada do Excel usada por esta "
+                "operação (processo próprio, não afeta outros Excel que você tenha aberto) "
+                "e cancelar a operação.\n"
+                "NÃO = continuar aguardando.",
+                icon="warning",
+            )
+            if not forcar:
+                return
+            log(f"\nForçando o encerramento do Excel desta operação (PID {pid})...")
+            try:
+                proc = psutil.Process(pid)
+                if proc.name().upper() != "EXCEL.EXE":
+                    log(
+                        f"AVISO: o processo {pid} não é mais o EXCEL.EXE esperado "
+                        "(já deve ter terminado sozinho) — nada foi encerrado."
+                    )
+                else:
+                    proc.terminate()
+                    log(f"Processo Excel (PID {pid}) encerrado à força.")
+            except Exception as e:
+                log(f"Não consegui encerrar o processo Excel (PID {pid}): {e}")
+            estado["abandonado"] = True
+            _liberar_janela()
+            messagebox.showinfo(
+                "Operação cancelada",
+                f"'{descricao}' foi cancelada. Confira o log e, se precisar, rode a operação de novo.",
+            )
+            return
+
+        if permite_forcar_excel:
+            motivo = (
+                "esta operação ainda não abriu o Excel (pode estar lendo um arquivo grande ou "
+                "aguardando o SAP) — ainda não há um processo específico pra encerrar."
+            )
+        else:
+            motivo = (
+                "esta etapa usa o SAP GUI, não o Excel — encerrar o processo do SAP fecharia "
+                "TODAS as suas sessões abertas, não só esta automação, então não faço isso "
+                "automaticamente."
+            )
+        messagebox.showwarning(
+            "Pode estar travado",
+            f"'{descricao}' está rodando há mais de {minutos} minuto(s) sem terminar.\n\n"
+            f"Pode ser normal ou um travamento real — {motivo}\n\n"
+            "Se tiver certeza que travou, você pode encerrar manualmente pelo Gerenciador de "
+            "Tarefas e tentar de novo. A janela continua aberta normalmente enquanto isso.",
+        )
+
+    def rodar_em_thread(descricao, func, ao_concluir, permite_forcar_excel=True):
+        """Roda func(log, pid_callback) numa thread separada (com
+        CoInitialize/CoUninitialize pro COM do SAP/Excel funcionar isolado
+        por thread), mantendo a janela responsiva. func deve devolver o
+        resultado (ou levantar excecao); pid_callback(pid) e' como func avisa
+        o PID da instancia isolada do Excel que abriu (via abrir_excel_isolado
+        em ksb1_core.py), se abrir uma - usado pelo watchdog abaixo pra saber
+        o que encerrar se travar. ao_concluir(resultado, erro) roda de volta
+        na thread principal, via root.after - nunca mexe em widget Tk fora da
+        thread principal (trava ou corrompe a interface).
+
+        Watchdog: se a operacao passar de TIMEOUT_AVISO_SEGUNDOS sem
+        terminar, avisa (repetindo a cada novo intervalo enquanto continuar
+        presa). Se a usuaria forcar o encerramento do Excel, a janela e'
+        liberada na hora (estado['abandonado']=True) - a thread de fundo
+        (daemon) pode continuar existindo ate' a chamada COM travada
+        finalmente falhar (com o processo morto), mas isso acontece em
+        segundo plano, sem prender mais a interface."""
         log_widget.delete("1.0", tk.END)
         log_widget.insert(tk.END, f"⏳ Processando: {descricao}...\n")
         log_widget.see(tk.END)
@@ -574,11 +664,15 @@ def main():
         root.update_idletasks()
 
         caixa_resultado = {}
+        estado = {"abandonado": False, "inicio": time.monotonic(), "aviso_intervalo": 0}
+
+        def registrar_pid(pid):
+            caixa_resultado["excel_pid"] = pid
 
         def alvo():
             pythoncom.CoInitialize()
             try:
-                caixa_resultado["valor"] = func(log)
+                caixa_resultado["valor"] = func(log, registrar_pid)
             except Exception as e:
                 caixa_resultado["erro"] = e
             finally:
@@ -589,13 +683,23 @@ def main():
 
         def checar():
             if thread.is_alive():
+                decorrido = time.monotonic() - estado["inicio"]
+                intervalo_atual = int(decorrido // TIMEOUT_AVISO_SEGUNDOS)
+                if intervalo_atual > estado["aviso_intervalo"]:
+                    estado["aviso_intervalo"] = intervalo_atual
+                    _avisar_travamento(descricao, decorrido, caixa_resultado, estado, permite_forcar_excel)
+                if estado["abandonado"]:
+                    return  # janela ja liberada - so' para de monitorar, thread continua em segundo plano
                 root.after(150, checar)
                 return
-            parar_progresso()
-            _spinner["ativo"] = False
-            status_var.set("")
-            root.config(cursor="")
-            _todos_botoes("normal")
+            if estado["abandonado"]:
+                # Ja tinha liberado a janela quando a usuaria forcou o
+                # encerramento - so' registra no log que a thread terminou,
+                # sem reabrir popup de conclusao/erro (ja mostrado antes).
+                erro = caixa_resultado.get("erro")
+                log(f"(Operação cancelada anteriormente terminou agora. {'Erro: ' + str(erro) if erro else 'Terminou sem erro.'})")
+                return
+            _liberar_janela()
             ao_concluir(caixa_resultado.get("valor"), caixa_resultado.get("erro"))
 
         root.after(150, checar)
@@ -607,7 +711,7 @@ def main():
         mes, ano = mes_ano
         ciclo = ciclo_var.get()
 
-        def func(log):
+        def func(log, pid_callback):
             rodar(mes, ano, ciclo, log)
 
         def ao_concluir(resultado, erro):
@@ -619,7 +723,9 @@ def main():
                 return
             messagebox.showinfo("Concluído", "Extração da KSB1 finalizada (Gestoriais + Sem Agrupamento).")
 
-        rodar_em_thread("Extraindo KSB1 do SAP", func, ao_concluir)
+        # Passo 1 usa so' o SAP GUI, nunca abre Excel - watchdog nao oferece
+        # forcar encerramento (mataria todas as sessoes do SAP, nao so' esta).
+        rodar_em_thread("Extraindo KSB1 do SAP", func, ao_concluir, permite_forcar_excel=False)
 
     def ao_clicar_check():
         from check_agrupamentos_ksb1 import gerar_check
@@ -630,7 +736,7 @@ def main():
         mes, ano = mes_ano
         ciclo = ciclo_var.get()
 
-        def func(log):
+        def func(log, pid_callback):
             return gerar_check(mes, ano, ciclo, log=log)
 
         def ao_concluir(resultado, erro):
@@ -639,7 +745,8 @@ def main():
                 return
             messagebox.showinfo("Concluído", f"Check de agrupamentos gerado:\n{resultado}")
 
-        rodar_em_thread("Gerando Check de Agrupamentos", func, ao_concluir)
+        # Passo 2 so' le arquivos ja extraidos via openpyxl, nao abre Excel/COM.
+        rodar_em_thread("Gerando Check de Agrupamentos", func, ao_concluir, permite_forcar_excel=False)
 
     def ao_clicar_lancar_provisoes():
         from gerar_base_intermediaria import lancar_provisoes
@@ -653,8 +760,8 @@ def main():
         # painel compartilhado (esse passo nem existe pro Actual).
         pasta_saida = resolver_pasta_ciclo(REDE_BASE / str(ano) / MESES_PASTA[mes], mes, "Flash")
 
-        def func(log):
-            return lancar_provisoes(mes, ano, pasta_saida, log=log)
+        def func(log, pid_callback):
+            return lancar_provisoes(mes, ano, pasta_saida, log=log, pid_callback=pid_callback)
 
         def ao_concluir(resultado, erro):
             if erro is not None:
@@ -674,8 +781,8 @@ def main():
 
         pasta_saida = resolver_pasta_ciclo(REDE_BASE / str(ano) / MESES_PASTA[mes], mes, "Flash")
 
-        def func(log):
-            return atualizar_provisoes(mes, ano, pasta_saida, log=log)
+        def func(log, pid_callback):
+            return atualizar_provisoes(mes, ano, pasta_saida, log=log, pid_callback=pid_callback)
 
         def ao_concluir(resultado, erro):
             if erro is not None:

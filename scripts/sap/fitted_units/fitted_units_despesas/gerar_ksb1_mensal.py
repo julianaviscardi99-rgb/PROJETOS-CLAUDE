@@ -30,7 +30,6 @@ import sys
 import zipfile
 from pathlib import Path
 
-import win32com.client
 from openpyxl import load_workbook
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "_shared"))
@@ -38,6 +37,7 @@ from ksb1_core import (  # noqa: E402
     BU,
     MESES_PASTA,
     REDE_BASE,
+    abrir_excel_isolado,
     encontrar_arquivo_ksb1,
     encontrar_arquivo_mais_recente,
     nome_com_versao,
@@ -156,12 +156,8 @@ def remover_flag_somente_leitura_recomendada(caminho: Path, log=print):
     log(f"Removida a flag 'Somente leitura recomendada' da cópia de teste ({n_removidas} ocorrência(s)).")
 
 
-def colar_linhas_e_atualizar_pivots(caminho_copia: Path, linhas_novas: list, log=print):
-    log("Abrindo Excel (instância isolada, oculta)...")
-    excel = win32com.client.DispatchEx("Excel.Application")
-    excel.Visible = False
-    excel.DisplayAlerts = False
-    excel.AskToUpdateLinks = False
+def colar_linhas_e_atualizar_pivots(caminho_copia: Path, linhas_novas: list, log=print, pid_callback=None):
+    excel = abrir_excel_isolado(log, pid_callback)
     try:
         # IgnoreReadOnlyRecommended=True: o BASE_KSB1 tem a flag interna
         # "Somente leitura recomendada" (fileSharing readOnlyRecommended="1")
@@ -233,7 +229,9 @@ def colar_linhas_e_atualizar_pivots(caminho_copia: Path, linhas_novas: list, log
         excel.Quit()
 
 
-def gerar_ksb1_mensal(mes: int, ano: int, ciclo: str, pasta_saida: Path, sufixo_nome: str = "", log=print) -> Path:
+def gerar_ksb1_mensal(
+    mes: int, ano: int, ciclo: str, pasta_saida: Path, sufixo_nome: str = "", log=print, pid_callback=None
+) -> Path:
     linhas_novas, fonte, arquivo_fonte = decidir_fonte_e_ler_linhas(mes, ano, ciclo, log)
 
     caminho_origem = localizar_ksb1_actual_anterior(mes, ano)
@@ -243,7 +241,7 @@ def gerar_ksb1_mensal(mes: int, ano: int, ciclo: str, pasta_saida: Path, sufixo_
     caminho_copia = copiar_para_teste(caminho_origem, pasta_saida, nome_base, log)
     remover_flag_somente_leitura_recomendada(caminho_copia, log)
 
-    colar_linhas_e_atualizar_pivots(caminho_copia, linhas_novas, log)
+    colar_linhas_e_atualizar_pivots(caminho_copia, linhas_novas, log, pid_callback)
 
     log(f"\nArquivo gerado: {caminho_copia}")
     log(f"Fonte usada: {fonte} ({arquivo_fonte.name}), {len(linhas_novas)} linha(s) colada(s).")
