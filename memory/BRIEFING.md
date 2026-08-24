@@ -3,6 +3,15 @@
 > Manter apenas as últimas 2 sessões inline — sessões mais antigas vão para long_term/.
 
 ---
+## PRÓXIMA SESSÃO (amanhã, 2026-08-25) — usuária pediu explicitamente: TESTAR a extração de verdade assim que ela conectar no SAP
+
+**Pedido explícito da usuária (2026-08-24, fim do dia):** "podemos testar amanhã? você me lembra de testar, assim que eu conectar" — referente à mudança de hoje (Passo 1/extração passa a salvar dentro da subpasta do Ciclo, `<MM>_<Mês3>_<Ciclo>`, ex: `07_Jul_Actual`).
+
+**Assim que ela avisar que conectou no SAP, lembrar e propor direto:** rodar "Extrair KSB1" pela GUI real pra um mês/Ciclo à escolha dela (sugestão: Agosto/2026, mês ainda sem nenhum dado, Actual ou Flash) e confirmar que o arquivo cai dentro da subpasta nova (`08_Aug_Actual` ou `08_Aug_Flash`, já criada vazia na rede) em vez de solto na pasta do mês.
+
+**Contexto técnico (não precisa reexplicar, só usar):** a mudança já está implementada e commitada (`218e72c`) — `extrair_um` em `atualizar_ksb1_gui.py` usa `resolver_pasta_ciclo(pasta_mes, mes, ciclo)` com o Ciclo vindo do seletor da GUI. Testado isolado (pasta temporária, 4 cenários OK) mas **ainda não testado contra o SAP real** — esse é o teste pendente. As 24 subpastas (12 meses × Actual/Flash) já existem vazias na rede desde hoje.
+
+---
 ## Continuação 2026-08-24 (mesmo dia) — Passo 1 (extração) passa a usar subpasta de Ciclo, com fallback pro formato antigo — implementado, testado isolado, falta validar ao vivo
 
 - **Pedido da usuária:** hoje o Passo 1 (extração KSB1) salva os arquivos soltos direto na pasta do mês (`00.Extração Base KSB1/<MM - Mês>/`). Ela pediu pra usar dentro de cada pasta de mês subpastas de Ciclo (Flash/Actual), **"utilizando a mesma premissa"** já usada pelos Passos 3/4 (`<MM>_<Mês3>_<Ciclo>`, ex: `07_Jul_Actual` — ver `resolver_pasta_ciclo` em `ksb1_core.py`).
