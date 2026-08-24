@@ -805,8 +805,8 @@ def main():
         # de marco/abril usam o mes por extenso em vez da abreviacao padrao).
         pasta_saida = resolver_pasta_ciclo(REDE_BASE / str(ano) / MESES_PASTA[mes], mes, ciclo)
 
-        def func(log):
-            return gerar_ksb1_mensal(mes, ano, ciclo, pasta_saida, log=log)
+        def func(log, pid_callback):
+            return gerar_ksb1_mensal(mes, ano, ciclo, pasta_saida, log=log, pid_callback=pid_callback)
 
         def ao_concluir(resultado, erro):
             if erro is not None:
@@ -827,8 +827,8 @@ def main():
 
         pasta_saida = resolver_pasta_ciclo(REDE_BASE / str(ano) / MESES_PASTA[mes], mes, ciclo)
 
-        def func(log):
-            return atualizar_base_intermediaria(mes, ano, ciclo, pasta_saida, log=log)
+        def func(log, pid_callback):
+            return atualizar_base_intermediaria(mes, ano, ciclo, pasta_saida, log=log, pid_callback=pid_callback)
 
         def ao_concluir(resultado, erro):
             if erro is not None:
