@@ -27,7 +27,7 @@ from openpyxl import Workbook, load_workbook
 from atualizar_ksb1_gui import BU, MESES_PASTA, REDE_BASE, nome_com_versao
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "_shared"))
-from ksb1_core import encontrar_arquivo_ksb1  # noqa: E402
+from ksb1_core import localizar_extracao_ksb1, resolver_pasta_ciclo  # noqa: E402
 
 IGNORAR_EXATAS = {
     "C23020JJ15",
@@ -80,8 +80,8 @@ def ler_linhas_detalhe(caminho: Path):
 def gerar_check(mes: int, ano: int, ciclo: str, log=print) -> Path:
     pasta_mes = REDE_BASE / str(ano) / "00.Extração Base KSB1" / MESES_PASTA[mes]
 
-    arquivo_gest = encontrar_arquivo_ksb1(pasta_mes, BU["nome"], mes, ano, "Gestoriais", ciclo)
-    arquivo_sem = encontrar_arquivo_ksb1(pasta_mes, BU["nome"], mes, ano, "Sem Agrupamento", ciclo)
+    arquivo_gest = localizar_extracao_ksb1(pasta_mes, BU["nome"], mes, ano, "Gestoriais", ciclo)
+    arquivo_sem = localizar_extracao_ksb1(pasta_mes, BU["nome"], mes, ano, "Sem Agrupamento", ciclo)
     log(f"Comparando (Ciclo {ciclo}):\n  Gestoriais: {arquivo_gest.name}\n  Sem Agrupamento: {arquivo_sem.name}")
 
     linhas_sem = ler_linhas_detalhe(arquivo_sem)
@@ -142,8 +142,11 @@ def gerar_check(mes: int, ano: int, ciclo: str, log=print) -> Path:
         "OK - valores batem" if abs(diferenca) < 0.01 else "ATENÇÃO - valores não batem, ver Check 2",
     ])
 
-    nome_saida = nome_com_versao(pasta_mes, f"Check de agrupamentos - {mes:02d}.{ano} - {ciclo}.xlsx")
-    caminho_saida = pasta_mes / nome_saida
+    # Salva junto da extracao que originou o check (subpasta do Ciclo, se for
+    # o caso - ver localizar_extracao_ksb1 pra meses antigos ainda soltos).
+    pasta_saida = arquivo_gest.parent
+    nome_saida = nome_com_versao(pasta_saida, f"Check de agrupamentos - {mes:02d}.{ano} - {ciclo}.xlsx")
+    caminho_saida = pasta_saida / nome_saida
     wb_out.save(caminho_saida)
     log(f"\nArquivo gerado: {caminho_saida}")
     log(f"Total Sem Agrupamento (filtrado): {total_sem_filtrado:,.2f}")

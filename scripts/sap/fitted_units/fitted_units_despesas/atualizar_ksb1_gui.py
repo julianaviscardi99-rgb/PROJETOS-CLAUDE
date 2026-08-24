@@ -145,7 +145,13 @@ def extrair_um(session, mes, ano, ciclo, koagr, agrup_label, log):
     log(f"Executando KSB1 ({agrup_label}, Ciclo {ciclo})...")
     session.FindById("wnd[0]").SendVKey(8)
 
-    pasta_rede = REDE_BASE / str(ano) / "00.Extração Base KSB1" / MESES_PASTA[mes]
+    # Desde 2026-08-24, a extracao salva dentro de uma subpasta do Ciclo
+    # (<MM>_<Mes3>_<Ciclo>/, mesmo padrao ja usado pelos Passos 3/4 - ver
+    # resolver_pasta_ciclo), em vez de solta direto na pasta do mes. Meses
+    # ja extraidos antes disso continuam soltos na pasta do mes (nao foram
+    # reorganizados) - o Passo 2/3 sabem procurar nos dois lugares.
+    pasta_mes = REDE_BASE / str(ano) / "00.Extração Base KSB1" / MESES_PASTA[mes]
+    pasta_rede = resolver_pasta_ciclo(pasta_mes, mes, ciclo)
     pasta_rede.mkdir(parents=True, exist_ok=True)
     nome_arquivo = nome_com_versao(
         pasta_rede, nome_arquivo_ksb1(BU["nome"], mes, ano, agrup_label, ciclo)

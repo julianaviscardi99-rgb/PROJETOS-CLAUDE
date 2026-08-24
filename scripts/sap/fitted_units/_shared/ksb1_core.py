@@ -190,6 +190,28 @@ def encontrar_arquivo_ksb1(pasta: Path, bu_nome: str, mes: int, ano: int, agrup_
     return candidatos_antigos[-1]
 
 
+def localizar_extracao_ksb1(pasta_mes: Path, bu_nome: str, mes: int, ano: int, agrup_label: str, ciclo: str) -> Path:
+    """Acha o arquivo bruto da extracao (Passo 1) do mes/ano/Ciclo/agrupamento.
+    Desde 2026-08-24, a extracao passou a salvar dentro de uma subpasta do
+    Ciclo (<MM>_<Mes3>_<Ciclo>/, mesmo padrao ja usado pelos Passos 3/4 - ver
+    resolver_pasta_ciclo) em vez de solta direto na pasta do mes. Meses ja
+    extraidos antes dessa mudanca (arquivos soltos na pasta do mes) continuam
+    funcionando sem reorganizar nada: procura primeiro na subpasta do Ciclo;
+    se nao achar nada la, cai para a pasta do mes (formato antigo) - decisao
+    explicita da usuaria de nao mover os arquivos ja existentes."""
+    pasta_ciclo = resolver_pasta_ciclo(pasta_mes, mes, ciclo)
+    try:
+        return encontrar_arquivo_ksb1(pasta_ciclo, bu_nome, mes, ano, agrup_label, ciclo)
+    except FileNotFoundError:
+        try:
+            return encontrar_arquivo_ksb1(pasta_mes, bu_nome, mes, ano, agrup_label, ciclo)
+        except FileNotFoundError as erro_pasta_mes:
+            raise FileNotFoundError(
+                f"Não encontrei a extração de '{agrup_label}' (Ciclo {ciclo}) nem em "
+                f"{pasta_ciclo} nem em {pasta_mes} (formato antigo, sem subpasta)."
+            ) from erro_pasta_mes
+
+
 def encontrar_arquivo_mais_recente(pasta: Path, nome_base: str) -> Path | None:
     """Acha a versão mais recente de um arquivo gerado via nome_com_versao
     (nome_base.xlsx, nome_base_v2.xlsx, nome_base_v3.xlsx, ...) — usada
