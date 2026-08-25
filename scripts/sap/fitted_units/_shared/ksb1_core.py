@@ -302,39 +302,36 @@ def fechar_excel_se_aberto(caminho_arquivo: Path, log=print) -> bool:
 
 def limpar_excel_orfao(log=print):
     """Mesmo depois de fechar_excel_se_aberto liberar o arquivo, o Excel as
-    vezes ainda mostra um aviso nativo ("Sorry, we couldn't find ...") -
-    porque o proprio codigo moveu o arquivo de onde o Excel tinha aberto
-    ele - e fica pra tras uma janela vazia (sem nenhuma pasta de trabalho
-    aberta). Fecha os dois:
-    1. Clica "OK" em qualquer dialogo nativo do Windows titulado
-       "Microsoft Excel" (o titulo padrao desse aviso especifico).
+    vezes ainda mostra um aviso ("Sorry, we couldn't find ...") - porque o
+    proprio codigo moveu o arquivo de onde o Excel tinha aberto ele - e fica
+    pra tras uma janela vazia (sem nenhuma pasta de trabalho aberta). Fecha
+    os dois:
+    1. Fecha (WM_CLOSE) qualquer janela titulada exatamente "Microsoft
+       Excel" - o aviso especifico da versao moderna do Office usa a classe
+       'NUIDialog' (dialogo desenhado pela propria Office, nao o
+       MessageBox classico '#32770'), e o botao "OK" e' so' um desenho
+       dentro de um unico controle 'NetUIHWND' (nao da' pra clicar nele
+       feito um Button de verdade) - por isso fecha a janela toda via
+       WM_CLOSE em vez de procurar um botao pra clicar. Confirmado ao vivo
+       em 2026-08-25 que isso fecha o aviso sem precisar clicar em nada.
     2. Fecha (Quit) qualquer instancia do Excel que nao tenha NENHUMA pasta
        de trabalho aberta - nunca mexe numa instancia com algo aberto, entao
        nunca fecha um Excel que a usuaria esteja usando de verdade."""
 
-    def _clicar_ok_se_for_o_aviso(hwnd, _):
+    def _fechar_se_for_o_aviso(hwnd, _):
         if not win32gui.IsWindowVisible(hwnd):
-            return True
-        if win32gui.GetClassName(hwnd) != "#32770":  # classe padrao de dialogo do Windows
             return True
         if win32gui.GetWindowText(hwnd).strip() != "Microsoft Excel":
             return True
-
-        def _achar_botao_ok(h, _):
-            texto = win32gui.GetWindowText(h)
-            if win32gui.GetClassName(h) == "Button" and texto.strip().upper() == "OK":
-                win32gui.PostMessage(h, win32con.BM_CLICK, 0, 0)
-            return True
-
         try:
-            win32gui.EnumChildWindows(hwnd, _achar_botao_ok, None)
+            win32gui.PostMessage(hwnd, win32con.WM_CLOSE, 0, 0)
             log("Fechei um aviso do Excel que sobrou depois da extração.")
         except Exception:
             pass
         return True
 
     try:
-        win32gui.EnumWindows(_clicar_ok_se_for_o_aviso, None)
+        win32gui.EnumWindows(_fechar_se_for_o_aviso, None)
     except Exception:
         pass
 
