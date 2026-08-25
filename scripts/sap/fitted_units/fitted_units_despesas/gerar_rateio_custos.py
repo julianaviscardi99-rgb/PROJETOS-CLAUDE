@@ -74,20 +74,6 @@ ONTOLOGY_DIR = Path(__file__).resolve().parents[4] / "ontology"
 ONTOLOGY_UNIDADES_PATH = ONTOLOGY_DIR / "fitted_units.json"
 RATEIO_CONFIG_PATH = ONTOLOGY_DIR / "rateio_gerencia.json"
 
-# Arquivo mestre (mantido pela controladoria central, nao pela usuaria) com
-# a classificacao Variavel/Fixo por Conta Gestorial - ver
-# ontology/fitted_units.json -> fonte_contas_gestoriais_e_centros. Usado so'
-# como FALLBACK quando o campo "Tp.Custo" da Base Intermediaria vem em
-# branco (achado real em 2026-08-25: a Base Intermediaria le esse campo por
-# formula, e o cache pode ficar em branco se a formula nao recalculou pra
-# aquela unidade - o SJP de julho/2026 veio assim). A Base Intermediaria
-# continua sendo a referencia principal (pedido explicito da usuaria); esse
-# arquivo so' entra quando ela nao tem a informacao.
-BASE_CONTAS_PATH = Path(
-    r"\\FSS024-01BR.group.pirelli.com\GFU_DAC\Custos Fitted Units\Custos Efetivos"
-    r"\_Acompanhamentos e Controles\Base_Contas_Contábeis_Fitted_22.xlsx"
-)
-
 # Mini-Fabrica -> sigla, so' as unidades ATIVAS que entram no quadro/rateio.
 # Confirmado com a usuaria em 2026-08-25 (RES ainda sem custo real ate essa
 # data, codigo confirmado por ela: "0483 e' de Resende").
@@ -309,26 +295,10 @@ def ler_e_classificar(caminho_base_intermediaria: Path, mes: int, log):
         mini_fabrica_str = str(mini_fabrica).strip() if mini_fabrica is not None else ""
         centro_custo_str = str(centro_custo).strip() if centro_custo is not None else ""
 
-        if mini_fabrica_str in UNIDADES_ATIVAS:
-            sigla = UNIDADES_ATIVAS[mini_fabrica_str]
-        elif mini_fabrica_str == GERENCIA_MINIFABRICA:
-            sigla = SIGLA_GERENCIA
-        elif centro_custo_str in centros_encerrados:
-            residuos_encerradas.append(
-                {
-                    "unidade": centros_encerrados[centro_custo_str],
-                    "conta": conta_int,
-                    "descricao": desc_conta,
-                    "valor": valor,
-                }
-            )
-            continue
-        else:
-            # Nem unidade ativa, nem Gerencia, nem unidade encerrada
-            # conhecida (ex: FATURAMENTO, que ja e' pra ignorar) - fora de
-            # escopo, nao entra no quadro nem no aviso.
-            continue
-
+        # Classifica a chave (tipo, subcategoria) ANTES de decidir a unidade -
+        # precisa dela tanto pra unidade ativa/Gerencia quanto pro residuo de
+        # unidade encerrada (que, quando nao e' Sorocaba, entra no balde da
+        # Gerencia NESSA MESMA categoria - ver calcular_rateio_por_categoria).
         if tipo not in ("V", "F"):
             chave = "Não Classificado"
         else:
@@ -342,6 +312,35 @@ def ler_e_classificar(caminho_base_intermediaria: Path, mes: int, log):
             # Total Costs contaria o mesmo valor 2x (bug real encontrado e
             # corrigido em 2026-08-25, testando contra Julho/Actual real).
             chave = (tipo, subcat)
+
+        if mini_fabrica_str in UNIDADES_ATIVAS:
+            sigla = UNIDADES_ATIVAS[mini_fabrica_str]
+        elif mini_fabrica_str == GERENCIA_MINIFABRICA:
+            sigla = SIGLA_GERENCIA
+        elif centro_custo_str in centros_encerrados:
+            unidade_encerrada = centros_encerrados[centro_custo_str]
+            residuos_encerradas.append(
+                {
+                    "unidade": unidade_encerrada,
+                    "conta": conta_int,
+                    "descricao": desc_conta,
+                    "valor": valor,
+                }
+            )
+            if unidade_encerrada.upper() != "SOROCABA":
+                # Soma no balde da Gerencia NESSA MESMA categoria (tipo,
+                # subcategoria) - assim o residuo entra no rateio por
+                # categoria exatamente como se fosse custo proprio da
+                # Gerencia (pedido explicito da usuaria, 2026-08-25).
+                totais_ativos[SIGLA_GERENCIA][chave] = (
+                    totais_ativos[SIGLA_GERENCIA].get(chave, 0) + valor
+                )
+            continue
+        else:
+            # Nem unidade ativa, nem Gerencia, nem unidade encerrada
+            # conhecida (ex: FATURAMENTO, que ja e' pra ignorar) - fora de
+            # escopo, nao entra no quadro nem no aviso.
+            continue
 
         totais_ativos[sigla][chave] = totais_ativos[sigla].get(chave, 0) + valor
 
@@ -368,11 +367,35 @@ def ler_e_classificar(caminho_base_intermediaria: Path, mes: int, log):
     return totais_ativos, residuos_encerradas, contas_nao_mapeadas
 
 
+def _apenas_fixo(dados_unidade: dict, log=None, sigla="") -> dict:
+    """O custo da Gerência é 100% Fixo por definição (confirmado pela
+    usuária, 2026-08-25) - custo Variável não existe pra ela e NUNCA deve
+    entrar no rateio. Filtra o dicionário {(tipo, subcategoria): valor}
+    mantendo só as chaves tipo='F'. Se aparecer algo tipo='V' com valor
+    (não deveria, mas a Base Intermediária é a fonte de verdade e pode trazer
+    isso por engano de lançamento), avisa e ignora - nunca vira rateio."""
+    resultado = {}
+    for chave, valor in dados_unidade.items():
+        if isinstance(chave, tuple) and chave[0] == "V":
+            if valor and log:
+                log(
+                    f"AVISO: {sigla} teve custo classificado como Variável "
+                    f"({chave[1]}: {_fmt_moeda(valor)}) — a Gerência é sempre "
+                    "Fixa, esse valor foi ignorado no rateio."
+                )
+            continue
+        resultado[chave] = valor
+    return resultado
+
+
 def calcular_rateio(totais_ativos: dict, residuos_encerradas: list, percentuais: dict, log):
     """Devolve (rateio_por_unidade, gerencia_total, residuo_somado_gerencia,
-    residuo_sorocaba_fora). Gerencia_total = soma de todas as subcategorias
-    da Gerencia + residuo de unidades encerradas (exceto Sorocaba)."""
-    ger = totais_ativos.get(SIGLA_GERENCIA, {})
+    residuo_sorocaba_fora). `totais_ativos[GER]` ja' inclui o residuo de
+    unidades encerradas (exceto Sorocaba) - foi somado categoria a categoria
+    em `ler_e_classificar`. Aqui so' calcula o total (pra linha informativa
+    "Rateio Gerência") e loga os avisos de residuo. `gerencia_total` conta
+    so' o custo Fixo da Gerência (ver _apenas_fixo)."""
+    ger = _apenas_fixo(totais_ativos.get(SIGLA_GERENCIA, {}), log, SIGLA_GERENCIA)
     gerencia_total = sum(ger.values())
 
     residuo_somado_gerencia = 0.0
@@ -384,7 +407,7 @@ def calcular_rateio(totais_ativos: dict, residuos_encerradas: list, percentuais:
             residuo_somado_gerencia += r["valor"]
             log(
                 f"AVISO: resíduo de {r['unidade']} (conta {r['conta']} - {r['descricao']}: "
-                f"{_fmt_moeda(r['valor'])}) somado ao custo da Gerência antes do rateio."
+                f"{_fmt_moeda(r['valor'])}) somado ao custo da Gerência (mesma categoria) antes do rateio."
             )
     if residuo_sorocaba_fora:
         log(
@@ -392,14 +415,39 @@ def calcular_rateio(totais_ativos: dict, residuos_encerradas: list, percentuais:
             "NÃO entra no rateio (unidade em reclassificação para custo não recorrente)."
         )
 
-    base_rateio = gerencia_total + residuo_somado_gerencia
-
+    # Linha informativa "Rateio Gerência" (fora do Total Costs - o rateio de
+    # verdade ja' foi espalhado categoria a categoria em
+    # calcular_dados_com_rateio): quanto cada unidade recebeu no total.
     rateio_por_unidade = {}
     for sigla in ORDEM_UNIDADES_ATIVAS:
         pct = percentuais.get(sigla, 0)
-        rateio_por_unidade[sigla] = base_rateio * pct
+        rateio_por_unidade[sigla] = gerencia_total * pct
 
     return rateio_por_unidade, gerencia_total, residuo_somado_gerencia, residuo_sorocaba_fora
+
+
+def calcular_dados_com_rateio(totais_ativos: dict, percentuais: dict, log=None) -> dict:
+    """Devolve {unidade: {(tipo, subcategoria): valor}} pras unidades ATIVAS,
+    com o custo da Gerência ja' espalhado categoria a categoria - mesma
+    logica do arquivo real de Forecast (Detalhe_Despesas_Fitted Units,
+    aba 'Resumo Custos'): valor_com_rateio = valor_proprio +
+    (valor_da_Gerência NESSA MESMA categoria * % da unidade). Nao e' mais
+    uma linha unica de rateio - cada categoria (Labour, Handling,
+    Depreciation etc.) recebe o pedaco dela.
+
+    So' o custo FIXO da Gerência entra no rateio (ver _apenas_fixo) - o
+    Variável das unidades nunca e' afetado, porque a Gerência não tem
+    custo Variável de verdade (confirmado pela usuária, 2026-08-25)."""
+    ger = _apenas_fixo(totais_ativos.get(SIGLA_GERENCIA, {}), log, SIGLA_GERENCIA)
+    resultado = {}
+    for sigla in ORDEM_UNIDADES_ATIVAS:
+        proprio = totais_ativos.get(sigla, {})
+        pct = percentuais.get(sigla, 0)
+        chaves = set(proprio.keys()) | set(ger.keys())
+        resultado[sigla] = {
+            chave: proprio.get(chave, 0) + ger.get(chave, 0) * pct for chave in chaves
+        }
+    return resultado
 
 
 # ---------------------------------------------------------------------------
@@ -453,7 +501,9 @@ def _escrever_quadro(ws, linha_inicio, col_inicio, titulo, colunas, dados, ordem
         nonlocal linha
         c = ws.cell(row=linha, column=col_inicio, value=nome)
         c.font = FONTE_CATEGORIA
+        c.fill = PatternFill("solid", fgColor=CINZA_CLARO)
         primeira_linha_cat = linha
+        linha += 1
         return primeira_linha_cat
 
     def _linha_item(nome, tipo_macro):
@@ -472,33 +522,38 @@ def _escrever_quadro(ws, linha_inicio, col_inicio, titulo, colunas, dados, ordem
 
     # Variable Cost
     linha_var_categoria = _linha_categoria("Variable Cost")
-    linha += 1
     linha_var_inicio_itens = linha
     for item in ordem_var:
         _linha_item(item, "V")
     linha_var_fim_itens = linha - 1
 
+    linha += 1  # linha em branco separando Variable Cost de Fixed Cost
+
     # Fixed Cost
     linha_fix_categoria = _linha_categoria("Fixed Cost")
-    linha += 1
     linha_fix_inicio_itens = linha
     for item in ordem_fixo:
         _linha_item(item, "F")
     linha_fix_fim_itens = linha - 1
 
-    # Preenche a soma da linha "Variable Cost"/"Fixed Cost" (soma dos itens dela)
+    # Preenche a soma da linha "Variable Cost"/"Fixed Cost" (soma dos itens
+    # dela) - cinza claro e negrito, igual o rotulo (pedido da usuaria).
     for i, colname in enumerate(colunas):
         col_letra = get_column_letter(col_inicio + 1 + i)
-        ws.cell(
+        cv = ws.cell(
             row=linha_var_categoria, column=col_inicio + 1 + i,
             value=f"=SUM({col_letra}{linha_var_inicio_itens}:{col_letra}{linha_var_fim_itens})",
-        ).font = FONTE_CATEGORIA
-        ws.cell(row=linha_var_categoria, column=col_inicio + 1 + i).number_format = "#,##0.0;(#,##0.0)"
-        ws.cell(
+        )
+        cv.font = FONTE_CATEGORIA
+        cv.fill = PatternFill("solid", fgColor=CINZA_CLARO)
+        cv.number_format = "#,##0.0;(#,##0.0)"
+        cf = ws.cell(
             row=linha_fix_categoria, column=col_inicio + 1 + i,
             value=f"=SUM({col_letra}{linha_fix_inicio_itens}:{col_letra}{linha_fix_fim_itens})",
-        ).font = FONTE_CATEGORIA
-        ws.cell(row=linha_fix_categoria, column=col_inicio + 1 + i).number_format = "#,##0.0;(#,##0.0)"
+        )
+        cf.font = FONTE_CATEGORIA
+        cf.fill = PatternFill("solid", fgColor=CINZA_CLARO)
+        cf.number_format = "#,##0.0;(#,##0.0)"
 
     return {
         "linha_var_categoria": linha_var_categoria,
@@ -548,6 +603,8 @@ def _finalizar_quadro_com_total(ws, info, linhas_extra_antes_do_total=None):
         col_total_letra = get_column_letter(col_inicio + 1 + len(colunas))
         primeira = info["linha_var_categoria"]
         for r in range(primeira, linha_total_costs + 1):
+            if ws.cell(row=r, column=col_inicio).value is None:
+                continue  # linha em branco (separador Variable/Fixed Cost)
             letras = [get_column_letter(col_inicio + 1 + i) for i in range(len(colunas))]
             formula = "=" + "+".join(f"{l}{r}" for l in letras)
             cc = ws.cell(row=r, column=col_inicio + 1 + len(colunas), value=formula)
@@ -631,18 +688,11 @@ def gerar_arquivo_rateio_custos(mes: int, ano: int, ciclo: str, pasta_saida: Pat
     valores_nao_classificado = {
         c: totais_ativos.get(c, {}).get("Não Classificado", 0) for c in colunas_sem_rateio
     }
-    extras_quadro1 = []
-    if tem_nao_classificado:
-        extras_quadro1.append(("Não Classificado", valores_nao_classificado))
-    if residuo_somado:
-        # Soma na coluna GER pra o TOTAL deste quadro bater com o TOTAL do
-        # quadro "com rateio" (que ja' inclui esse residuo na base do
-        # rateio) - sem isso o Check nunca fecharia em 0.
-        extras_quadro1.append((
-            "Resíduo Unidades Encerradas",
-            {c: (residuo_somado if c == SIGLA_GERENCIA else 0) for c in colunas_sem_rateio},
-        ))
-    extras_quadro1 = extras_quadro1 or None
+    # Nota: o resíduo de unidade encerrada (exceto Sorocaba) já foi somado
+    # direto na categoria certa de totais_ativos[GER] (ler_e_classificar) -
+    # não precisa de linha extra aqui, já aparece naturalmente dentro das
+    # categorias da coluna GER.
+    extras_quadro1 = [("Não Classificado", valores_nao_classificado)] if tem_nao_classificado else None
 
     info1 = _escrever_quadro(
         ws, linha_prox_bloco, 1,
@@ -653,14 +703,18 @@ def gerar_arquivo_rateio_custos(mes: int, ano: int, ciclo: str, pasta_saida: Pat
     linha_prox_bloco += 2
 
     # --- Bloco 3: quadro com rateio (SJP | IBI | GOI | RES | TOTAL) ---
-    dados_com_rateio = {sigla: totais_ativos.get(sigla, {}) for sigla in ORDEM_UNIDADES_ATIVAS}
-    extras_quadro2 = []
-    if tem_nao_classificado:
-        extras_quadro2.append((
+    # O custo da Gerência já foi espalhado categoria a categoria (mesma
+    # lógica do arquivo real de Forecast) - não é mais uma linha única.
+    dados_com_rateio = calcular_dados_com_rateio(totais_ativos, percentuais, log)
+    tem_nao_classificado_ativas = any(
+        dados_com_rateio.get(c, {}).get("Não Classificado", 0) for c in ORDEM_UNIDADES_ATIVAS
+    )
+    extras_quadro2 = None
+    if tem_nao_classificado_ativas:
+        extras_quadro2 = [(
             "Não Classificado",
-            {c: totais_ativos.get(c, {}).get("Não Classificado", 0) for c in ORDEM_UNIDADES_ATIVAS},
-        ))
-    extras_quadro2.append(("Rateio Gerência", rateio_por_unidade))
+            {c: dados_com_rateio.get(c, {}).get("Não Classificado", 0) for c in ORDEM_UNIDADES_ATIVAS},
+        )]
 
     info2 = _escrever_quadro(
         ws, linha_prox_bloco, 1,
@@ -670,6 +724,29 @@ def gerar_arquivo_rateio_custos(mes: int, ano: int, ciclo: str, pasta_saida: Pat
     linha_total2, linha_prox_bloco = _finalizar_quadro_com_total(
         ws, info2, linhas_extra_antes_do_total=extras_quadro2
     )
+
+    # --- Linha informativa "Rateio Gerência" (fora do Total Costs - o
+    # rateio de verdade já está espalhado categoria a categoria acima; essa
+    # linha só mostra, de forma resumida, quanto cada unidade recebeu no
+    # total) - cinza claro, pedido da usuária. ---
+    linha_prox_bloco += 1
+    c = ws.cell(row=linha_prox_bloco, column=1, value="Rateio Gerência")
+    c.font = FONTE_ITEM
+    c.fill = PatternFill("solid", fgColor=CINZA_CLARO)
+    for i, sigla in enumerate(ORDEM_UNIDADES_ATIVAS):
+        cc = ws.cell(row=linha_prox_bloco, column=2 + i, value=round(rateio_por_unidade.get(sigla, 0), 1))
+        cc.font = FONTE_ITEM
+        cc.fill = PatternFill("solid", fgColor=CINZA_CLARO)
+        cc.number_format = "#,##0.0;(#,##0.0)"
+    col_letras = [get_column_letter(2 + i) for i in range(len(ORDEM_UNIDADES_ATIVAS))]
+    cc = ws.cell(
+        row=linha_prox_bloco, column=2 + len(ORDEM_UNIDADES_ATIVAS),
+        value="=" + "+".join(f"{l}{linha_prox_bloco}" for l in col_letras),
+    )
+    cc.font = FONTE_ITEM
+    cc.fill = PatternFill("solid", fgColor=CINZA_CLARO)
+    cc.number_format = "#,##0.0;(#,##0.0)"
+    linha_prox_bloco += 2
 
     # --- Check: TOTAL do quadro 1 (coluna TOTAL, linha Total Costs) deve
     # bater com o TOTAL do quadro 2 (coluna TOTAL, linha Total Costs) ---

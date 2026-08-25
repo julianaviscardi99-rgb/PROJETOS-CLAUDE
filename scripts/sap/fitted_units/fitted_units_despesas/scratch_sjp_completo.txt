@@ -1,0 +1,108 @@
+4263000 | Outras Despesas | tipo(fallback)=F | subcat=Other Fixed | valor=-270.71
+4211000 | Transporte De Mats. Vários | tipo(fallback)=V | subcat=Transportation | valor=-256.36
+4201410 | M.O. Indireta - Horista | tipo(fallback)=V | subcat=Labour | valor=241.82
+4201410 | M.O. Indireta - Horista | tipo(fallback)=V | subcat=Labour | valor=-241.82
+4236300 | Materiais Diretos - F. Units | tipo(fallback)=V | subcat=Direct Materials | valor=-205.21
+4203055 | Manutenção Terceiros | tipo(fallback)=F | subcat=Other Fixed | valor=123.58
+4201410 | M.O. Indireta - Horista | tipo(fallback)=V | subcat=Labour | valor=117.04
+4201000 | Salários | tipo(fallback)=F | subcat=Labour | valor=-105.89
+4257000 | Aluguéis | tipo(fallback)=V | subcat=Handling | valor=-92.03
+4201410 | M.O. Indireta - Horista | tipo(fallback)=V | subcat=Labour | valor=74.93
+4201410 | M.O. Indireta - Horista | tipo(fallback)=V | subcat=Labour | valor=-74.93
+4201410 | M.O. Indireta - Horista | tipo(fallback)=V | subcat=Labour | valor=-69.89
+4257000 | Aluguéis | tipo(fallback)=V | subcat=Handling | valor=61.83
+4201000 | Salários | tipo(fallback)=F | subcat=Labour | valor=-55.10
+4201130 | Prov.PLR Hor. | tipo(fallback)=V | subcat=Labour | valor=-48.00
+4201410 | M.O. Indireta - Horista | tipo(fallback)=V | subcat=Labour | valor=-47.15
+4246000 | Transporte de Funcionários | tipo(fallback)=F | subcat=Other Fixed | valor=-45.43
+4201150 | Enc.Salários Hor. | tipo(fallback)=V | subcat=Labour | valor=-42.71
+4244000 | Alimentação | tipo(fallback)=F | subcat=Other Fixed | valor=-41.04
+4203050 | Manutenção Materiais | tipo(fallback)=F | subcat=Other Fixed | valor=-37.40
+4201000 | Salários | tipo(fallback)=F | subcat=Labour | valor=-35.34
+4200400 | Mensalistas | tipo(fallback)=F | subcat=Labour | valor=28.77
+4200400 | Mensalistas | tipo(fallback)=F | subcat=Labour | valor=-28.77
+4244000 | Alimentação | tipo(fallback)=F | subcat=Other Fixed | valor=-28.31
+4245100 | Assistência Médica-Horista | tipo(fallback)=V | subcat=Labour | valor=-26.12
+4205250 | Energia Elétrica | tipo(fallback)=V | subcat=Other Variable | valor=-22.36
+4201150 | Enc.Salários Hor. | tipo(fallback)=V | subcat=Labour | valor=-21.86
+4255000 | Depreciação | tipo(fallback)=F | subcat=Depreciation | valor=-20.41
+4200000 | Ordenados | tipo(fallback)=F | subcat=Labour | valor=-17.59
+4257000 | Aluguéis | tipo(fallback)=V | subcat=Handling | valor=-17.45
+4203055 | Manutenção Terceiros | tipo(fallback)=F | subcat=Other Fixed | valor=-16.32
+4201130 | Prov.PLR Hor. | tipo(fallback)=V | subcat=Labour | valor=-16.00
+4201100 | H.Extras Salários | tipo(fallback)=V | subcat=Labour | valor=-15.41
+4201150 | Enc.Salários Hor. | tipo(fallback)=V | subcat=Labour | valor=-14.25
+4201120 | Prov.Férias Hor. | tipo(fallback)=V | subcat=Labour | valor=-11.59
+4255000 | Depreciação | tipo(fallback)=F | subcat=Depreciation | valor=-10.06
+4201110 | Prov.13º Salário Hor. | tipo(fallback)=V | subcat=Labour | valor=-10.04
+4201130 | Prov.PLR Hor. | tipo(fallback)=V | subcat=Labour | valor=-10.00
+4203050 | Manutenção Materiais | tipo(fallback)=F | subcat=Other Fixed | valor=9.25
+4257000 | Aluguéis | tipo(fallback)=V | subcat=Handling | valor=8.51
+4255002 | Depreciação IFRS16 | tipo(fallback)=V | subcat=???SEM MAPA??? | valor=-8.45
+4236100 | Materiais Indiretos | tipo(fallback)=F | subcat=Other Fixed | valor=-8.44
+4236020 | Prestados - Serviços | tipo(fallback)=F | subcat=Other Fixed | valor=-8.07
+4201100 | H.Extras Salários | tipo(fallback)=V | subcat=Labour | valor=-7.85
+4263000 | Outras Despesas | tipo(fallback)=F | subcat=Other Fixed | valor=-7.04
+4245100 | Assistência Médica-Horista | tipo(fallback)=V | subcat=Labour | valor=-6.96
+4201120 | Prov.Férias Hor. | tipo(fallback)=V | subcat=Labour | valor=-6.73
+4200150 | Enc.Orden.Mensal. | tipo(fallback)=F | subcat=Labour | valor=-6.21
+4257000 | Aluguéis | tipo(fallback)=V | subcat=Handling | valor=-5.72
+4247200 | Despesas Sociais | tipo(fallback)=F | subcat=Other Fixed | valor=-5.53
+4201110 | Prov.13º Salário Hor. | tipo(fallback)=V | subcat=Labour | valor=-5.03
+4257000 | Aluguéis | tipo(fallback)=V | subcat=Handling | valor=-4.96
+4201100 | H.Extras Salários | tipo(fallback)=V | subcat=Labour | valor=-4.93
+4236020 | Prestados - Serviços | tipo(fallback)=F | subcat=Other Fixed | valor=-4.88
+4245100 | Assistência Médica-Horista | tipo(fallback)=V | subcat=Labour | valor=-4.78
+4254000 | Seguros | tipo(fallback)=F | subcat=Other Fixed | valor=-4.77
+4201120 | Prov.Férias Hor. | tipo(fallback)=V | subcat=Labour | valor=-4.32
+4201170 | Prov.Enc.Férias Hor. | tipo(fallback)=V | subcat=Labour | valor=-4.29
+4246000 | Transporte de Funcionários | tipo(fallback)=F | subcat=Other Fixed | valor=-4.14
+4236020 | Prestados - Serviços | tipo(fallback)=F | subcat=Other Fixed | valor=-4.13
+4245100 | Assistência Médica-Horista | tipo(fallback)=V | subcat=Labour | valor=-3.82
+4201180 | Prov.Enc.13º Sal.Hor. | tipo(fallback)=V | subcat=Labour | valor=-3.67
+4263000 | Outras Despesas | tipo(fallback)=F | subcat=Other Fixed | valor=-3.30
+4201110 | Prov.13º Salário Hor. | tipo(fallback)=V | subcat=Labour | valor=-3.23
+4201170 | Prov.Enc.Férias Hor. | tipo(fallback)=V | subcat=Labour | valor=-2.49
+4238000 | Tributos | tipo(fallback)=F | subcat=Other Fixed | valor=-2.38
+4255000 | Depreciação | tipo(fallback)=F | subcat=Depreciation | valor=-2.28
+4255002 | Depreciação IFRS16 | tipo(fallback)=V | subcat=???SEM MAPA??? | valor=-2.18
+4232000 | Viagens, Cond. e Refeições | tipo(fallback)=F | subcat=Other Fixed | valor=-2.13
+4255000 | Depreciação | tipo(fallback)=F | subcat=Depreciation | valor=-2.13
+4205250 | Energia Elétrica | tipo(fallback)=V | subcat=Other Variable | valor=2.07
+4200130 | Prov.PLR Mensal. | tipo(fallback)=F | subcat=Labour | valor=-2.02
+4236300 | Materiais Diretos - F. Units | tipo(fallback)=V | subcat=Direct Materials | valor=-1.92
+4203055 | Manutenção Terceiros | tipo(fallback)=F | subcat=Other Fixed | valor=-1.91
+4255000 | Depreciação | tipo(fallback)=F | subcat=Depreciation | valor=-1.89
+4201180 | Prov.Enc.13º Sal.Hor. | tipo(fallback)=V | subcat=Labour | valor=-1.86
+4247200 | Despesas Sociais | tipo(fallback)=F | subcat=Other Fixed | valor=-1.83
+4201170 | Prov.Enc.Férias Hor. | tipo(fallback)=V | subcat=Labour | valor=-1.60
+4222100 | Gás p/ Empilhadeira | tipo(fallback)=V | subcat=Other Variable | valor=-1.60
+4203050 | Manutenção Materiais | tipo(fallback)=F | subcat=Other Fixed | valor=-1.46
+4245000 | Assistência Médica-Mensalista | tipo(fallback)=F | subcat=Labour | valor=-1.29
+4203055 | Manutenção Terceiros | tipo(fallback)=F | subcat=Other Fixed | valor=-1.27
+4200120 | Prov.Férias Mensal. | tipo(fallback)=F | subcat=Labour | valor=-1.22
+4201180 | Prov.Enc.13º Sal.Hor. | tipo(fallback)=V | subcat=Labour | valor=-1.17
+4260000 | Equiptos.Segur.e Uniformes | tipo(fallback)=F | subcat=Other Fixed | valor=-1.15
+4200110 | Prov.13º Sal.Mensal. | tipo(fallback)=F | subcat=Labour | valor=-0.92
+4255000 | Depreciação | tipo(fallback)=F | subcat=Depreciation | valor=-0.60
+4257000 | Aluguéis | tipo(fallback)=V | subcat=Handling | valor=0.46
+4200170 | Prov.Enc.Férias Mensal. | tipo(fallback)=F | subcat=Labour | valor=-0.45
+4238000 | Tributos | tipo(fallback)=F | subcat=Other Fixed | valor=-0.44
+4202100 | Limpeza Por Terceiros | tipo(fallback)=F | subcat=Other Fixed | valor=-0.36
+4200180 | Prov.Enc.13º Sal.Mensal. | tipo(fallback)=F | subcat=Labour | valor=-0.34
+4258002 | HW Aluguel | tipo(fallback)=F | subcat=Other Fixed | valor=-0.33
+4263000 | Outras Despesas | tipo(fallback)=F | subcat=Other Fixed | valor=-0.29
+4263000 | Outras Despesas | tipo(fallback)=F | subcat=Other Fixed | valor=-0.29
+4244000 | Alimentação | tipo(fallback)=F | subcat=Other Fixed | valor=0.24
+4254110 | Seguro Vida em Grupo Horista | tipo(fallback)=V | subcat=Labour | valor=-0.21
+4236100 | Materiais Indiretos | tipo(fallback)=F | subcat=Other Fixed | valor=-0.19
+4203055 | Manutenção Terceiros | tipo(fallback)=F | subcat=Other Fixed | valor=0.18
+4236100 | Materiais Indiretos | tipo(fallback)=F | subcat=Other Fixed | valor=0.13
+4254110 | Seguro Vida em Grupo Horista | tipo(fallback)=V | subcat=Labour | valor=-0.12
+4244000 | Alimentação | tipo(fallback)=F | subcat=Other Fixed | valor=0.12
+4254110 | Seguro Vida em Grupo Horista | tipo(fallback)=V | subcat=Labour | valor=-0.09
+4255000 | Depreciação | tipo(fallback)=F | subcat=Depreciation | valor=-0.05
+4255200 | Recuperação PIS/COFINS Depreciação | tipo(fallback)=F | subcat=Depreciation | valor=0.05
+4258000 | Informática: Desp.c/Hardware | tipo(fallback)=V | subcat=???SEM MAPA??? | valor=-0.04
+4254100 | Seguro de Vida Grupo Mensalista | tipo(fallback)=F | subcat=Labour | valor=-0.03
+4258010 | Informática: Desp.c/Software | tipo(fallback)=V | subcat=???SEM MAPA??? | valor=-0.02
