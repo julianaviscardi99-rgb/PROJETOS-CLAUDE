@@ -611,4 +611,25 @@
 - A janela do cockpit voltou ao estado normal depois do "Sim" (botões e cursor recuperados), sem erro, sem travar.
 - O aviso disparou no tempo esperado (~15s) e o diálogo em português foi encontrado e clicado normalmente pela automação, confirmando que o fix do idioma renderiza certo.
 
+---
+
+## 2026-08-25 — Popup "Segurança SAPGUI" no Passo 1: eliminado via pasta de staging fixa (ideia da usuária), não via edição de saprules.xml
+
+**Contexto:** o popup nativo "Segurança SAPGUI" aparecia 1x por mês (toda vez que a extração passou a escrever numa subpasta de Ciclo nova, ver mudança de 2026-08-24). Primeira tentativa foi generalizar a regra em `saprules.xml` (arquivo de segurança do SAP GUI, fora do projeto) com um curinga — **bloqueada duas vezes pelo classificador de segurança do Auto mode do Claude Code** (edição de arquivo fora da pasta do projeto), mesmo com autorização explícita da usuária na conversa e SAP fechado. Anteriormente (2026-08-21) essa mesma tentativa já tinha sido bloqueada, e na época a usuária optou por manter clique manual.
+
+**Decisão (ideia da própria usuária, melhor que a tentativa de editar saprules.xml):** em vez de mudar a permissão do SAP, mudar o **destino da exportação nativa do SAP** pra uma pasta fixa que nunca muda de mês/Ciclo/ano: `REDE_BASE/<ano>/00.Extração Base KSB1/Temporario/`. O SAP só pede autorização de escrita quando grava numa pasta ainda não conhecida em `saprules.xml` — como essa pasta passa a ser sempre a mesma, só pede 1x (por ano, na prática quase nunca).
+
+**Implementado em `extrair_um` (`atualizar_ksb1_gui.py`):**
+- SAP exporta sempre pra `pasta_staging` (a pasta `Temporario` fixa), não mais direto pra `pasta_rede` (a subpasta real do Ciclo).
+- Depois que o arquivo aparece na staging, `shutil.move()` (operação de arquivo comum, **não passa pelo SAP GUI Scripting**, por isso não é vigiada pela segurança do SAP) realoca pro destino real (`pasta_rede`), com o nome já versionado (`nome_com_versao`, calculado contra o destino real, não a staging).
+- Proteção contra sobra: se já existir um arquivo com o mesmo nome na staging (de uma tentativa anterior que falhou antes de mover), apaga antes de exportar de novo — evita o SAP perguntar "sobrescrever?" (diálogo que o script não trata).
+
+**Testado isolado (pasta temporária local, não é rede nem repo):** 4 cenários — mover Gestoriais, mover Sem Agrupamento, sobra de staging de tentativa anterior sendo limpa antes do novo export, staging ficando vazia ao final, e versionamento (`_v2`) funcionando contra o destino real. Todos passaram.
+
+**Pasta `Temporario` já existe na rede (confirmada vazia)** — a usuária indicou o caminho exato, script não precisou criá-la.
+
+**Ainda não testado contra o SAP real** — próximo passo é a usuária rodar uma extração de verdade e confirmar que (a) o arquivo final cai certo em `pasta_rede` e (b) o popup de Segurança SAPGUI não aparece mais (ou aparece só 1x, na primeira vez, pra autorizar a pasta `Temporario`).
+
+**Lição para o projeto:** o classificador de segurança do Auto mode bloqueia consistentemente edição de arquivos fora da pasta do projeto, mesmo com autorização explícita da usuária na hora — para esse tipo de restrição (política do SAP GUI, arquivos de sistema fora do repo), a solução tem que vir de dentro do código do projeto (como essa), não de editar configuração externa.
+
 **Conclusão:** item pendente desde 2026-08-22 está fechado — implementado, corrigido (idioma) e validado ao vivo, sem qualquer risco ao Excel real da usuária ou a dados de produção.

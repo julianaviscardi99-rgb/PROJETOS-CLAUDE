@@ -15,6 +15,7 @@ Pre-requisitos na maquina de quem for rodar:
 import ctypes
 import math
 import queue
+import shutil
 import sys
 import threading
 import time
@@ -48,6 +49,8 @@ from ksb1_core import (  # noqa: E402
     REDE_BASE,
     abrir_ksb1,
     connect_session,
+    fechar_excel_se_aberto,
+    limpar_excel_orfao,
     nome_arquivo_ksb1,
     nome_com_versao,
     resolver_pasta_ciclo,
@@ -157,27 +160,84 @@ def extrair_um(session, mes, ano, ciclo, koagr, agrup_label, log):
         pasta_rede, nome_arquivo_ksb1(BU["nome"], mes, ano, agrup_label, ciclo)
     )
 
+    # Desde 2026-08-25: o SAP sempre exporta pra essa pasta "Temporario" fixa
+    # (nunca muda de mes/Ciclo/ano dentro do mesmo ano), em vez de exportar
+    # direto na subpasta do Ciclo (que muda todo mes). O popup "Seguranca
+    # SAPGUI" so aparece quando o SAP escreve numa pasta ainda nao autorizada
+    # em saprules.xml - como agora ele so escreve nessa pasta fixa, so' pede
+    # autorizacao 1x (a primeira vez, por ano) em vez de 1x por mes/Ciclo.
+    # A realocacao pra pasta final (pasta_rede) e' feita com shutil.move, uma
+    # copia de arquivo comum que nao passa pelo SAP GUI Scripting - por isso
+    # nao e' vigiada pela seguranca do SAP e nao gera popup nenhum.
+    pasta_staging = REDE_BASE / str(ano) / "00.Extração Base KSB1" / "Temporario"
+    pasta_staging.mkdir(parents=True, exist_ok=True)
+    arquivo_staging = pasta_staging / nome_arquivo
+    if arquivo_staging.exists():
+        # Sobra de uma tentativa anterior que falhou antes de mover - remove
+        # pra nao correr risco do SAP perguntar "sobrescrever?" (dialogo que
+        # o script nao trata) na hora de exportar de novo. Se ainda estiver
+        # travada (Excel demorando pra soltar), tenta de novo por ate 30s em
+        # vez de derrubar a extracao inteira com um erro.
+        for _ in range(30):
+            try:
+                arquivo_staging.unlink()
+                break
+            except OSError:
+                fechar_excel_se_aberto(arquivo_staging, log)
+                time.sleep(1)
+        else:
+            raise ErroComTitulo(
+                "Arquivo temporário travado",
+                f"'{arquivo_staging.name}' ainda está aberto em algum programa (provavelmente Excel) "
+                f"e não consegui apagar a sobra da tentativa anterior em {pasta_staging}.\n\n"
+                "Feche o arquivo e tente de novo.",
+            )
+
     session.FindById("wnd[0]/mbar/menu[0]/menu[3]/menu[1]").Select()
     wnd1 = session.FindById("wnd[1]")
-    wnd1.FindById("usr/ctxtDY_PATH").Text = str(pasta_rede)
+    wnd1.FindById("usr/ctxtDY_PATH").Text = str(pasta_staging)
     wnd1.FindById("usr/ctxtDY_FILENAME").Text = nome_arquivo
     wnd1.FindById("tbar[0]/btn[0]").Press()  # Gerar
 
-    # As notificacoes de seguranca de scripting ja ficam desativadas nas
-    # opcoes do SAP GUI (Acessibilidade & scripting > Scripting), entao o
-    # popup "Seguranca SAPGUI" nao aparece de fato. Em vez de travar a
-    # extracao esperando confirmacao manual, so aguarda alguns instantes
-    # para o SAP terminar de escrever o arquivo na rede.
-    arquivo_final = pasta_rede / nome_arquivo
     for _ in range(20):
-        if arquivo_final.exists():
+        if arquivo_staging.exists():
             break
         time.sleep(0.5)
 
-    if arquivo_final.exists():
-        log(f"{agrup_label}: salvo em {arquivo_final}")
+    arquivo_final = pasta_rede / nome_arquivo
+    if arquivo_staging.exists():
+        # O SAP as vezes abre o arquivo recem-exportado automaticamente no
+        # Excel (comportamento padrao dessa exportacao em alguns ambientes),
+        # o que trava o arquivo (WinError 32) na hora de mover. Tenta mover
+        # com retentativa; se continuar travado, fecha so essa aba especifica
+        # (sem mexer em outra planilha aberta) e tenta de novo.
+        movido = False
+        for tentativa in range(30):
+            try:
+                shutil.move(str(arquivo_staging), str(arquivo_final))
+                movido = True
+                break
+            except OSError:
+                fechar_excel_se_aberto(arquivo_staging, log)
+                time.sleep(1)
+        if movido:
+            log(f"{agrup_label}: salvo em {arquivo_final}")
+            # O Excel que o SAP abriu automaticamente as vezes ainda mostra um
+            # aviso ("nao encontrei o arquivo") so' porque o arquivo que ele
+            # tinha aberto acabou de ser movido daqui pra pasta final - efeito
+            # colateral inofensivo. Fecha o aviso e a janela vazia que sobra,
+            # tentando algumas vezes (o aviso pode demorar um pouco a aparecer).
+            for _ in range(5):
+                time.sleep(1)
+                limpar_excel_orfao(log)
+        else:
+            log(
+                f"AVISO: {agrup_label} ficou travado na pasta temporária "
+                f"({arquivo_staging}) e não pôde ser movido pra pasta final. "
+                f"Feche o arquivo se estiver aberto e mova manualmente pra {arquivo_final}."
+            )
     else:
-        log(f"AVISO: não encontrei o arquivo de {agrup_label} na pasta esperada. Confira manualmente.")
+        log(f"AVISO: não encontrei o arquivo de {agrup_label} na pasta temporária. Confira manualmente.")
 
     voltar_para_selecao(session, log)
 

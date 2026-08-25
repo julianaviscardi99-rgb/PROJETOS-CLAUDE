@@ -9,6 +9,8 @@ import time
 from pathlib import Path
 
 import win32com.client
+import win32con
+import win32gui
 import win32process
 
 BU = {"nome": "Fitted Units", "kstgr": "0495", "disvar": "/DESPFITTED"}
@@ -251,6 +253,98 @@ def abrir_excel_isolado(log=print, pid_callback=None):
             pid = None
         pid_callback(pid)
     return excel
+
+
+def fechar_excel_se_aberto(caminho_arquivo: Path, log=print) -> bool:
+    """Algumas configuracoes de exportacao nativa do SAP (Lista > Exportar >
+    Planilha eletronica) abrem o arquivo gerado automaticamente no Excel logo
+    depois de salvar - isso trava o arquivo (WinError 32) se o codigo tentar
+    mover/renomear ele em seguida.
+
+    GetObject(Class='Excel.Application') so' enxerga UMA instancia (ambigua
+    se a usuaria tiver o Excel dela mesma aberto ao mesmo tempo) - em vez
+    disso, cada pasta de trabalho aberta se registra na Running Object Table
+    (COM) com o proprio caminho completo como nome. Por isso a busca aqui e'
+    direto por esse nome (via pythoncom), o que acha a planilha certa mesmo
+    com varias instancias do Excel rodando, sem precisar adivinhar qual
+    Application pegar - e sem mexer em nenhuma outra planilha aberta.
+
+    Tudo aqui e' "melhor esforco": se o Excel estiver ocupado (ex: mostrando
+    um dialogo modal proprio, tipo "nao encontrei o arquivo") as chamadas de
+    COM podem falhar - nesse caso so' desiste e deixa a retentativa de mover
+    (no chamador) continuar tentando; nao e' garantido que isso feche o
+    Excel de verdade, so' aumenta a chance. Retorna True se fechou algo."""
+    import pythoncom
+
+    nome_alvo = Path(caminho_arquivo).name.lower()
+    try:
+        rot = pythoncom.GetRunningObjectTable()
+        ctx = pythoncom.CreateBindCtx(0)
+    except Exception:
+        return False
+    for moniker in rot:
+        try:
+            nome = moniker.GetDisplayName(ctx, None)
+        except Exception:
+            continue
+        if not nome.lower().endswith(nome_alvo):
+            continue
+        try:
+            obj = rot.GetObject(moniker)
+            wb = win32com.client.Dispatch(obj.QueryInterface(pythoncom.IID_IDispatch))
+            log(f"O SAP abriu '{Path(caminho_arquivo).name}' automaticamente no Excel - fechando pra liberar o arquivo...")
+            wb.Close(SaveChanges=False)
+            return True
+        except Exception:
+            continue
+    return False
+
+
+def limpar_excel_orfao(log=print):
+    """Mesmo depois de fechar_excel_se_aberto liberar o arquivo, o Excel as
+    vezes ainda mostra um aviso nativo ("Sorry, we couldn't find ...") -
+    porque o proprio codigo moveu o arquivo de onde o Excel tinha aberto
+    ele - e fica pra tras uma janela vazia (sem nenhuma pasta de trabalho
+    aberta). Fecha os dois:
+    1. Clica "OK" em qualquer dialogo nativo do Windows titulado
+       "Microsoft Excel" (o titulo padrao desse aviso especifico).
+    2. Fecha (Quit) qualquer instancia do Excel que nao tenha NENHUMA pasta
+       de trabalho aberta - nunca mexe numa instancia com algo aberto, entao
+       nunca fecha um Excel que a usuaria esteja usando de verdade."""
+
+    def _clicar_ok_se_for_o_aviso(hwnd, _):
+        if not win32gui.IsWindowVisible(hwnd):
+            return True
+        if win32gui.GetClassName(hwnd) != "#32770":  # classe padrao de dialogo do Windows
+            return True
+        if win32gui.GetWindowText(hwnd).strip() != "Microsoft Excel":
+            return True
+
+        def _achar_botao_ok(h, _):
+            texto = win32gui.GetWindowText(h)
+            if win32gui.GetClassName(h) == "Button" and texto.strip().upper() == "OK":
+                win32gui.PostMessage(h, win32con.BM_CLICK, 0, 0)
+            return True
+
+        try:
+            win32gui.EnumChildWindows(hwnd, _achar_botao_ok, None)
+            log("Fechei um aviso do Excel que sobrou depois da extração.")
+        except Exception:
+            pass
+        return True
+
+    try:
+        win32gui.EnumWindows(_clicar_ok_se_for_o_aviso, None)
+    except Exception:
+        pass
+
+    try:
+        excel = win32com.client.GetObject(Class="Excel.Application")
+        if excel.Workbooks.Count == 0:
+            excel.Quit()
+            log("Fechei uma janela do Excel que ficou vazia depois da extração.")
+    except Exception:
+        pass
 
 
 def nome_com_versao(pasta: Path, nome_base: str) -> str:
