@@ -3,29 +3,38 @@
 > Manter apenas as últimas 2 sessões inline — sessões mais antigas vão para long_term/.
 
 ---
-## Continuação 2026-08-25 — "Rateio de Custos" (Passo 5): PRIMEIRA VERSÃO FUNCIONANDO, testada contra Julho/Actual real, ainda falta polimento visual + integrar no cockpit
+## Sessão 2026-08-25 — "Rateio de Custos" (Passo 5): FUNCIONANDO E VALIDADO — bate exatamente com o arquivo antigo de Julho/Actual, linha a linha
 
 **Script criado:** `scripts/sap/fitted_units/fitted_units_despesas/gerar_rateio_custos.py` (roda standalone por linha de comando por enquanto: `--mes --ano --ciclo --pasta-saida`). Config do rateio: `ontology/rateio_gerencia.json` (entradas por `vigente_desde`, nunca hardcoded no script).
 
-**Achados importantes desta sessão (todos por leitura, nada de produção foi alterado):**
-1. **Fonte de verdade da classificação Variável/Fixo:** a Base Intermediária tem um campo "Tp.Custo" (coluna H da aba Intermediária) que às vezes vem em branco (achado real: TODAS as 161 linhas do SJP em Julho vieram em branco). A usuária explicou que isso é uma fórmula que só resolve quando o arquivo é aberto de verdade no Excel (busca no arquivo `Base_Contas_Contábeis_Fitted_22.xlsx`, rede, já documentado em `ontology/fitted_units.json` → `fonte_contas_gestoriais_e_centros`). **Solução implementada:** o script usa a Base Intermediária como fonte principal (pedido explícito da usuária) e, só quando o campo vem em branco, cai no Base_Contas_Contábeis como fallback (`carregar_var_fallback_por_conta`). Se nem assim resolver, a linha vai pra uma categoria visível "Não Classificado" — nunca some silenciosamente.
-2. **Bug real encontrado e corrigido:** "Labour" existe como subcategoria tanto em Variable Cost quanto em Fixed Cost — a primeira versão do código somava os dois no mesmo balde (mesma chave de dicionário), duplicando o valor no Total Costs. Corrigido usando `(tipo, subcategoria)` como chave em vez de só a subcategoria. **Validação forte:** depois da correção, o total geral calculado pro Julho/Actual (R$ 6.655,04 mil) bateu EXATAMENTE com o valor já validado em sessões anteriores (ver `long_term/` ou histórico — "Actual R$ 6.655.041,91"), e o "Check" (TOTAL do quadro sem rateio vs. com rateio) fechou em 0,00.
-3. **Mapeamento de unidades confirmado com a usuária:** SJP=0490, IBI=0491, GOI=0481, RES=0483 (mini-fábrica), Gerência=0499 — todas ativas. Sorocaba/Camaçari/Itatiaia = encerradas (mesma fonte que `gerar_base_intermediaria.py` já usa, `ontology/fitted_units.json` → `centros_de_custo_por_unidade`).
-4. **Regra de resíduo de unidade encerrada implementada:** se aparecer custo numa unidade encerrada diferente de Sorocaba, soma no total da Gerência antes do rateio (e aparece também como linha extra "Resíduo Unidades Encerradas" no quadro sem rateio, só na coluna GER, pra o Check continuar fechando em 0). Sorocaba fica de fora do rateio (reclassificação pra custo não-recorrente). Em qualquer um dos casos, aparece um aviso detalhado (unidade/conta/descrição/valor) no arquivo gerado.
-5. **~13 contas** (Materiais de Limpeza, Vigilância, Alimentação, Depreciação, etc.) aparecem com tipo Variável em alguns lançamentos reais, mesmo o arquivo antigo só listando elas como Fixo — caem em "Other Variable" (catch-all já esperado pra esse tipo de caso, não é erro).
+**A chave de tudo (achado tardio, mudou o desenho):** a aba "Intermediária" da Base Intermediária tem colunas extras (Y até AJ) que a usuária não tinha mencionado antes e eu só descobri inspecionando o arquivo — **AA ("Var.")** e **AJ ("Conta Geral")** já trazem a classificação Variável/Fixo e a subcategoria **prontas e resolvidas linha a linha**, ao contrário da coluna H ("Tp.Custo") que vem em branco pra algumas unidades (ex: todo o SJP em Julho veio em branco em H, mas certinho em AA/AJ). Um mapeamento próprio que eu tinha construído antes (lendo o arquivo antigo `_Abertura custos...` na mão) causou erro real (ex: conta "Aluguéis" virava Variável/Handling quando devia ser Fixo/Rents) — **abandonado**. Agora o script lê direto AA/AJ da Base Intermediária (`_resolver_subcategoria`), sem mapear conta por conta.
 
-**Estrutura do arquivo gerado (confirmada com a usuária antes de implementar):** tabela do rateio vigente no topo, aviso de resíduo de encerradas (se houver), quadro "sem rateio" (SJP\|IBI\|GOI\|RES\|GER\|TOTAL) e quadro "com rateio" (SJP\|IBI\|GOI\|RES\|TOTAL, com linha própria "Rateio Gerência"). Fórmulas de verdade no Excel pra Variable Cost/Fixed Cost/Total Costs/coluna TOTAL (não são só valores estáticos).
+**Validação final (Julho/2026, Actual, rateio antigo 21/48/31%) — bate exatamente com o arquivo antigo `_Abertura custos Fitted Units July Actual 2026.xlsx`:**
+- SJP: R$ -1.485,71 mil (idêntico)
+- IBI: R$ -3.537,65 mil (idêntico)
+- GOI: R$ -1.631,69 mil (idêntico)
+- Check (quadro sem rateio vs. com rateio) = 0,00
+- Rateio por unidade (SJP -27,3 / IBI -62,5 / GOI -40,4) bate com a linha "R$ Rateio Staff" do arquivo antigo
 
-**Testado 2x contra a Base Intermediária REAL de Julho/Actual** (só leitura, saída na pasta de teste local `data/processed/fitted_units_despesas/rateio_custos_teste/`, nada de rede tocado) — 2 arquivos enviados pra usuária revisar (o segundo já com o bug do Labour corrigido).
+**Regra de negócio importante confirmada pela usuária:** o rateio é espalhado **categoria por categoria** (Labour, Depreciation, IFRS16, Rents, Other Fixed...), não é uma linha única — mesma lógica achada no arquivo real de Forecast (`Detalhe_Despesas_Fitted Units_Forecast July.xlsx`, aba "Resumo Custos": `unidade_com_rateio = unidade_própria + Gerência_nessa_categoria × %unidade`). **A Gerência é sempre 100% Fixa** — custo Variável não existe pra ela e nunca deve afetar o rateio (`_apenas_fixo`, filtra/ignora qualquer "V" que apareça na Gerência por engano). O Variável das unidades nunca é tocado pelo rateio.
+
+**Mapeamento de unidades:** SJP=0490, IBI=0491, GOI=0481, RES=0483 (mini-fábrica), Gerência=0499 — todas ativas. Encerradas (Sorocaba/Camaçari/Itatiaia/Santo Andre/Juiz de Fora) via `ontology/fitted_units.json` → `centros_de_custo_por_unidade` (mesma fonte que `gerar_base_intermediaria.py` já usa).
+
+**Regra de resíduo de unidade encerrada:** se aparecer custo numa unidade encerrada **diferente de Sorocaba**, soma direto na categoria certa da Gerência (mesma `(tipo, subcategoria)`) antes do rateio — como se fosse custo próprio dela, entra no rateio por categoria naturalmente. **Sorocaba fica de fora** (reclassificação pra custo não-recorrente, tratada em outro lugar). Em qualquer um dos casos, aparece um aviso detalhado (unidade/conta/descrição/valor) no arquivo gerado.
+
+**Estrutura do arquivo gerado (confirmada com a usuária):** tabela do rateio vigente no topo → aviso de resíduo de encerradas (se houver) → quadro "sem rateio" (SJP\|IBI\|GOI\|RES\|GER\|TOTAL) → quadro "com rateio" (SJP\|IBI\|GOI\|RES\|TOTAL, rateio já espalhado por categoria) → linha informativa "Rateio Gerência" (cinza claro, fora do Total Costs) → Check. Formatação: subtotais Variable Cost/Fixed Cost em cinza claro e negrito, linha em branco separando Variable de Fixed, fórmulas de verdade no Excel (não só valores estáticos).
+
+**Testado várias vezes contra a Base Intermediária REAL de Julho/Actual** (só leitura, saída em `data/processed/fitted_units_despesas/rateio_custos_teste/`, nada de rede tocado) — arquivo final enviado pra usuária, aguardando confirmação visual definitiva (mandei mas a conversa seguiu pra outros ajustes antes dela confirmar 100%).
 
 **Pendências pra próxima sessão:**
-1. **Usuária ainda não confirmou visualmente** se o arquivo gerado está com a formatação boa (cores/fontes como o mockup) — enviei mas não recebi feedback ainda nesta sessão.
+1. Confirmação final da usuária (ela disse "visualmente ficou bom" e depois focamos em bater os números — não voltamos a perguntar explicitamente se o visual está 100% aprovado depois da última rodada de ajuste).
 2. **Integrar no cockpit** (`atualizar_ksb1_gui.py`): novo Passo 5, aba "⑤ Rateio de Custos", botão "Abertura e Rateio de Custo" — ainda não feito, o script só roda por linha de comando.
 3. **Lembrete automático de Janeiro** (rateio geralmente muda nessa época) — combinado com a usuária, ainda não implementado.
-4. Salvar o arquivo final no racional de sempre (`resolver_pasta_ciclo`) — a função já existe no script (`nome_com_versao` + pasta certa), só falta ligar no cockpit apontando pra rede em vez da pasta de teste.
-5. Considerar testar com Ciclo Flash também (só Actual foi testado até agora).
+4. Apontar a saída pra rede oficial (a função `resolver_pasta_ciclo`/`nome_com_versao` já está pronta no script, só falta trocar a pasta de teste local pela pasta de rede de verdade quando integrar no cockpit).
+5. Testar com Ciclo Flash também (só Actual foi testado até agora - o código não tem diferença de lógica entre os dois, mas nunca foi exercitado com Flash de verdade).
+6. Um `AVISO` residual aparece pra conta "Aluguéis" quando ela vem marcada Variável (não existe linha "Rents" no Variable Cost do quadro) — cai em "Other Variable" por padrão, comportamento esperado, não é erro.
 
-**Nada commitado desta parte ainda** (script novo + `ontology/rateio_gerencia.json` não commitados).
+**Commitado nesta sessão** (junto com a mudança do popup SAPGUI, ver seção acima/anterior deste arquivo).
 
 ---
 ## Continuação 2026-08-25 — NOVO PROJETO: "Rateio de Custos" (Passo 5) — em análise/scoping, ainda não implementado

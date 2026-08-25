@@ -12,11 +12,17 @@ memory/DECISOES.md dessa data pro historico completo da conversa):
 
 1. Le a aba "Intermediaria" da Base Intermediaria do mes/Ciclo (mesma pra
    Actual e Flash, sem excecao) e classifica cada linha por Mini-Fabrica
-   (unidade) e por conta+tipo (Variavel/Fixo) numa das subcategorias do
-   MAPA_CATEGORIAS (extraido linha a linha do arquivo antigo em 2026-08-25).
+   (unidade), usando as colunas AA ("Var.") e AJ ("Conta Geral") - ja
+   resolvidas pela propria Base Intermediaria, mais confiaveis que a coluna
+   H ("Tp.Custo", que vem em branco pra algumas unidades) e que qualquer
+   mapeamento proprio por conta (pedido explicito da usuaria, 2026-08-25:
+   "usa a base intermediaria... os valores tem que voltar exatamente" -
+   ver _resolver_subcategoria).
 2. Unidades ativas: SJP (0490), IBI (0491), GOI (0481), RES (0483).
    Gerencia (0499) e' tratada como uma "unidade" a parte (coluna GER no
-   quadro sem rateio), nao recebe nem manda rateio pra si mesma.
+   quadro sem rateio), nao recebe nem manda rateio pra si mesma. A
+   Gerencia e' sempre 100% Fixa (confirmado pela usuaria) - custo Variavel
+   dela, se aparecer, e' ignorado no rateio (ver _apenas_fixo).
 3. Unidades ENCERRADAS (ontology/fitted_units.json ->
    centros_de_custo_por_unidade, status "encerrada", chave por Centro de
    Custo - mesma fonte que gerar_base_intermediaria.py ja usa) nunca entram
@@ -31,11 +37,15 @@ memory/DECISOES.md dessa data pro historico completo da conversa):
 4. O rateio (% por unidade, muda geralmente em Janeiro mas pode mudar fora
    de epoca) fica num arquivo de configuracao separado
    (ontology/rateio_gerencia.json), NUNCA hardcoded aqui - ver
-   carregar_rateio_vigente.
+   carregar_rateio_vigente. O rateio e' espalhado CATEGORIA A CATEGORIA
+   (mesma logica do arquivo real de Forecast, "Detalhe_Despesas_Fitted
+   Units", aba "Resumo Custos") - cada linha (Labour, Depreciation etc.)
+   recebe o pedaco dela da Gerencia, nao e' mais uma linha unica.
 5. Gera 3 blocos no arquivo de saida: tabela do rateio vigente, quadro "sem
    rateio" (unidades ativas + GER, cada uma com seu proprio custo) e quadro
-   "com rateio" (so' unidades ativas, com uma linha propria "Rateio
-   Gerencia" e um Check provando que o TOTAL dos dois quadros bate).
+   "com rateio" (so' unidades ativas, ja' com o rateio espalhado por
+   categoria, mais uma linha informativa "Rateio Gerencia" fora do Total
+   Costs e um Check provando que o TOTAL dos dois quadros bate).
 6. Salva no mesmo racional de sempre (resolver_pasta_ciclo), nunca
    sobrescreve (nome_com_versao).
 
@@ -93,65 +103,53 @@ ORDEM_UNIDADES_ATIVAS = ["SJP", "IBI", "GOI", "RES"]
 ORDEM_VARIAVEL = ["Labour", "Handling", "Direct Materials", "Transportation", "Other Variable"]
 ORDEM_FIXO = ["Labour", "Depreciation", "IFRS16", "Rents", "Condominio", "Other Fixed"]
 
-# Mapeamento conta gestorial + tipo (V/F) -> subcategoria. Extraido linha a
-# linha do arquivo real "_Abertura custos Fitted Units July Actual 2026.xlsx"
-# (aba "Sao J. dos Pinhais") em 2026-08-25 - ver memory/DECISOES.md dessa
-# data pro detalhe de como foi extraido. Se aparecer uma conta nova que nao
-# esta aqui, cai no fallback ("Other Variable"/"Other Fixed" conforme o
-# tipo) E gera um aviso no arquivo, pra usuaria decidir a categoria certa.
-_CONTAS_VARIAVEL = {
-    "Labour": [
-        4201000, 4201100, 4201110, 4201120, 4201130, 4201140, 4201150,
-        4201160, 4201170, 4201180, 4201190, 4254110, 4201400, 4245100,
-        4201410, 4201135,
-    ],
-    "Handling": [4201250, 4257000, 4257001],
-    "Direct Materials": [4236300, 4240000],
-    "Transportation": [4211000],
-    "Other Variable": [
-        4203050, 4203055, 4203400, 4203700, 4205250, 4205350, 4205450,
-        4205500, 4222100, 4236100, 4260000, 4212000, 4263000, 4266000,
-        4258012,
-    ],
-}
-_CONTAS_FIXO = {
-    "Labour": [
-        4201000, 4201100, 4201110, 4201120, 4201130, 4201140, 4201150,
-        4201160, 4201170, 4201180, 4201190, 4254110, 4201410, 4245100,
-        4200000, 4200100, 4200110, 4200120, 4200130, 4200140, 4200150,
-        4200160, 4200170, 4200180, 4200190, 4247100, 4254100, 4200400,
-        4200410, 4245000, 4200135, 4201135,
-    ],
-    "Depreciation": [4255000, 4255200],
-    "IFRS16": [4255002],
-    "Rents": [4257000, 4257001],
-    "Condominio": [42570001],
-    "Other Fixed": [
-        4203050, 4203055, 4203400, 4203700, 4205250, 4205350, 4205450,
-        4205500, 4222100, 4202000, 4202100, 4204000, 4205100, 4211000,
-        4212000, 4222000, 4230000, 4230100, 4232000, 4232001, 4233000,
-        4234000, 4235000, 4235100, 4236020, 4236050, 4236100, 4236200,
-        4237000, 4237100, 4238000, 4240000, 4243000, 4243100, 4244000,
-        4244100, 4246000, 4246100, 4247200, 4253000, 4254000, 4222001,
-        4258001, 4258002, 4258021, 4258000, 4258010, 4258020, 4258012,
-        4258100, 4260000, 4248000, 4262100, 4262300, 4230101, 4263000,
-        4266000,
-    ],
+# A Base Intermediária (aba Intermediária) já traz, em colunas próprias,
+# a classificação RESOLVIDA de cada linha - achado em 2026-08-25: a coluna
+# H ("Tp.Custo") vem em branco pra algumas unidades (ex: todo o SJP em
+# Julho/2026 veio em branco), mas as colunas AA ("Var.") e AJ ("Conta
+# Geral") vêm sempre preenchidas. Pedido explícito da usuária: "usa a base
+# intermediária... os valores têm que voltar exatamente" - usar essas
+# colunas prontas (em vez de reclassificar por conta na mão, que já deu
+# resultado errado pra Handling/Rents num teste anterior) é o que faz os
+# valores baterem de verdade.
+COL_VAR = 27          # AA - 'F' ou 'V', já resolvido linha a linha
+COL_CONTA_GERAL = 36  # AJ - subcategoria (Labour, Handling, Depreciations,
+                      # IFRS16 (Amortization), Rents, Transport, Others,
+                      # Prod.Consumables)
+
+# Conta Geral (coluna AJ) -> nosso rótulo de exibição (o mockup da usuária
+# usa nomes um pouco diferentes do arquivo). "Others" se resolve por tipo
+# (Other Variable/Other Fixed) dentro de _resolver_subcategoria.
+_CONTA_GERAL_PARA_SUBCATEGORIA = {
+    "Labour": "Labour",
+    "Handling": "Handling",
+    "Prod.Consumables": "Direct Materials",
+    "Transport": "Transportation",
+    "Depreciations": "Depreciation",
+    "IFRS16 (Amortization)": "IFRS16",
+    "Rents": "Rents",
+    "Condominio": "Condominio",
+    "Condomínio": "Condominio",
 }
 
 
-def _construir_mapa_categorias() -> dict:
-    mapa = {}
-    for subcat, contas in _CONTAS_VARIAVEL.items():
-        for conta in contas:
-            mapa[("V", conta)] = subcat
-    for subcat, contas in _CONTAS_FIXO.items():
-        for conta in contas:
-            mapa[("F", conta)] = subcat
-    return mapa
-
-
-MAPA_CATEGORIAS = _construir_mapa_categorias()
+def _resolver_subcategoria(tipo: str, conta_geral):
+    """Traduz o valor da coluna AJ (Conta Geral) da Base Intermediária pro
+    nosso rótulo de exibição, considerando se ele faz sentido dentro do
+    macro certo (Variable Cost só tem Labour/Handling/Direct Materials/
+    Transportation/Other Variable; Fixed Cost só tem Labour/Depreciation/
+    IFRS16/Rents/Condominio/Other Fixed - ver ORDEM_VARIAVEL/ORDEM_FIXO).
+    Devolve None se não reconhecer o valor ou ele não couber no macro desse
+    tipo (ex: Base Intermediária às vezes marca 'Rents' como Variável, mas
+    não existe linha "Rents" no Variable Cost do quadro) - quem chama cai
+    no fallback (Other Variable/Fixed) nesse caso."""
+    if conta_geral == "Others":
+        return "Other Variable" if tipo == "V" else "Other Fixed"
+    nome = _CONTA_GERAL_PARA_SUBCATEGORIA.get(conta_geral)
+    if nome is None:
+        return None
+    ordem = ORDEM_VARIAVEL if tipo == "V" else ORDEM_FIXO
+    return nome if nome in ordem else None
 
 
 def carregar_centros_encerrados() -> dict:
@@ -197,29 +195,6 @@ def localizar_base_intermediaria(mes: int, ano: int, ciclo: str) -> Path:
     return caminho
 
 
-def carregar_var_fallback_por_conta() -> dict:
-    """Le Base_Contas_Contábeis_Fitted_22.xlsx (aba 'Contas') e devolve
-    {conta_gestorial (int): 'F'|'V'} - so' pras contas com classificacao
-    SEM ambiguidade (ignora 'F/V' e em branco, ja que nesses casos nao da'
-    pra decidir sozinho; melhor deixar cair no aviso de "nao classificado"
-    do que adivinhar errado)."""
-    import openpyxl as _openpyxl
-
-    wb = _openpyxl.load_workbook(BASE_CONTAS_PATH, read_only=True, data_only=True, keep_links=False)
-    ws = wb["Contas"]
-    mapa = {}
-    for r in range(3, ws.max_row + 1):
-        conta_gestorial = ws.cell(row=r, column=3).value
-        var = ws.cell(row=r, column=8).value
-        if conta_gestorial is None or var not in ("F", "V"):
-            continue
-        try:
-            mapa[int(conta_gestorial)] = var
-        except (TypeError, ValueError):
-            continue
-    return mapa
-
-
 def _fmt_moeda(v):
     if v is None:
         v = 0
@@ -231,26 +206,23 @@ def _fmt_moeda(v):
 
 def ler_e_classificar(caminho_base_intermediaria: Path, mes: int, log):
     """Le a aba Intermediaria e devolve:
-    - totais_ativos: {sigla_unidade: {subcategoria: valor}} (SJP/IBI/GOI/RES/GER,
-      subcategoria pode ser "Não Classificado" quando nem a Base Intermediária
-      nem o fallback do Base_Contas souberam dizer Variável/Fixo)
+    - totais_ativos: {sigla_unidade: {(tipo, subcategoria): valor}}
+      (SJP/IBI/GOI/RES/GER; chave especial "Não Classificado" quando a
+      Base Intermediária não trouxe Var./Conta Geral pra aquela linha)
     - residuos_encerradas: lista de dicts (unidade, conta, descricao, valor)
       pra toda unidade encerrada com valor != 0 no mes
-    - contas_nao_mapeadas: set de (tipo, conta, desc) que caiu no fallback
-      de subcategoria (Other Variable/Fixed)
+    - contas_nao_mapeadas: set de (tipo, conta_geral, desc) cujo valor da
+      coluna Conta Geral não bateu com nenhuma subcategoria esperada pro
+      tipo (caiu no fallback Other Variable/Fixed)
     Valores em '000 BRL, custo positivo (mesma convencao do arquivo antigo:
     o valor bruto do SAP vem negativo pra custo, aqui ja inverte o sinal).
 
-    Prioridade da classificação Variável/Fixo (2026-08-25, achado real: o
-    SJP de julho veio com "Tp.Custo" em branco na Base Intermediária, porque
-    esse campo é uma fórmula que às vezes não recalcula):
-    1. Campo "Tp.Custo" da própria Base Intermediária, se vier preenchido
-       (V ou F) — é a referência principal, pedido explícito da usuária.
-    2. Se vier em branco: cai no arquivo mestre Base_Contas_Contábeis
-       (mantido pela controladoria central), buscando pela Conta Gestorial.
-    3. Se nem assim resolver (conta não encontrada, ou o mestre marca ela
-       como ambígua "F/V"): entra na subcategoria "Não Classificado" — nunca
-       some o valor, sempre visível no arquivo."""
+    Classificação Variável/Fixo e subcategoria vêm DIRETO das colunas AA
+    ("Var.") e AJ ("Conta Geral") da própria Base Intermediária (achado real
+    em 2026-08-25: a coluna H "Tp.Custo" vem em branco pra algumas unidades,
+    mas AA/AJ vêm sempre preenchidas - são a classificação já resolvida,
+    pedido explícito da usuária pra usar a Base Intermediária como
+    referência)."""
     wb = __import__("openpyxl").load_workbook(
         caminho_base_intermediaria, read_only=True, data_only=True, keep_links=False
     )
@@ -258,20 +230,19 @@ def ler_e_classificar(caminho_base_intermediaria: Path, mes: int, log):
     col_mes = 8 + mes  # A=1...H=8, I(Jan)=9 -> mes=1 vira coluna 9
 
     centros_encerrados = carregar_centros_encerrados()
-    var_fallback = carregar_var_fallback_por_conta()
 
     totais_ativos = {sigla: {} for sigla in list(UNIDADES_ATIVAS.values()) + [SIGLA_GERENCIA]}
     residuos_encerradas = []
     contas_nao_mapeadas = set()
-    contas_fallback_usado = set()
-    contas_nao_classificadas = set()
 
-    for row in ws.iter_rows(min_row=2, max_row=ws.max_row, max_col=max(col_mes, 8)):
+    max_col = max(col_mes, COL_CONTA_GERAL)
+    for row in ws.iter_rows(min_row=2, max_row=ws.max_row, max_col=max_col):
         conta = row[0].value  # A - Conta Gestorial
         desc_conta = row[1].value  # B
         centro_custo = row[4].value  # E
         mini_fabrica = row[5].value  # F
-        tipo = row[7].value  # H - 'V' ou 'F'
+        tipo = row[COL_VAR - 1].value  # AA - 'F' ou 'V', ja resolvido
+        conta_geral = row[COL_CONTA_GERAL - 1].value  # AJ - subcategoria
         if conta is None:
             continue
         valor_bruto = row[col_mes - 1].value if col_mes - 1 < len(row) else None
@@ -284,27 +255,16 @@ def ler_e_classificar(caminho_base_intermediaria: Path, mes: int, log):
         except (TypeError, ValueError):
             conta_int = conta
 
-        if tipo not in ("V", "F"):
-            fallback = var_fallback.get(conta_int) if isinstance(conta_int, int) else None
-            if fallback is not None:
-                tipo = fallback
-                contas_fallback_usado.add((conta_int, desc_conta))
-            else:
-                contas_nao_classificadas.add((conta_int, desc_conta))
-
-        mini_fabrica_str = str(mini_fabrica).strip() if mini_fabrica is not None else ""
-        centro_custo_str = str(centro_custo).strip() if centro_custo is not None else ""
-
         # Classifica a chave (tipo, subcategoria) ANTES de decidir a unidade -
         # precisa dela tanto pra unidade ativa/Gerencia quanto pro residuo de
         # unidade encerrada (que, quando nao e' Sorocaba, entra no balde da
-        # Gerencia NESSA MESMA categoria - ver calcular_rateio_por_categoria).
+        # Gerencia NESSA MESMA categoria).
         if tipo not in ("V", "F"):
             chave = "Não Classificado"
         else:
-            subcat = MAPA_CATEGORIAS.get((tipo, conta_int))
+            subcat = _resolver_subcategoria(tipo, conta_geral)
             if subcat is None:
-                contas_nao_mapeadas.add((tipo, conta_int, desc_conta))
+                contas_nao_mapeadas.add((tipo, conta_geral, desc_conta))
                 subcat = "Other Variable" if tipo == "V" else "Other Fixed"
             # Chave = (tipo, subcategoria), NUNCA so' a subcategoria: "Labour"
             # existe tanto em Variable Cost quanto em Fixed Cost - se a chave
@@ -312,6 +272,9 @@ def ler_e_classificar(caminho_base_intermediaria: Path, mes: int, log):
             # Total Costs contaria o mesmo valor 2x (bug real encontrado e
             # corrigido em 2026-08-25, testando contra Julho/Actual real).
             chave = (tipo, subcat)
+
+        mini_fabrica_str = str(mini_fabrica).strip() if mini_fabrica is not None else ""
+        centro_custo_str = str(centro_custo).strip() if centro_custo is not None else ""
 
         if mini_fabrica_str in UNIDADES_ATIVAS:
             sigla = UNIDADES_ATIVAS[mini_fabrica_str]
@@ -344,24 +307,11 @@ def ler_e_classificar(caminho_base_intermediaria: Path, mes: int, log):
 
         totais_ativos[sigla][chave] = totais_ativos[sigla].get(chave, 0) + valor
 
-    if contas_fallback_usado:
-        for conta_int, desc in sorted(contas_fallback_usado, key=lambda x: str(x[0])):
-            log(
-                f"INFO: conta {conta_int} ({desc}) veio sem Tp.Custo na Base Intermediária "
-                "— usei a classificação do Base_Contas_Contábeis como fallback."
-            )
-    if contas_nao_classificadas:
-        for conta_int, desc in sorted(contas_nao_classificadas, key=lambda x: str(x[0])):
-            log(
-                f"AVISO: conta {conta_int} ({desc}) veio sem Tp.Custo na Base Intermediária "
-                "e também não encontrei uma classificação clara no Base_Contas_Contábeis "
-                "(ambígua ou não cadastrada) — entrou em 'Não Classificado', confira o valor."
-            )
     if contas_nao_mapeadas:
-        for tipo, conta_int, desc in sorted(contas_nao_mapeadas, key=lambda x: (x[0], str(x[1]))):
+        for tipo, conta_geral, desc in sorted(contas_nao_mapeadas, key=lambda x: (x[0], str(x[1]))):
             log(
-                f"AVISO: conta {conta_int} ({desc}, tipo {tipo}) não estava mapeada — "
-                "caiu no 'Other Variable/Fixed' por padrão. Confirme a categoria certa."
+                f"AVISO: '{desc}' (Conta Geral='{conta_geral}', tipo {tipo}) não bateu com "
+                "nenhuma subcategoria esperada — caiu no 'Other Variable/Fixed' por padrão."
             )
 
     return totais_ativos, residuos_encerradas, contas_nao_mapeadas
