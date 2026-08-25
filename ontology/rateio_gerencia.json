@@ -1,0 +1,24 @@
+{
+  "descricao": "Percentual de rateio do custo da Gerência (mini-fábrica 0499) entre as unidades ativas da Fitted Units. Usado por scripts/sap/fitted_units/fitted_units_despesas/gerar_rateio_custos.py (Passo 5 - Rateio de Custos). Muda geralmente em Janeiro, mas pode mudar fora de época (ex: quando uma unidade nova entra ou sai) - a usuária avisa quando precisar atualizar. Sempre usa a entrada mais recente cujo 'vigente_desde' seja <= o mês/ano sendo processado.",
+  "entradas": [
+    {
+      "vigente_desde": "2026-01",
+      "percentuais": {
+        "SJP": 0.21,
+        "IBI": 0.48,
+        "GOI": 0.31
+      },
+      "observacao": "Rateio antigo, sem a Resende (ainda não existia). Confirmado lendo o arquivo real '_Abertura custos Fitted Units July Actual 2026.xlsx' -> Base_Cenários!G55:H61, em 2026-08-25."
+    },
+    {
+      "vigente_desde": "2026-08",
+      "percentuais": {
+        "SJP": 0.21,
+        "IBI": 0.49,
+        "GOI": 0.27,
+        "RES": 0.03
+      },
+      "observacao": "Rateio vigente a partir de Agosto/2026, com a entrada da Resende (RES) - o Goiana cedeu 4 pontos (31%->27%) e o Ibirité ganhou 1 (48%->49%) pra abrir os 3% da Resende. Enviado pela usuária em 2026-08-25 (tabela 'Rateio Atual')."
+    }
+  ]
+}
