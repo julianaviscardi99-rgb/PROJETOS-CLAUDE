@@ -3,6 +3,42 @@
 > Manter apenas as últimas 2 sessões inline — sessões mais antigas vão para long_term/.
 
 ---
+## Continuação 2026-08-25 — NOVO PROJETO: "Rateio de Custos" (Passo 5) — em análise/scoping, ainda não implementado
+
+**Pedido da usuária:** automatizar o arquivo `_Abertura custos Fitted Units <Mês> <Ciclo> <Ano>.xlsx` (hoje 100% manual — troca de link externo + mês toda vez). Vai virar um **Passo 5 novo no cockpit**, aba "⑤ Rateio de Custos", botão **"Abertura e Rateio de Custo"**.
+
+**Engenharia do arquivo antigo, já mapeada (leitura, nada foi alterado):**
+- 11 abas, maioria oculta (uma por unidade: SJP, Ibirité, Camaçari, Sorocaba, Goiana, Itatiaia + variantes "Sem Rodas"), todas larguíssimas (até coluna IG).
+- Aba visível "Resumo Fitted Units": `H8` é o seletor de mês/Ciclo (ex: "Jul*") — é o que a usuária troca manualmente.
+- Link externo de verdade (Excel "Edit Links") pra outro arquivo com abas "Relatório Faturamento" (não usado) e "Base_Cenários" — é o link que ela troca manualmente todo mês.
+- Achado o mapeamento completo **conta contábil → categoria** (Variable Cost: Labour/Handling/Direct Materials/Transportation/Other Variable; Fixed Cost: Labour/Depreciation/IFRS16/Rents/Condominio/Other Fixed) — mais de 100 contas, extraídas linha a linha do arquivo real (ver histórico de comandos desta sessão se precisar re-extrair).
+- Achado o mecanismo de rateio: `Base_Cenários!G55:H61` guarda a % por unidade (`%Rateio 1`/`%Rateio 2`); fórmula "R$ Rateio Staff" pega o custo da **Gerência** (mini-fábrica `0499`) do mês × essa %.
+- Base Intermediária (`Intermediária!A:H`): colunas relevantes = Conta Gestorial(A)/Conta Fiscal(C)/Centro de Custo(E)/**Mini-Fábrica(F)**/Tp.Custo V-ou-F(H). Meses a partir da coluna I (January).
+
+**Mapeamento de unidades (mini-fábrica → status), confirmado com a usuária:**
+- SJP=0490, IBI=0491, GOI=0481, Gerência=0499 — todas **ativas**.
+- Sorocaba=0496, Camaçari=0498, Itatiaia=0482 — **encerradas** (mesma lista já usada em `ontology/fitted_units.json` → `centros_de_custo_por_unidade`, chave por Centro de Custo, não por Mini-Fábrica).
+- **RESENDE é ativa mas ainda sem custo real (unidade nova)** — **PENDENTE: preciso que a usuária me diga o código de Mini-Fábrica dela** (não achei em nenhum arquivo ainda, Julho não tinha nenhuma linha com os Centros de Custo dela: 8333/8348/8349/8350).
+
+**Regras de negócio confirmadas com a usuária (importantes, não óbvias):**
+1. % de rateio muda o mais comum em **Janeiro**, mas pode mudar fora de época também (ex: quando a RES entrou, GOI cedeu 4 pontos pro IBI+RES) — vai ficar guardada num arquivo de config próprio (não hardcoded), que a usuária avisa quando mudar. **Combinado criar um lembrete automático no cockpit**: se for Janeiro e o rateio salvo não tiver sido confirmado pra esse ano, avisar na tela.
+2. Unidade encerrada **nunca** recebe rateio (sem faturamento).
+3. Se aparecer custo residual numa unidade encerrada **diferente de Sorocaba**: soma no custo da Gerência antes de aplicar o rateio (Sorocaba está em reclassificação pra não-recorrente, fica de fora dessa soma).
+4. Em qualquer caso de resíduo (Sorocaba ou não), o arquivo novo precisa mostrar um **aviso visível com as linhas/contas/valores** — não só logar.
+5. **Não mexer em nada da Base Intermediária** (`gerar_base_intermediaria.py` fica intocado) — o script novo só lê.
+
+**Estrutura do arquivo novo, confirmada com a usuária:**
+1. Tabela do rateio vigente (% por unidade, com nota "vigente a partir de ...").
+2. Quadro "por unidade, sem rateio" — colunas SJP | IBI | GOI | RES | **GER** | TOTAL.
+3. Quadro "por unidade, com rateio" — colunas SJP | IBI | GOI | RES | TOTAL, com linha própria "Rateio Gerência" antes de Total Costs, e um "Check" mostrando que o TOTAL do quadro 2 bate com o TOTAL do quadro 3.
+4. Mesma formatação visual do arquivo/mockup que a usuária desenhou (faixa azul escura, negrito, itálico, coluna TOTAL destacada, nota "'000 BRL").
+5. Salva no mesmo racional de sempre: `resolver_pasta_ciclo(REDE_BASE/ano/MESES_PASTA[mes], mes, ciclo)` — Actual e Flash sem diferença nenhuma de lógica.
+
+**Estado atual:** nada implementado ainda (só análise/leitura do arquivo real e do Base Intermediária, nenhum dado alterado). Pasta de teste local criada: `data/processed/fitted_units_despesas/rateio_custos_teste/`. Próximo passo assim que a usuária responder o código da Resende: escrever o script (provavelmente `gerar_rateio_custos.py`, mesma pasta dos outros passos), testar isolado, depois integrar no cockpit como Passo 5.
+
+**Nada commitado desta parte ainda** (só a sessão anterior, popup SAPGUI, já está commitada — ver entrada acima/anterior deste arquivo).
+
+---
 ## Sessão 2026-08-25 — Popup "Segurança SAPGUI"/travamento do Excel no Passo 1: FECHADO, confirmado ao vivo de ponta a ponta
 
 **Pedido original da usuária:** o popup nativo do SAP que pede autorização a cada pasta nova ("Segurança SAPGUI") a incomoda. Tentativa de generalizar a regra em `saprules.xml` foi bloqueada 2x pelo classificador de segurança do Auto mode (arquivo fora da pasta do projeto), mesmo com autorização explícita dela. **Ideia da própria usuária, implementada:** SAP sempre exporta pra uma pasta fixa (`.../00.Extração Base KSB1/Temporario/`), e o código move o arquivo de lá pra pasta certa (`resolver_pasta_ciclo`) depois — como a pasta de destino do SAP nunca muda, só pede autorização 1x (não mais 1x/mês).
