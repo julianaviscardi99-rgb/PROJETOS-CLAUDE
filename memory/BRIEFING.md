@@ -3,11 +3,28 @@
 > Manter apenas as últimas 2 sessões inline — sessões mais antigas vão para long_term/.
 
 ---
-## Continuação 2026-08-25 — Popup "Segurança SAPGUI" no Passo 1: implementado via pasta de staging fixa, PENDENTE testar ao vivo
+## Continuação 2026-08-25 — Popup "Segurança SAPGUI"/travamento do Excel no Passo 1: staging fixo implementado e CONFIRMADO funcionando ao vivo; refinamento de UX (fechar aviso residual do Excel sozinho) implementado, AINDA NÃO testado ao vivo
 
-**Pedido da usuária:** o popup nativo do SAP que pede autorização a cada pasta nova ("Segurança SAPGUI") a incomoda. Tentativa de generalizar a regra em `saprules.xml` foi bloqueada 2x pelo classificador de segurança do Auto mode (arquivo fora da pasta do projeto), mesmo com autorização explícita dela. **Ideia da própria usuária, implementada:** SAP sempre exporta pra uma pasta fixa (`.../00.Extração Base KSB1/Temporario/`), e o código move o arquivo de lá pra pasta certa depois — como a pasta de destino do SAP nunca muda, só pede autorização 1x (não mais 1x/mês). Detalhe técnico completo em `memory/DECISOES.md` → "2026-08-25 — Popup Segurança SAPGUI".
+**Pedido original da usuária:** o popup nativo do SAP que pede autorização a cada pasta nova ("Segurança SAPGUI") a incomoda. Tentativa de generalizar a regra em `saprules.xml` foi bloqueada 2x pelo classificador de segurança do Auto mode (arquivo fora da pasta do projeto), mesmo com autorização explícita dela. **Ideia da própria usuária, implementada:** SAP sempre exporta pra uma pasta fixa (`.../00.Extração Base KSB1/Temporario/`), e o código move o arquivo de lá pra pasta certa (`resolver_pasta_ciclo`) depois — como a pasta de destino do SAP nunca muda, só pede autorização 1x (não mais 1x/mês).
 
-**Implementado em `extrair_um` (`atualizar_ksb1_gui.py`) e testado isolado (4 cenários, pasta temporária local) — todos passaram.** Pasta `Temporario` já existe vazia na rede.
+**Problema real encontrado ao testar ao vivo (não previsto):** o SAP abre o arquivo recém-exportado automaticamente no Excel (visível, não é instância isolada) — isso trava o arquivo (`WinError 32`) na hora de mover pra pasta final. Resolvido em 3 rodadas de ajuste:
+1. Retentativa (30x, 1s cada) ao mover.
+2. `fechar_excel_se_aberto` — fecha só a aba certa via COM. Primeira versão usava `GetObject(Class='Excel.Application')` (ambíguo com múltiplas instâncias, falhava se o Excel estivesse ocupado com um popup) — **reescrita pra buscar direto na Running Object Table (`pythoncom`) pelo caminho do arquivo**, o que acha a planilha certa mesmo com várias instâncias do Excel abertas ao mesmo tempo, sem adivinhar. Testado isolado com 2 instâncias simultâneas (uma simulando "a planilha real da usuária", outra "a que o SAP abre") — fecha só a certa, confirmado.
+3. Limpeza da sobra na pasta `Temporario` (antes de exportar de novo) também virou resiliente a arquivo travado (retentativa 30x, erro claro em vez de derrubar a extração se não conseguir).
+
+**CONFIRMADO AO VIVO pela usuária (captura de tela real, pasta `08_Aug_Actual`):** os 8 arquivos (Gestoriais + Sem Agrupamento, v1 a v4 — várias tentativas durante o debug, versionamento funcionou certinho, nunca sobrescreveu) caíram na pasta final correta. **O mecanismo de staging + mover funciona.** O aviso "Sorry, we couldn't find..." do Excel que aparecia depois é só efeito colateral inofensivo (o Excel que o SAP abriu fica "órfão" porque o arquivo que ele tinha aberto foi movido dali).
+
+**Cuidado achado durante o debug:** os comandos de PowerShell usados por mim (Claude) pra checar a pasta de rede às vezes retornaram "pasta vazia" quando na verdade tinha arquivo lá (confirmado com a usuária mandando print do Explorer mostrando os 8 arquivos) — meu diagnóstico ficou temporariamente errado por causa disso (achei que o `move` tava falhando sempre, quando na real tava funcionando). Se precisar confirmar estado de pasta de rede de novo, considerar que `Get-ChildItem` pode retornar resultado desatualizado/cache — pedir confirmação visual da usuária (print do Explorer) é mais confiável que só a minha checagem remota.
+
+**Pedido novo da usuária (implementado, NÃO testado ao vivo ainda):** ela quer que, depois que o aviso do Excel aparecer, o próprio código clique "OK" nele e feche a janela cinza vazia do Excel que sobra — sem precisar fazer isso manualmente a cada extração. Implementado `limpar_excel_orfao` em `ksb1_core.py`: (1) acha o dialogo nativo do Windows titulado exatamente "Microsoft Excel" e clica no botão OK via `win32gui`/`win32con`; (2) fecha (`Quit()`) qualquer instância do Excel com ZERO pastas de trabalho abertas (nunca mexe numa instância com algo aberto — segura contra fechar Excel real da usuária). Chamado em `extrair_um` logo após um `move` bem-sucedido (5 tentativas, 1s cada, dando tempo do aviso aparecer). Testado isolado (instância Excel vazia real + msgbox nativa simulando o aviso) — os dois cenários fecharam certo.
+
+**Estado do cockpit:** reaberto pela última vez com essa versão mais nova (`limpar_excel_orfao`) — ainda não validado ao vivo contra o fluxo real (staging OK confirmado, mas essa parte específica de fechar o aviso sozinho ainda não foi vista funcionando numa extração real).
+
+**Pendência pra próxima sessão:** rodar "Extrair KSB1" de novo (qualquer mês/Ciclo limpo) e confirmar que o aviso do Excel + janela vazia somem sozinhos, sem a usuária precisar clicar em nada. Também limpar as pastas `Temporario` e `08_Aug_Actual` dos arquivos de teste `_v2`/`_v3`/`_v4` acumulados durante o debug (são dados reais de Agosto/Actual, mas duplicados — decidir com a usuária se mantém só a versão mais recente ou apaga tudo e re-extrai limpo).
+
+**Detalhe técnico completo em `memory/DECISOES.md` → "2026-08-25 — Popup Segurança SAPGUI".**
+
+**ALERTA DE SESSÃO LONGA disparou nesta sessão (45 ações) — backup automático já rodou.** Usuária pode fechar esta janela e abrir uma nova pra continuar; contexto já está salvo aqui.
 
 **Pendência pra próxima vez que a usuária rodar o Passo 1 de verdade:** confirmar que (a) o arquivo final cai certo na subpasta do Ciclo e (b) o popup só aparece 1x (pra autorizar a pasta `Temporario`) ou nem aparece mais.
 
