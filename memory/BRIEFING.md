@@ -19,10 +19,17 @@
 
 **Commitado nesta parte.**
 
+**Continuação: usuária pediu explicitamente o botão de GERAR o arquivo** ("abertura de custos por unidade, para rodar e gerar o arquivo com o rateio") depois de ver o arquivo de Julho e testar o cockpit ao vivo (gostou do resultado). **IMPLEMENTADO:** botão **"Abertura de Custos por Unidade"** (nome exato pedido por ela) adicionado como primeiro botão da aba "⑤ Rateio de Custos", antes de "Atualizar Rateio". Chama `gerar_arquivo_rateio_custos` com `pasta_saida = resolver_pasta_ciclo(REDE_BASE/ano/MESES_PASTA[mes], mes, ciclo)` — **mesmo padrão de saída dos Passos 1/3/4 (rede oficial, `nome_com_versao` nunca sobrescreve)**. Diferente do botão de atualizar %, este SALVA DE VERDADE na rede quando clicado pela usuária (é o próprio propósito do botão — gerar o arquivo oficial).
+
+**Testado de ponta a ponta** (automação de widgets Tk, mesma técnica de sempre): `atualizar_ksb1_gui.REDE_BASE` trocado só na sessão de teste pra uma pasta local (a leitura da Base Intermediária usa o `REDE_BASE` de `gerar_rateio_custos.py`, que é outro módulo/import separado e ficou intocado — continuou lendo a Base Intermediária REAL de Julho da rede, só leitura) — cliquei o botão, a operação rodou pela thread normal do cockpit (mesmo watchdog dos outros passos, sem oferecer forçar Excel porque só usa openpyxl), gerou o arquivo certinho em `.../2026/07 - Jul/07_Jul_Actual/Rateio de Custos Fitted Units July Actual 2026.xlsx` (estrutura de pasta idêntica à dos Passos 3/4) e mostrou o popup de conclusão. **Nada foi escrito na rede real neste teste** (saída redirecionada pro scratchpad da sessão).
+
+**Commitado.**
+
 ### PRÓXIMO PASSO
-1. Confirmar com a usuária que o rateio de Agosto/2026 já está correto (SJP 21% / IBI 49% / GOI 27% / RES 3%, `ontology/rateio_gerencia.json` entrada "2026-08") — já está assim desde 2026-08-25, é só confirmar que é o que ela mandou.
-2. Retomar a pergunta em aberto: continuar investigando o resíduo de Maio (R$4,07 mil) e decidir sobre a conta 4255200, OU aceitar o teste em paralelo no fechamento de Agosto como próximo passo de validação real.
-3. Botão de GERAR o Rateio de Custos (rodar `gerar_arquivo_rateio_custos`) ainda não está no cockpit — só o botão de atualizar % está. Ligar isso só depois da aprovação final do Passo 5.
+1. Cockpit relançado pra usuária testar o botão novo AO VIVO — **desta vez, se ela clicar "Abertura de Custos por Unidade" de verdade, o arquivo VAI ser salvo na rede oficial** (comportamento pretendido, mesmo padrão dos outros passos - `nome_com_versao` garante que nunca sobrescreve nada existente).
+2. Confirmar com a usuária que o rateio de Agosto/2026 já está correto (SJP 21% / IBI 49% / GOI 27% / RES 3%, `ontology/rateio_gerencia.json` entrada "2026-08") — já está assim desde 2026-08-25, é só confirmar que é o que ela mandou.
+3. Retomar a pergunta em aberto: continuar investigando o resíduo de Maio (R$4,07 mil) e decidir sobre a conta 4255200, OU aceitar o teste em paralelo no fechamento de Agosto como próximo passo de validação real.
+4. Aprovação final do Passo 5 ainda pendente formalmente, apesar da usuária já estar testando o cockpit ativamente — não presumir "aprovado" sem ela dizer isso explicitamente.
 
 ---
 ## Sessão 2026-08-26 — "Rateio de Custos" (Passo 5): testes de Fev/Mar/Abr/Mai/Jun — todos explicados, nenhum erro de script (nada salvo na rede)

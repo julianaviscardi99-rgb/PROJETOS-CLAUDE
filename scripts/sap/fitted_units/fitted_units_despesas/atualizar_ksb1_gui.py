@@ -358,13 +358,13 @@ PASSOS = [
         "aba": "⑤  Rateio de Custos",
         "titulo": "Passo 5 · Rateio de Custos",
         "descricao": (
-            "Ainda em validação com a usuária — o botão de gerar o arquivo de Rateio "
-            "de Custos ainda não foi ligado aqui (só roda por linha de comando por "
-            "enquanto). Por ora, só o botão de atualizar o % de rateio da Gerência "
-            "está disponível: abre um quadro editável com o % vigente pra cada "
-            "unidade. Se você não mudar num Ciclo, o rateio anterior continua valendo."
+            "Ainda em validação com a usuária. 'Abertura de Custos por Unidade' lê a "
+            "Base Intermediária do mês/Ciclo (Passo 4 já rodado) e gera o arquivo de "
+            "Rateio de Custos, com o check por unidade e a aba 'Comentários'. "
+            "'Atualizar Rateio' abre um quadro editável com o % vigente pra cada "
+            "unidade — se você não mudar num Ciclo, o rateio anterior continua valendo."
         ),
-        "botoes": ["Atualizar Rateio"],
+        "botoes": ["Abertura de Custos por Unidade", "Atualizar Rateio"],
     },
 ]
 
@@ -967,6 +967,30 @@ def main():
 
         rodar_em_thread("Finalizando a Base Intermediária", func, ao_concluir)
 
+    def ao_clicar_rateio_custos():
+        from gerar_rateio_custos import gerar_arquivo_rateio_custos
+
+        mes_ano = ler_mes_ano()
+        if mes_ano is None:
+            return
+        mes, ano = mes_ano
+        ciclo = ciclo_var.get()
+
+        pasta_saida = resolver_pasta_ciclo(REDE_BASE / str(ano) / MESES_PASTA[mes], mes, ciclo)
+
+        def func(log, pid_callback):
+            return gerar_arquivo_rateio_custos(mes, ano, ciclo, pasta_saida, log=log)
+
+        def ao_concluir(resultado, erro):
+            if erro is not None:
+                messagebox.showerror("Erro ao gerar o Rateio de Custos", str(erro))
+                return
+            messagebox.showinfo("Concluído", f"Rateio de Custos gerado:\n{resultado}")
+
+        # So le a Base Intermediaria via openpyxl (sem Excel/COM) - watchdog
+        # nao precisa oferecer forcar Excel.
+        rodar_em_thread("Gerando Abertura de Custos por Unidade", func, ao_concluir, permite_forcar_excel=False)
+
     def ao_clicar_atualizar_rateio():
         """Abre um dialogo pra editar o % de rateio da Gerencia por unidade
         (SJP/IBI/GOI/RES), pre-preenchido com o rateio vigente hoje. Salva
@@ -1090,7 +1114,8 @@ def main():
     botoes[2][1].config(command=ao_clicar_atualizar_provisoes)
     botoes[3][0].config(command=ao_clicar_pivot)
     botoes[3][1].config(command=ao_clicar_finalizar_intermediaria)
-    botoes[4][0].config(command=ao_clicar_atualizar_rateio)
+    botoes[4][0].config(command=ao_clicar_rateio_custos)
+    botoes[4][1].config(command=ao_clicar_atualizar_rateio)
 
     root.mainloop()
 
