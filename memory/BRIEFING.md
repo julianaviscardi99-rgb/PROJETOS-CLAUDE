@@ -3,6 +3,30 @@
 > Manter apenas as últimas 2 sessões inline — sessões mais antigas vão para long_term/.
 
 ---
+## Sessão 2026-08-26 — "Rateio de Custos" (Passo 5): testes de Abril/Maio/Junho — achado real em Abril/GOI, EM ABERTO (nada salvo na rede)
+
+**Retomada:** usuária corrigiu 2 pontos de entendimento sobre o desenho do dia anterior (2026-08-25) — atualizados nos comentários do script (`gerar_rateio_custos.py`, sem mudar comportamento):
+1. A coluna H ("Tp.Custo") **nunca** deve ser considerada pra variabilidade — não é só "menos confiável que AA/AJ", é pra nunca ler. Conferido: o código já nunca lia H (só citava em comentário) — só o texto foi corrigido, comportamento não mudou.
+2. A Gerência ser 100% Fixa não é uma regra arbitrária: **custo Variável é custo ligado à produção, e a Gerência não produz** — logo não deve existir NENHUM custo Variável nela por definição de negócio. Se aparecer um "V" na Gerência é anomalia de lançamento (comportamento do código já tratava isso — só o comentário/justificativa foi atualizado).
+3. Confirmado que o rateio já é feito por gestorial de origem (categoria a categoria, ex: Other Fixed rateia só dentro de Other Fixed) — já era assim, sem mudança.
+
+**Pedido da usuária:** testar Junho, Maio e Abril/2026 (Actual) contra o arquivo antigo `_Abertura custos...`, sem salvar nada na rede — só teste local. Feito: rodei os 3 meses com `--pasta-saida data/processed/fitted_units_despesas/rateio_custos_teste/` (pasta de teste local já existente, nada de rede tocado nem em escrita nem em leitura-com-alteração — os arquivos antigos de referência foram só copiados/lidos, nunca modificados).
+
+**Metodologia de validação:** usei a aba oculta por unidade do arquivo antigo mais recente disponível (`_Abertura custos Fitted Units July Actual 2026.xlsx`, aba por unidade ex: "São J. dos Pinhais") — a linha "Total Costs" ali é uma série mensal (Jan..Ago) com o valor **já com rateio embutido** (confirmado: bate exatamente com o "Rateio Gerência" que a sessão anterior já tinha validado pra Julho). Comparei índice do mês (Abr=índice 3, Mai=4, Jun=5) contra o total (Variable+Fixed, com rateio) calculado pelo nosso script, usando os valores brutos (não arredondados) — não os arquivos `.xlsx` gerados (que arredondam cada linha a 1 casa decimal, o que sozinho já gera até ~R$4 mil de deriva por soma quando há ~100 contas).
+
+**Resultado:**
+- **Junho/Actual:** SJP e GOI bateram exato (diff 0,00). IBI teve diff de R$ -0,35 mil (irrelevante, < 0,02% do total).
+- **Maio/Actual:** SJP e GOI bateram exato (diff 0,00). IBI teve diff de R$ -4,07 mil (pequeno, ~0,13% do total) — não investigado a fundo, ordem de grandeza bem menor que o achado de Abril abaixo.
+- **Abril/Actual:** SJP e IBI bateram exato (diff 0,00). **GOI teve diff de R$ -601,69 mil** (nosso script: -1.334,00 mil; arquivo antigo: -732,30 mil) — **achado real, não é rounding.**
+
+**Causa raiz identificada do achado de Abril/GOI:** uma única conta, `4236100` "Materiais Indiretos" (Fixo, Conta Geral="Others"→"Other Fixed"), mini-fábrica `0481` (Goiana), valor R$ -601,69 mil no mês de Abril — está presente na Base Intermediária (fonte usada pelo script novo) mas **não aparece em lugar nenhum na aba "Goiana" do arquivo antigo `_Abertura custos Fitted Units April Actual 2026_v2.xlsx`** (procurei por essa conta e pela descrição "Materiais Indiretos" na aba inteira, achei só 2 linhas residuais de R$ -0,26 mil e R$ -0,47 mil, nada perto de R$ 601,69 mil). Hipótese mais provável (não confirmada com a usuária ainda): o arquivo antigo de Abril foi salvo em 12/05/2026 (~12 dias após o fechamento) e a Base Intermediária usada no teste foi gerada bem mais recentemente (Passo 4, já em Agosto) — se essa conta sofreu algum lançamento tardio/reclassificação no SAP depois que o arquivo antigo de Abril foi congelado, o novo script capturaria isso e o antigo não. **Não é um erro do script** (a lógica bateu exato nas outras ~7 combinações unidade×mês testadas) — é uma divergência de dado-fonte que precisa da usuária confirmar (ela conhece a conta/contexto de Goiana em Abril).
+
+**Nada foi salvo na rede nesta sessão** — só leitura (cópia local dos arquivos antigos pra comparação, em scratchpad da sessão) e escrita na pasta de teste local já estabelecida.
+
+### PRÓXIMO PASSO (pendente, aguardando a usuária)
+Perguntar diretamente: ela reconhece um lançamento de ~R$ 601,69 mil na conta "Materiais Indiretos" (4236100) em Goiana, Abril/2026, que possa ter entrado no SAP depois que o arquivo antigo foi congelado (12/05)? Isso decide se o "achado" é (a) um erro real do processo manual antigo (a favor do script novo) ou (b) algo que precisa de tratamento especial no script (ex: excluir lançamentos tardios de meses já fechados, se fizer sentido pro negócio). **Aprovação geral do Passo 5 continua pendente** (ver sessão 2026-08-25 abaixo) — este achado é mais um ponto a resolver antes da aprovação final, não uma questão em separado.
+
+---
 ## Sessão 2026-08-25 — "Rateio de Custos" (Passo 5): FUNCIONANDO E VALIDADO — bate exatamente com o arquivo antigo de Julho/Actual, linha a linha
 
 **Script criado:** `scripts/sap/fitted_units/fitted_units_despesas/gerar_rateio_custos.py` (roda standalone por linha de comando por enquanto: `--mes --ano --ciclo --pasta-saida`). Config do rateio: `ontology/rateio_gerencia.json` (entradas por `vigente_desde`, nunca hardcoded no script).
