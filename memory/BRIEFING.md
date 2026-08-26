@@ -3,7 +3,23 @@
 > Manter apenas as últimas 2 sessões inline — sessões mais antigas vão para long_term/.
 
 ---
-## Continuação 2026-08-26 (mesmo dia) — Rateio de Custos: check por unidade + aba "Comentários" implementados; pedido de botão de rateio no cockpit (EM ANDAMENTO)
+## Continuação 2026-08-26 (mesmo dia) — Bug real encontrado e corrigido: Check "(0,10)" em vez de "0,00" no primeiro arquivo real gerado pela usuária
+
+**A usuária clicou "Abertura de Custos por Unidade" de verdade pela primeira vez** (Julho/2026 Actual, arquivo real na rede) e reportou (com print) que o "Check (deve ser 0,00)" no rodapé mostrava **(0,10)**, não 0,00.
+
+**Causa raiz encontrada e confirmada:** cada célula de item (Variable/Fixed Cost, ~50 por arquivo) guardava o VALOR já arredondado a 1 casa decimal (`round(valor, 1)`) na escrita, não só a exibição — as fórmulas `=SUM(...)` do Excel somavam então valores já independentemente arredondados, acumulando deriva. Confirmado em Python: a matemática de verdade (sem arredondar) sempre bateu exato (diff = 0,000000); o problema era 100% um artefato de arredondamento em cadeia, não um erro de cálculo real.
+
+**Corrigido:** `_linha_item` e a linha extra "Não Classificado" (as duas fontes que alimentam a soma "Total Costs") agora escrevem o valor CHEIO na célula - só o `number_format` arredonda a EXIBIÇÃO pra 1 casa decimal (comportamento padrão do Excel: célula guarda o valor real, mostra arredondado). **Validado abrindo de verdade no Excel via win32com (`CalculateFull`)** pra Julho e Fevereiro/2026 Actual: Check = 0,00 nos dois agora.
+
+**Arquivo real da usuária corrigido:** gerado `Rateio de Custos Fitted Units July Actual 2026_v2.xlsx` na rede (`.../07_Jul_Actual/`), **sem apagar o `_v1` que ela já tinha aberto** (nome_com_versao, nunca sobrescreve). Ela precisa abrir o `_v2` pra ver o Check corrigido.
+
+**Commitado e enviado ao GitHub.**
+
+### PRÓXIMO PASSO
+Avisar a usuária que o `_v2.xlsx` está pronto na rede com o Check corrigido, e perguntar se ela quer que eu regenere (com a correção) os outros meses que ela já tinha visto/testado, ou só valida esse e segue.
+
+---
+## Continuação 2026-08-26 (mesmo dia) — Rateio de Custos: check por unidade + aba "Comentários" implementados; pedido de botão de rateio no cockpit
 
 **Contexto:** depois de investigar Jan/Mai/Jun (ver bloco abaixo) a usuária perguntou "você acha que o arquivo vai se comportar certo nos próximos meses?" — respondi que a lógica é consistente nos 7 meses testados (todo diff teve explicação de negócio ou foi confirmado por ela), mas que comparar contra arquivos antigos CONGELADOS tem limite (não prova nada sobre "ao vivo") — sugeri um teste em paralelo no fechamento real de Agosto em vez de continuar cavando meses antigos. Ela não respondeu diretamente essa sugestão ainda; em vez disso pediu 3 coisas novas:
 
