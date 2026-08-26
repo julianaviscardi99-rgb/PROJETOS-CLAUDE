@@ -132,7 +132,7 @@
       "descricao": "Conferência mensal (confirmada pela Juliana em 2026-08-10) pra garantir que toda conta contábil do Sem Agrupamento está vinculada a um agrupamento gestorial.",
       "automatizado_por": "scripts/sap/check_agrupamentos_ksb1.py, com botão 'Gerar Check de Agrupamentos' na mesma GUI da extração (scripts/sap/atualizar_ksb1_gui.py).",
       "logica": [
-        "Check 1: no arquivo Sem Agrupamento, ignorar as contas C23020JJ15, K610100000, M120400001, M12040J001, M130120110, B220400000, e qualquer conta que comece com a letra 'B' — essas nunca têm agrupamento gestorial.",
+        "Check 1: no arquivo Sem Agrupamento, ignorar as contas C23020JJ15, K610100000, M120400001, M12040J001, M130120110, B220400000 (sempre, sem restrição de data), N410400000 (só a partir do fechamento de Agosto/2026, sem data final — pedido explícito da usuária, 2026-08-26; meses anteriores continuam checando essa conta normalmente), e qualquer conta que comece com a letra 'B' — essas nunca têm agrupamento gestorial.",
         "Check 2: das contas que sobraram, verificar se todas aparecem no arquivo Gestoriais (comparação direta pela coluna 'Classe de custo'). As que não aparecerem devem ser enviadas pra controladoria central vincular ao agrupamento gestorial.",
         "Soma: o total do Sem Agrupamento (já excluindo as contas do Check 1) deve bater com o total do Gestoriais, se toda conta estiver vinculada.",
         "Linhas de subtotal do KSB1 (preenchimento amarelo — cor indexada 13 no Excel, sem conta contábil na linha) são ignoradas nas somas."
