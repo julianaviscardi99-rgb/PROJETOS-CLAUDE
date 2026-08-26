@@ -138,6 +138,17 @@ _CONTA_GERAL_PARA_SUBCATEGORIA = {
     "Condomínio": "Condominio",
 }
 
+# Exceção pontual (não é mapeamento próprio por conta em geral - a regra
+# continua sendo confiar em AA/AJ - é UMA conta específica com evidência
+# forte): conta 4255200 "Recuperação PIS/COFINS Depreciação" vem com Conta
+# Geral (AJ) = "Others" na Base Intermediária, mas confirmado no arquivo
+# antigo (2026-08-26, pedido da usuária "como ela está alocada nos meses
+# anteriores?") que ela sempre foi classificada em "Depreciation", com valor
+# constante mês a mês, nas 3 unidades (SJP, IBI, GOI) e nos 7 meses
+# conferidos (Jan-Jul/2026). Não muda nenhum Total Costs (category-neutro),
+# só corrige a categoria pra bater com o histórico.
+CONTAS_FORCADAS_DEPRECIATION = {4255200}
+
 
 def _resolver_subcategoria(tipo: str, conta_geral):
     """Traduz o valor da coluna AJ (Conta Geral) da Base Intermediária pro
@@ -277,6 +288,8 @@ def ler_e_classificar(caminho_base_intermediaria: Path, mes: int, log):
         # Gerencia NESSA MESMA categoria).
         if tipo not in ("V", "F"):
             chave = "Não Classificado"
+        elif conta_int in CONTAS_FORCADAS_DEPRECIATION:
+            chave = ("F", "Depreciation")
         else:
             subcat = _resolver_subcategoria(tipo, conta_geral)
             if subcat is None:

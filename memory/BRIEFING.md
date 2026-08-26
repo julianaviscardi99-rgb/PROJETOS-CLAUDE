@@ -3,6 +3,32 @@
 > Manter apenas as últimas 2 sessões inline — sessões mais antigas vão para long_term/.
 
 ---
+## Continuação 2026-08-26 (mesmo dia) — PASSO 5 APROVADO PELA USUÁRIA — Flash validado, conta 4255200 corrigida, milestone fechado
+
+**Usuária respondeu ponto a ponto às 6 pendências levantadas antes:**
+1. Testar Ciclo Flash (mesma lógica do Actual, confirmado por ela) — **FEITO**, ver abaixo.
+2. Resende sem custo real ainda, mas "terá a partir do próximo mês" — ciente, sem ação agora.
+3. Resíduo de R$4.070,00 em Maio/IBI — **"não precisa explicar"**, item encerrado sem mais investigação.
+4. "Como [a conta 4255200] está alocada nos meses anteriores?" — **investigado e corrigido**, ver abaixo.
+5. **"passo 5 esta aprovado"** — aprovação formal, registrada em `memory/DECISOES.md` (2026-08-26).
+6. Não precisa gerar os outros meses na rede — só Julho continua sendo o arquivo real gerado.
+7. Confirmado que o rateio de Agosto (com Resende, SJP 21%/IBI 49%/GOI 27%/RES 3%) já está alocado em `ontology/rateio_gerencia.json` desde 2026-08-25.
+
+**Ciclo Flash testado (Jan-Jul/2026):** mesma metodologia usada pro Actual. Todos os 7 meses: zero erro de fórmula em qualquer aba (Excel de verdade, `CalculateFull`), check por unidade ✓ em todos, Check final 0,00 em todos. Meses fechados (Jan-Jun) batem com os mesmos valores do Actual (esperado). Julho (na época ainda Flash/forecast) mostrou valores diferentes do Actual (SJP -1.561,08 vs -1.485,71) — **bateu exato com o arquivo antigo Flash de referência**, confirmando que a diferença é forecast genuíno, não bug.
+
+**Conta 4255200 "Recuperação PIS/COFINS Depreciação" — investigada e corrigida:** aparece nas 3 unidades (SJP, IBI, GOI), sempre classificada "Depreciation" no arquivo antigo, valor constante mês a mês, confirmado nos 7 meses (Jan-Jul). Adicionada como exceção pontual (`CONTAS_FORCADAS_DEPRECIATION` em `gerar_rateio_custos.py`) — força essa conta específica pra "Depreciation" mesmo a Base Intermediária trazendo AJ="Others". **Não é reintrodução do mapeamento próprio por conta** (banido em 2026-08-25) - é uma exceção única, bem documentada, com evidência forte. Category-neutra (não muda nenhum Total Costs). Revalidado depois da mudança: 7 meses Actual + 7 meses Flash, todos ainda com check ✓ e Check final 0,00.
+
+**Arquivo real de Julho atualizado na rede:** `Rateio de Custos Fitted Units July Actual 2026_v3.xlsx` (com a correção da conta 4255200; `_v2` já tinha a correção do bug de arredondamento; `_v1` é o original com o bug do Check 0,10 — nenhum foi apagado).
+
+**Commitado.**
+
+### PRÓXIMO PASSO
+Passo 5 aprovado — próximos passos naturais (não pedidos ainda pela usuária, aguardar):
+- Lembrete automático de Janeiro (rateio geralmente muda nessa época) — combinado em 2026-08-25, ainda não implementado.
+- Quando Resende tiver custo real (mês que vem, segundo ela), validar a lógica de RES com dado de verdade pela primeira vez.
+- Considerar mover o botão "Abertura de Custos por Unidade" pra usar o Ciclo selecionado no painel compartilhado (já faz isso - `ciclo_var.get()` - só confirmar que ela testa Flash pela GUI real em algum momento, já que só testei Flash por linha de comando/script até agora, não clicando o botão de verdade).
+
+---
 ## Continuação 2026-08-26 (mesmo dia) — Bug real encontrado e corrigido: Check "(0,10)" em vez de "0,00" no primeiro arquivo real gerado pela usuária
 
 **A usuária clicou "Abertura de Custos por Unidade" de verdade pela primeira vez** (Julho/2026 Actual, arquivo real na rede) e reportou (com print) que o "Check (deve ser 0,00)" no rodapé mostrava **(0,10)**, não 0,00.

@@ -642,3 +642,20 @@
 **Lição para o projeto:** o classificador de segurança do Auto mode bloqueia consistentemente edição de arquivos fora da pasta do projeto, mesmo com autorização explícita da usuária na hora — para esse tipo de restrição (política do SAP GUI, arquivos de sistema fora do repo), a solução tem que vir de dentro do código do projeto (como essa), não de editar configuração externa.
 
 **Conclusão:** item fechado — staging fixo elimina o popup de Segurança SAPGUI (1x por ano em vez de 1x por mês), e o travamento do Excel + avisos residuais são tratados automaticamente pelo próprio código. Validado ao vivo de ponta a ponta, sem qualquer risco ao Excel real da usuária ou a dados de produção.
+
+---
+## 2026-08-26 — Passo 5 (Rateio de Custos): APROVADO pela usuária
+
+**Decisão:** depois de testar o botão "Abertura de Custos por Unidade" (arquivo real gerado na rede, Julho/2026 Actual), o botão "Atualizar Rateio", encontrar e corrigir um bug real (Check sobrando R$0,10 mil por arredondamento em cadeia), validar 7 meses em Actual e 7 meses em Flash (todos sem erro de fórmula, check por unidade ✓, Check final 0,00), a usuária confirmou explicitamente: **"passo 5 esta aprovado"**.
+
+**Motivo:** validação extensa (Jan-Jul/2026, Actual e Flash) não encontrou nenhum erro real de lógica do script — todo diff contra os arquivos antigos teve explicação de negócio (lançamento manual da usuária em Abril, regra de resíduo de encerrada em Fevereiro) ou é irrelevante (< R$5 mil, ordem de grandeza de late-posting no SAP). O bug real que apareceu (Check 0,10) foi encontrado pela própria usuária testando ao vivo e corrigido no mesmo dia.
+
+**Exceção pontual adicionada (não é reintrodução do mapeamento próprio por conta, banido em 2026-08-25):** conta `4255200` "Recuperação PIS/COFINS Depreciação" é forçada pra categoria "Depreciation" (`CONTAS_FORCADAS_DEPRECIATION` em `gerar_rateio_custos.py`), mesmo a Base Intermediária trazendo Conta Geral (AJ) = "Others". Justificativa: a usuária pediu "como ela está alocada nos meses anteriores?" — conferido no arquivo antigo que essa conta específica sempre foi classificada em "Depreciation", com valor constante mês a mês, nas 3 unidades (SJP, IBI, GOI) e nos 7 meses conferidos (Jan-Jul/2026). Correção category-neutra (não muda nenhum Total Costs).
+
+**Ciclo Flash validado:** mesma lógica do Actual (confirmado pela usuária: "ciclo flash é a mesma forma de rodar do que o actual"). Testado Jan-Jul/2026 Flash: sem erro de fórmula, check ✓, Check final 0,00 nos 7 meses. Meses fechados (Jan-Jun) batem com os mesmos valores do Actual (esperado - mês fechado não muda entre Ciclos); Julho (mês ainda em Flash na época) mostrou valor de forecast genuinamente diferente do Actual, também batendo exato com o arquivo antigo Flash de referência.
+
+**Pendências que NÃO bloqueiam a aprovação (aceitas pela usuária):**
+- Resíduo de R$4.070,00 em Maio/IBI segue sem explicação — usuária disse explicitamente "não precisa explicar".
+- RES (Resende) segue sem custo real testado — usuária confirmou "resende ainda nao teve custo, mas tera a partir do proximo mes", ciente que a lógica de RES nunca foi exercitada com valor real ainda.
+
+**Rateio de Agosto/2026 (com Resende) confirmado alocado:** `ontology/rateio_gerencia.json`, entrada `vigente_desde: "2026-08"` — SJP 21% / IBI 49% / GOI 27% / RES 3%, já configurado desde 2026-08-25, confirmado pra usuária nesta sessão.
