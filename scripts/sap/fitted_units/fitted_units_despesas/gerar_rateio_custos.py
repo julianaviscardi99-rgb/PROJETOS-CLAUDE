@@ -603,7 +603,10 @@ def _finalizar_quadro_com_total(ws, info, linhas_extra_antes_do_total=None):
             c = ws.cell(row=linha, column=col_inicio, value=nome)
             c.font = FONTE_ITEM
             for i, colname in enumerate(colunas):
-                cc = ws.cell(row=linha, column=col_inicio + 1 + i, value=round(valores.get(colname, 0), 1))
+                # Mesmo motivo da _linha_item: valor cheio na célula, só a
+                # exibição arredonda - essa linha extra também entra na soma
+                # de "Total Costs" (ver partes/linhas_extras_num abaixo).
+                cc = ws.cell(row=linha, column=col_inicio + 1 + i, value=valores.get(colname, 0))
                 cc.font = FONTE_ITEM
                 cc.number_format = "#,##0.0;(#,##0.0)"
             linhas_extras_num.append(linha)
