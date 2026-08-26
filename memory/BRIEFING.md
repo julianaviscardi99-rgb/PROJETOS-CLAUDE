@@ -3,7 +3,27 @@
 > Manter apenas as últimas 2 sessões inline — sessões mais antigas vão para long_term/.
 
 ---
-## Sessão 2026-08-26 — "Rateio de Custos" (Passo 5): testes de Abril/Maio/Junho — achado real em Abril/GOI, EM ABERTO (nada salvo na rede)
+## Sessão 2026-08-26 — "Rateio de Custos" (Passo 5): testes de Fev/Mar/Abr/Mai/Jun — todos explicados, nenhum erro de script (nada salvo na rede)
+
+**Achado de Abril (GOI, R$ -601,69 mil) ESCLARECIDO pela usuária:** não é erro de sistema/script — foi um lançamento que ELA mesma precisou acrescentar manualmente ("eu que tive que acrescentar na mão"). Ou seja, o script novo está certo (pega o valor real, já lançado no SAP); o arquivo antigo congelado (12/05) é que não tinha esse ajuste manual. **Abril fechado, sem pendência.**
+
+**Testes adicionais pedidos pela usuária: Fevereiro e Março/Actual** — mesma metodologia (valores brutos não arredondados, comparados contra a série "Total Costs" por unidade do arquivo antigo de Julho, índice do mês certo).
+- **Março:** SJP, IBI e GOI bateram **exato** (diff 0,00 nos três).
+- **Fevereiro:** diffs pequenos — SJP -R$0,20 mil, IBI -R$0,46 mil, GOI -R$0,30 mil (total -R$0,96 mil). **100% explicado, não é erro:** fevereiro teve um resíduo de unidade encerrada (ITATIAIA, conta 4247200 "Despesas Sociais", R$ -0,96 mil) que a regra de negócio manda somar à Gerência antes do rateio (regra confirmada em 2026-08-25) — o arquivo antigo não tinha esse resíduo redistribuído dessa forma. -0,9588 × 21%/48%/31% = exatamente os 3 diffs observados. **Fevereiro fechado, sem pendência** (diferença é a regra de resíduo funcionando como desenhado, não um bug).
+
+**Consolidado dos 6 meses testados até agora (Fev-Jul/2026, Actual) — TODOS batem ou têm diferença 100% explicada e esperada:**
+| Mês | Resultado |
+|---|---|
+| Fev | diff pequeno (R$0,96 mil), explicado por resíduo Itatiaia + regra de negócio |
+| Mar | exato |
+| Abr | diff explicado pela usuária (lançamento manual dela, não estava no arquivo antigo) |
+| Mai | diff pequeno (R$4,07 mil em IBI), não investigado a fundo — ordem de grandeza pequena |
+| Jun | diff pequeno (R$0,35 mil em IBI), irrelevante |
+| Jul | exato (validado na sessão anterior, 2026-08-25) |
+
+**Nada salvo na rede** — só a pasta de teste local (`data/processed/fitted_units_despesas/rateio_custos_teste/`) e leitura dos arquivos antigos (copiados pro scratchpad da sessão, nunca alterados).
+
+### Testes de Abril/Maio/Junho — histórico da investigação (mantido abaixo para contexto)
 
 **Retomada:** usuária corrigiu 2 pontos de entendimento sobre o desenho do dia anterior (2026-08-25) — atualizados nos comentários do script (`gerar_rateio_custos.py`, sem mudar comportamento):
 1. A coluna H ("Tp.Custo") **nunca** deve ser considerada pra variabilidade — não é só "menos confiável que AA/AJ", é pra nunca ler. Conferido: o código já nunca lia H (só citava em comentário) — só o texto foi corrigido, comportamento não mudou.
@@ -23,8 +43,8 @@
 
 **Nada foi salvo na rede nesta sessão** — só leitura (cópia local dos arquivos antigos pra comparação, em scratchpad da sessão) e escrita na pasta de teste local já estabelecida.
 
-### PRÓXIMO PASSO (pendente, aguardando a usuária)
-Perguntar diretamente: ela reconhece um lançamento de ~R$ 601,69 mil na conta "Materiais Indiretos" (4236100) em Goiana, Abril/2026, que possa ter entrado no SAP depois que o arquivo antigo foi congelado (12/05)? Isso decide se o "achado" é (a) um erro real do processo manual antigo (a favor do script novo) ou (b) algo que precisa de tratamento especial no script (ex: excluir lançamentos tardios de meses já fechados, se fizer sentido pro negócio). **Aprovação geral do Passo 5 continua pendente** (ver sessão 2026-08-25 abaixo) — este achado é mais um ponto a resolver antes da aprovação final, não uma questão em separado.
+### Item resolvido (ver bloco consolidado no topo do arquivo)
+A pergunta acima foi respondida pela usuária no mesmo dia: **não é erro, foi lançamento manual dela**. Fev/Mar/Abr/Mai/Jun/Jul (6 meses) todos testados agora, todos batem ou têm diferença explicada. **Aprovação geral do Passo 5 continua pendente** (ver sessão 2026-08-25 abaixo) — próximo passo é perguntar à usuária se os 6 meses testados já são suficiente pra ela aprovar, ou se quer testar Jan/Ago também antes de decidir.
 
 ---
 ## Sessão 2026-08-25 — "Rateio de Custos" (Passo 5): FUNCIONANDO E VALIDADO — bate exatamente com o arquivo antigo de Julho/Actual, linha a linha
