@@ -3,6 +3,20 @@
 > Manter apenas as últimas 2 sessões inline — sessões mais antigas vão para long_term/.
 
 ---
+## Continuação 2026-08-26 (mesmo dia) — Lembrete automático de rateio em Janeiro implementado; Resende confirmada pra Agosto
+
+**Usuária corrigiu um detalhe:** Resende recebe os PRIMEIROS custos reais em **Agosto** (não "mês que vem" como eu tinha entendido antes — Agosto é o mês corrente). Ou seja, a validação de RES com dado real só vai ser possível no fechamento de Agosto (ela confirmou isso também: "validar resende vai ser possivel apenas no fechamento de agosto").
+
+**Lembrete automático de Janeiro — IMPLEMENTADO e TESTADO.** Pedido combinado em 2026-08-25, feito agora: `_rateio_precisa_confirmacao_janeiro()` em `atualizar_ksb1_gui.py` checa se hoje é Janeiro E se ninguém salvou uma entrada com `vigente_desde` igual a `AAAA-01` pra esse ano em `ontology/rateio_gerencia.json`. Se sim, avisa de 2 formas: (1) popup ao abrir a janela do cockpit, (2) banner vermelho fixo na aba "⑤ Rateio de Custos". Não bloqueia nada - se ela não confirmar, o rateio anterior continua valendo normalmente (mesmo comportamento de sempre).
+
+**Testado com data simulada** (`datetime` trocado só na sessão de teste, técnica já usada antes): Janeiro/2027 sem entrada pro ano → avisa (popup + banner); Janeiro/2027 com entrada '2027-01' já salva → fica em silêncio. Arquivo real de config confirmado intocado (`git diff` vazio).
+
+**Commitado.**
+
+### PRÓXIMO PASSO
+Nenhuma pendência aberta no momento. Passo 5 está aprovado e com o lembrete de Janeiro implementado. Próxima validação relevante será orgânica: **o fechamento real de Agosto/2026** (primeiro mês com custo real de Resende, primeiro teste "ao vivo" de ponta a ponta do Passo 5 inteiro, incluindo o botão real do cockpit).
+
+---
 ## Continuação 2026-08-26 (mesmo dia) — PASSO 5 APROVADO PELA USUÁRIA — Flash validado, conta 4255200 corrigida, milestone fechado
 
 **Usuária respondeu ponto a ponto às 6 pendências levantadas antes:**
