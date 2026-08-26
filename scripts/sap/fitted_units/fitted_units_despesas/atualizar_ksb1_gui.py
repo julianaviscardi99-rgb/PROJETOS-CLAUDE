@@ -514,8 +514,45 @@ def main():
         _pneu["ativo"] = False
         canvas_progresso.delete("pneu")
 
-    corpo = ttk.Frame(root, padding=(24, 18, 24, 18), style="TFrame")
-    corpo.pack(fill=tk.BOTH, expand=True)
+    # --- Área rolável (corpo inteiro) ---------------------------------
+    # Pedido explícito da usuária, 2026-08-26: janela não cabia inteira em
+    # telas/zoom menores (ficou pior depois do banner de aviso de Janeiro).
+    # Canvas + Scrollbar em volta do "corpo" (painel + abas + log) - o
+    # conteúdo de cada aba continua do mesmo jeito, só o CONTAINER de fora
+    # passa a rolar se não couber tudo na altura visível da janela.
+    scroll_area = tk.Frame(root, bg=BG_PAINEL)
+    scroll_area.pack(fill=tk.BOTH, expand=True)
+
+    corpo_canvas = tk.Canvas(scroll_area, bg=BG_PAINEL, highlightthickness=0)
+    corpo_scrollbar = ttk.Scrollbar(scroll_area, orient="vertical", command=corpo_canvas.yview)
+    corpo_canvas.configure(yscrollcommand=corpo_scrollbar.set)
+    corpo_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+    corpo_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+    corpo = ttk.Frame(corpo_canvas, padding=(24, 18, 24, 18), style="TFrame")
+    _corpo_janela = corpo_canvas.create_window((0, 0), window=corpo, anchor="nw")
+
+    def _atualizar_scrollregion(event=None):
+        corpo_canvas.configure(scrollregion=corpo_canvas.bbox("all"))
+
+    corpo.bind("<Configure>", _atualizar_scrollregion)
+
+    def _ajustar_largura_corpo(event):
+        corpo_canvas.itemconfig(_corpo_janela, width=event.width)
+
+    corpo_canvas.bind("<Configure>", _ajustar_largura_corpo)
+
+    def _rolar_com_mouse(event):
+        corpo_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+
+    def _ligar_scroll_mouse(event):
+        corpo_canvas.bind_all("<MouseWheel>", _rolar_com_mouse)
+
+    def _desligar_scroll_mouse(event):
+        corpo_canvas.unbind_all("<MouseWheel>")
+
+    corpo_canvas.bind("<Enter>", _ligar_scroll_mouse)
+    corpo_canvas.bind("<Leave>", _desligar_scroll_mouse)
 
     # --- Painel de instrumentos (Mes / Ano / Ciclo, compartilhado) ---
     hoje = datetime.now()
