@@ -354,6 +354,18 @@ PASSOS = [
         ),
         "botoes": ["Atualizar Pivot KSB1", "Finalização da Base Intermediária"],
     },
+    {
+        "aba": "⑤  Rateio de Custos",
+        "titulo": "Passo 5 · Rateio de Custos",
+        "descricao": (
+            "Ainda em validação com a usuária — o botão de gerar o arquivo de Rateio "
+            "de Custos ainda não foi ligado aqui (só roda por linha de comando por "
+            "enquanto). Por ora, só o botão de atualizar o % de rateio da Gerência "
+            "está disponível: abre um quadro editável com o % vigente pra cada "
+            "unidade. Se você não mudar num Ciclo, o rateio anterior continua valendo."
+        ),
+        "botoes": ["Atualizar Rateio"],
+    },
 ]
 
 
@@ -955,12 +967,130 @@ def main():
 
         rodar_em_thread("Finalizando a Base Intermediária", func, ao_concluir)
 
+    def ao_clicar_atualizar_rateio():
+        """Abre um dialogo pra editar o % de rateio da Gerencia por unidade
+        (SJP/IBI/GOI/RES), pre-preenchido com o rateio vigente hoje. Salva
+        como uma entrada nova (ou atualiza uma existente com a mesma
+        'vigente_desde') em ontology/rateio_gerencia.json - pedido explicito
+        da usuaria, 2026-08-26. Se ela nao mexer em nada num Ciclo, o rateio
+        anterior continua valendo sozinho (carregar_rateio_vigente ja pega
+        sempre a entrada mais recente <= mes/ano pedido - nao precisa de
+        logica nova pra isso)."""
+        import json as _json
+
+        from gerar_rateio_custos import ORDEM_UNIDADES_ATIVAS, RATEIO_CONFIG_PATH, carregar_rateio_vigente
+
+        hoje = datetime.now()
+        try:
+            percentuais_atuais, vigente_desde_atual = carregar_rateio_vigente(hoje.month, hoje.year)
+        except RuntimeError as e:
+            messagebox.showerror("Rateio não configurado", str(e))
+            return
+
+        dialogo = tk.Toplevel(root)
+        dialogo.title("Atualizar Rateio da Gerência")
+        dialogo.configure(bg=BG_CARD)
+        dialogo.resizable(False, False)
+        dialogo.transient(root)
+        dialogo.grab_set()
+
+        corpo_dlg = tk.Frame(dialogo, bg=BG_CARD, padx=24, pady=20)
+        corpo_dlg.pack(fill=tk.BOTH, expand=True)
+
+        tk.Label(
+            corpo_dlg, text=f"Rateio vigente hoje (desde {vigente_desde_atual}):",
+            bg=BG_CARD, fg=TEXTO_CLARO, font=("Segoe UI", 10, "bold"),
+        ).grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 12))
+
+        entradas = {}
+        for i, sigla in enumerate(ORDEM_UNIDADES_ATIVAS):
+            tk.Label(corpo_dlg, text=sigla, bg=BG_CARD, fg=TEXTO_CLARO, font=("Segoe UI", 10)).grid(
+                row=1 + i, column=0, sticky="w", pady=4
+            )
+            var = tk.StringVar(value=f"{percentuais_atuais.get(sigla, 0) * 100:.1f}".replace(".", ","))
+            ttk.Entry(corpo_dlg, textvariable=var, width=10).grid(
+                row=1 + i, column=1, sticky="w", padx=(12, 4), pady=4
+            )
+            tk.Label(corpo_dlg, text="%", bg=BG_CARD, fg=TEXTO_CLARO).grid(row=1 + i, column=2, sticky="w")
+            entradas[sigla] = var
+
+        linha_vig = 1 + len(ORDEM_UNIDADES_ATIVAS)
+        tk.Label(
+            corpo_dlg, text="Vigente a partir de (AAAA-MM):", bg=BG_CARD, fg=TEXTO_CLARO,
+            font=("Segoe UI", 10),
+        ).grid(row=linha_vig, column=0, columnspan=3, sticky="w", pady=(16, 4))
+        vigencia_var = tk.StringVar(value=f"{hoje.year:04d}-{hoje.month:02d}")
+        ttk.Entry(corpo_dlg, textvariable=vigencia_var, width=10).grid(
+            row=linha_vig + 1, column=0, sticky="w"
+        )
+
+        aviso_var = tk.StringVar(value="")
+        tk.Label(
+            corpo_dlg, textvariable=aviso_var, bg=BG_CARD, fg="#9C0006",
+            font=("Segoe UI", 9), wraplength=320, justify="left",
+        ).grid(row=linha_vig + 2, column=0, columnspan=3, sticky="w", pady=(8, 0))
+
+        botoes_frame = tk.Frame(corpo_dlg, bg=BG_CARD)
+        botoes_frame.grid(row=linha_vig + 3, column=0, columnspan=3, sticky="e", pady=(16, 0))
+
+        def salvar():
+            vigencia = vigencia_var.get().strip()
+            if len(vigencia) != 7 or vigencia[4] != "-":
+                aviso_var.set("Formato inválido. Use AAAA-MM, ex: 2026-08.")
+                return
+
+            try:
+                novos_percentuais = {
+                    sigla: round(float(var.get().replace(",", ".")) / 100, 4)
+                    for sigla, var in entradas.items()
+                }
+            except ValueError:
+                aviso_var.set("Digite só números nos campos de %, ex: 21 ou 21,5.")
+                return
+
+            soma = sum(novos_percentuais.values())
+            if abs(soma - 1.0) > 0.001:
+                prosseguir = _perguntar_sim_nao(
+                    "Soma diferente de 100%",
+                    f"Os percentuais somam {soma * 100:.1f}%, não 100%.\n\nQuer salvar assim mesmo?",
+                )
+                if not prosseguir:
+                    return
+
+            dados = _json.loads(RATEIO_CONFIG_PATH.read_text(encoding="utf-8"))
+            existente = next((e for e in dados["entradas"] if e["vigente_desde"] == vigencia), None)
+            carimbo = f"Atualizado pelo cockpit em {datetime.now():%Y-%m-%d %H:%M}."
+            if existente is not None:
+                existente["percentuais"] = novos_percentuais
+                existente["observacao"] = carimbo
+            else:
+                dados["entradas"].append(
+                    {"vigente_desde": vigencia, "percentuais": novos_percentuais, "observacao": carimbo}
+                )
+            RATEIO_CONFIG_PATH.write_text(_json.dumps(dados, ensure_ascii=False, indent=2), encoding="utf-8")
+            dialogo.destroy()
+            resumo = "\n".join(f"{s}: {p * 100:.1f}%" for s, p in novos_percentuais.items())
+            messagebox.showinfo("Rateio atualizado", f"Rateio salvo, vigente a partir de {vigencia}:\n{resumo}")
+
+        ttk.Button(botoes_frame, text="Cancelar", cursor="hand2", command=dialogo.destroy).pack(
+            side=tk.RIGHT, padx=(8, 0)
+        )
+        ttk.Button(
+            botoes_frame, text="Salvar", style="Pirelli.TButton", cursor="hand2", command=salvar
+        ).pack(side=tk.RIGHT)
+
+        dialogo.update_idletasks()
+        x = root.winfo_rootx() + (root.winfo_width() - dialogo.winfo_width()) // 2
+        y = root.winfo_rooty() + (root.winfo_height() - dialogo.winfo_height()) // 2
+        dialogo.geometry(f"+{max(0, x)}+{max(0, y)}")
+
     botoes[0][0].config(command=ao_clicar_extrair)
     botoes[1][0].config(command=ao_clicar_check)
     botoes[2][0].config(command=ao_clicar_lancar_provisoes)
     botoes[2][1].config(command=ao_clicar_atualizar_provisoes)
     botoes[3][0].config(command=ao_clicar_pivot)
     botoes[3][1].config(command=ao_clicar_finalizar_intermediaria)
+    botoes[4][0].config(command=ao_clicar_atualizar_rateio)
 
     root.mainloop()
 
