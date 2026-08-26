@@ -220,6 +220,16 @@ def ler_e_classificar(caminho_base_intermediaria: Path, mes: int, log):
     - contas_nao_mapeadas: set de (tipo, conta_geral, desc) cujo valor da
       coluna Conta Geral não bateu com nenhuma subcategoria esperada pro
       tipo (caiu no fallback Other Variable/Fixed)
+    - raw_por_mini_fabrica: {mini_fabrica (str): soma bruta de TODAS as
+      linhas com esse código, independente de classificação/escopo} - usado
+      pelo "check" por unidade (calcular_check_por_unidade), pra provar que
+      nada se perde silenciosamente na classificação (pedido explícito da
+      usuária, 2026-08-26).
+    - fora_de_escopo: lista de dicts (conta, descricao, mini_fabrica,
+      centro_custo, valor) pra linhas cujo Mini-Fábrica/Centro de Custo não
+      bate com nenhuma unidade ativa, Gerência ou unidade encerrada
+      conhecida - antes eram descartadas em silêncio, agora ficam
+      registradas pra aparecer na aba "Comentários" do arquivo gerado.
     Valores em '000 BRL, custo positivo (mesma convencao do arquivo antigo:
     o valor bruto do SAP vem negativo pra custo, aqui ja inverte o sinal).
 
@@ -238,6 +248,8 @@ def ler_e_classificar(caminho_base_intermediaria: Path, mes: int, log):
     totais_ativos = {sigla: {} for sigla in list(UNIDADES_ATIVAS.values()) + [SIGLA_GERENCIA]}
     residuos_encerradas = []
     contas_nao_mapeadas = set()
+    raw_por_mini_fabrica = {}
+    fora_de_escopo = []
 
     max_col = max(col_mes, COL_CONTA_GERAL)
     for row in ws.iter_rows(min_row=2, max_row=ws.max_row, max_col=max_col):
@@ -280,6 +292,12 @@ def ler_e_classificar(caminho_base_intermediaria: Path, mes: int, log):
         mini_fabrica_str = str(mini_fabrica).strip() if mini_fabrica is not None else ""
         centro_custo_str = str(centro_custo).strip() if centro_custo is not None else ""
 
+        # Soma bruta por Mini-Fábrica, independente de classificação/escopo -
+        # base do "check" por unidade (prova que o que entra no quadro bate
+        # com o total real da Base Intermediária pra aquele código).
+        if mini_fabrica_str:
+            raw_por_mini_fabrica[mini_fabrica_str] = raw_por_mini_fabrica.get(mini_fabrica_str, 0) + valor
+
         if mini_fabrica_str in UNIDADES_ATIVAS:
             sigla = UNIDADES_ATIVAS[mini_fabrica_str]
         elif mini_fabrica_str == GERENCIA_MINIFABRICA:
@@ -306,7 +324,18 @@ def ler_e_classificar(caminho_base_intermediaria: Path, mes: int, log):
         else:
             # Nem unidade ativa, nem Gerencia, nem unidade encerrada
             # conhecida (ex: FATURAMENTO, que ja e' pra ignorar) - fora de
-            # escopo, nao entra no quadro nem no aviso.
+            # escopo, nao entra no quadro nem no aviso principal, mas fica
+            # registrada (fora_de_escopo) pra aparecer na aba "Comentários" -
+            # antes era descartada em silêncio total (correção 2026-08-26).
+            fora_de_escopo.append(
+                {
+                    "conta": conta_int,
+                    "descricao": desc_conta,
+                    "mini_fabrica": mini_fabrica_str,
+                    "centro_custo": centro_custo_str,
+                    "valor": valor,
+                }
+            )
             continue
 
         totais_ativos[sigla][chave] = totais_ativos[sigla].get(chave, 0) + valor
@@ -318,7 +347,7 @@ def ler_e_classificar(caminho_base_intermediaria: Path, mes: int, log):
                 "nenhuma subcategoria esperada — caiu no 'Other Variable/Fixed' por padrão."
             )
 
-    return totais_ativos, residuos_encerradas, contas_nao_mapeadas
+    return totais_ativos, residuos_encerradas, contas_nao_mapeadas, raw_por_mini_fabrica, fora_de_escopo
 
 
 def _apenas_fixo(dados_unidade: dict, log=None, sigla="") -> dict:
