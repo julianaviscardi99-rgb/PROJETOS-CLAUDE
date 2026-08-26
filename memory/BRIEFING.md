@@ -3,6 +3,35 @@
 > Manter apenas as últimas 2 sessões inline — sessões mais antigas vão para long_term/.
 
 ---
+## Continuação 2026-08-26 (mesmo dia) — Passo 6 (Mensalização): escopo aprofundado com leitura real dos arquivos — AINDA EM ANÁLISE, nada implementado
+
+**Continua o escopo iniciado mais cedo hoje (ver bloco "NOVO PROJETO: Mensalização" abaixo).** Nada foi alterado em nenhum arquivo real - só leitura (win32com, ReadOnly=True, sempre `wb.Close(SaveChanges=False)`).
+
+**Achado-chave, lendo de verdade `MENS FITTED FLASH JULHO.xls` e `MENS FITTED ACTUAL JULHO.xls` (aba SJP, real, rede):**
+- Colunas Jan até o mês anterior ao que está fechando: valores fixos (colados), não fórmula.
+- **Coluna do mês que está fechando agora (ex: Julho): recebe o valor novo do Passo 5 (Rateio de Custos).** Conferido: o valor de "Labour" que já estava na coluna de Julho (349,83) bate EXATAMENTE com o que o Passo 5 calcula pra SJP em Julho (Variable/Labour) — confirma que o processo manual real já usa a saída do Rateio de Custos nesse ponto exato.
+- **Colunas do mês seguinte em diante até Dezembro: já vêm como FÓRMULAS VIVAS, linkadas a arquivos externos do próprio Forecast** (ex: linha "Labour" = `='...\07_Jul_Forecast\[Labour Cost FITTED - R07 2026.xlsx]Sheet2'!C7/1000`) — **não são tocadas em nenhum momento**, só "vêm de brinde" ao copiar o Forecast como base.
+- Isso vale tanto pro arquivo Flash quanto pro Actual (o Actual de Julho também tem Ago-Dez linkados ao mesmo Forecast R7) — confirma que Actual e Flash do mesmo mês compartilham a mesma linhagem de template (ambos nasceram de uma cópia do Forecast).
+
+**Confirmado pela usuária (respostas diretas):**
+1. Só mexe na coluna do mês que está fechando - já considera o rateio (Passo 5).
+2. Linhas 18 (Variable Cost, `=SUM(linha19:linha24)`), 31 (Fixed Cost, `=SUM(linha32:linha37)`) e 26 (Variabile/Pc, `=IF(AND(linha18>0,linha8>0),linha18/linha8,0)`) são fórmulas e **devem continuar fórmula, nunca virar valor fixo**.
+3. **Decisão de implementação (dela, "veja o que é mais fácil"):** a forma mais simples é **nunca tocar nas linhas 18/31/26** - só colar os valores novos do Passo 5 nas linhas de DETALHE (19-23: Labour/Handling/Direct Materials/Transportation/Other Variable; 32-37: Labour/Depreciation/IFRS16/Rents/Condominio/Other Fixed) - como 18/31/26 são fórmulas que somam/dividem essas mesmas linhas, recalculam sozinhas sem precisar "consertar" nada depois.
+4. Check confirmado: comparar a linha **TOTAL COST** (linha 39, `=linha31+linha18`) contra o Total Costs por unidade que o Passo 5 já calcula (mesmo racional do check por unidade que já existe no Passo 5).
+
+**Abas confirmadas (sessão anterior, hoje):** só as 5 visíveis - SJP, IBI, GO, RES, TOTAL (arquivo real tem 11 abas no total, as outras 6 - Action Plan Ibirite, MDO, Rateio Fixo, Confronto, Sheet1, Proposta - ficam de fora).
+
+**Caso "sem Forecast" (ex: Agosto/2026 agora) - confirmado com exemplo real histórico:** usuária indicou `\\FSS024-01BR.group.pirelli.com\GFU_CUSTOS\00. YTD2025\FORECAST\2025\08_Flash_Ago\` (pasta antiga, ano passado) - achei dois arquivos: `MENS FITTED 2025 FLASH AGO com JUL EFETIVO.xls` (`S5="R7 JUL act"`) e `MENS FITTED 2025 FLASH AGO.xls` (`S5="R7"`). **Usuária confirmou: o arquivo "com JUL EFETIVO" é o FINAL** (ela acha que só o nome ficou "errado"/não-padrão, não é um problema de fundo) - racional confirmado: pega o Actual de Julho como base (números), atualiza com o comparativo do Fcst R7 (a "perfumaria"). Nome final do arquivo em produção: detalhe menor, decidir na hora de implementar.
+
+**Escopo excluído (confirmado pela usuária):**
+- Tudo abaixo do EBIT/ROS% (depende de Faturamento) - fora, mesma decisão já tomada antes pro Faturamento.
+- Net Sales - "ainda vamos fazer depois, agora quero focar nos custos".
+- MP26 - só ajustado no Flash de Janeiro, ainda não explicado (usuária vai detalhar depois).
+
+### PRÓXIMO PASSO
+Perguntei à usuária se quer continuar explicando mais alguma parte da mensalização, ou se já é suficiente pra eu começar a desenhar a automação (ainda NADA foi implementado - só leitura/reconhecimento até agora). Aguardando resposta.
+
+---
 ## Continuação 2026-08-26 (mesmo dia) — NOVO PROJETO: "Mensalização" (Passo 6) — em análise/scoping, ainda não implementado
 
 **Pedido da usuária:** automatizar o "arquivo de mensalização" (hoje 100% manual) — Passo 6 do processo recorrente, depois do Rateio de Custos (Passo 5). Só conversa de escopo até agora, **nada implementado, nada alterado na rede** (só li arquivos existentes, via PowerShell/win32com read-only).
