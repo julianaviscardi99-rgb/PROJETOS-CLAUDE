@@ -11,17 +11,31 @@
 - **Março:** SJP, IBI e GOI bateram **exato** (diff 0,00 nos três).
 - **Fevereiro:** diffs pequenos — SJP -R$0,20 mil, IBI -R$0,46 mil, GOI -R$0,30 mil (total -R$0,96 mil). **100% explicado, não é erro:** fevereiro teve um resíduo de unidade encerrada (ITATIAIA, conta 4247200 "Despesas Sociais", R$ -0,96 mil) que a regra de negócio manda somar à Gerência antes do rateio (regra confirmada em 2026-08-25) — o arquivo antigo não tinha esse resíduo redistribuído dessa forma. -0,9588 × 21%/48%/31% = exatamente os 3 diffs observados. **Fevereiro fechado, sem pendência** (diferença é a regra de resíduo funcionando como desenhado, não um bug).
 
-**Consolidado dos 6 meses testados até agora (Fev-Jul/2026, Actual) — TODOS batem ou têm diferença 100% explicada e esperada:**
+**Investigação de Jan/Mai/Jun (pedido explícito da usuária: "não pode ter diferenças"):**
+
+**Achado sistemático, CONFIRMADO, mas neutro no total:** a conta `4255200` "Recuperação PIS/COFINS Depreciação" é um crédito fixo de **R$0,81 mil todo mês** (mesmo valor em Jan/Mai/Jun/Jul, conferido no arquivo antigo). Na Base Intermediária ela vem com Conta Geral (AJ) = "Others" → cai em "Other Fixed" pelo fallback do script (`_resolver_subcategoria`). No arquivo antigo, essa mesma conta sempre foi somada dentro de "Depreciation" (linha própria, seção "Depreciation" da aba por unidade). **Não muda o Total Costs** (só desloca valor entre "Depreciation" e "Other Fixed" dentro do Fixed Cost) — mas explica quase 100% do diff de Jan (-R$0,66 mil ≈ -0,81+0,16) e de Jun (-R$0,35 mil ≈ -0,81+0,46) nas categorias individuais. **PENDENTE DECISÃO DA USUÁRIA:** tratar 4255200 como exceção (forçar pra "Depreciation" mesmo a Base Intermediária dizendo "Others"), ou aceitar como está (o Total bate igual, só a categoria interna muda)?
+
+**Resíduo real ainda não explicado: Maio (R$4,07 mil em IBI).** Diferente de Jan/Jun, a conta 4255200 sozinha não explica o diff de Maio (que é category-neutro por definição — não move o total). Sobra ~R$4 mil de diferença real não rastreada até uma conta específica. Ordem de grandeza pequena (<0,15% do total de IBI) mas ainda não é zero. **PENDENTE:** perguntei à usuária se quer que eu continue investigando essa sobra ou se aceita esse nível de precisão.
+
+**Consolidado dos 7 meses testados até agora (Jan-Jul/2026, Actual):**
 | Mês | Resultado |
 |---|---|
+| Jan | diff pequeno (R$0,66 mil em IBI) — quase 100% explicado pela conta 4255200 (category-neutro) |
 | Fev | diff pequeno (R$0,96 mil), explicado por resíduo Itatiaia + regra de negócio |
 | Mar | exato |
 | Abr | diff explicado pela usuária (lançamento manual dela, não estava no arquivo antigo) |
-| Mai | diff pequeno (R$4,07 mil em IBI), não investigado a fundo — ordem de grandeza pequena |
-| Jun | diff pequeno (R$0,35 mil em IBI), irrelevante |
+| Mai | **diff real não totalmente explicado (R$4,07 mil em IBI)** — pendente |
+| Jun | diff pequeno (R$0,35 mil em IBI) — quase 100% explicado pela conta 4255200 (category-neutro) |
 | Jul | exato (validado na sessão anterior, 2026-08-25) |
 
+Agosto/2026 ainda não fechou (usuária confirmou) — não testado, não testável ainda.
+
 **Nada salvo na rede** — só a pasta de teste local (`data/processed/fitted_units_despesas/rateio_custos_teste/`) e leitura dos arquivos antigos (copiados pro scratchpad da sessão, nunca alterados).
+
+### PRÓXIMO PASSO (pendente, aguardando a usuária)
+1. Decisão sobre a conta 4255200 (forçar exceção pra "Depreciation" ou manter como "Other Fixed").
+2. Se quer que eu continue investigando o resíduo de R$4,07 mil de Maio/IBI.
+3. Usuária disse "não pode ter diferenças" — depois de Jan/Fev/Mar/Abr/Mai/Jun/Jul testados, só Maio ainda tem resíduo genuinamente não rastreado. Definir se isso bloqueia a aprovação do Passo 5 ou se é aceitável.
 
 ### Testes de Abril/Maio/Junho — histórico da investigação (mantido abaixo para contexto)
 
