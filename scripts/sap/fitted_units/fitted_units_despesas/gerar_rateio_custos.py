@@ -12,17 +12,24 @@ memory/DECISOES.md dessa data pro historico completo da conversa):
 
 1. Le a aba "Intermediaria" da Base Intermediaria do mes/Ciclo (mesma pra
    Actual e Flash, sem excecao) e classifica cada linha por Mini-Fabrica
-   (unidade), usando as colunas AA ("Var.") e AJ ("Conta Geral") - ja
-   resolvidas pela propria Base Intermediaria, mais confiaveis que a coluna
-   H ("Tp.Custo", que vem em branco pra algumas unidades) e que qualquer
-   mapeamento proprio por conta (pedido explicito da usuaria, 2026-08-25:
-   "usa a base intermediaria... os valores tem que voltar exatamente" -
-   ver _resolver_subcategoria).
+   (unidade), usando EXCLUSIVAMENTE as colunas AA ("Var.") e AJ ("Conta
+   Geral") - ja resolvidas pela propria Base Intermediaria. A coluna H
+   ("Tp.Custo") NUNCA e' lida nem considerada pra classificacao (vem em
+   branco pra algumas unidades, e mesmo onde vem preenchida nao e' a fonte
+   de verdade - correcao explicita da usuaria, 2026-08-26). Mapeamento
+   proprio por conta tambem foi abandonado (pedido explicito da usuaria,
+   2026-08-25: "usa a base intermediaria... os valores tem que voltar
+   exatamente" - ver _resolver_subcategoria).
 2. Unidades ativas: SJP (0490), IBI (0491), GOI (0481), RES (0483).
    Gerencia (0499) e' tratada como uma "unidade" a parte (coluna GER no
    quadro sem rateio), nao recebe nem manda rateio pra si mesma. A
-   Gerencia e' sempre 100% Fixa (confirmado pela usuaria) - custo Variavel
-   dela, se aparecer, e' ignorado no rateio (ver _apenas_fixo).
+   Gerencia e' sempre 100% Fixa POR DEFINICAO DE NEGOCIO, nao por
+   coincidencia: custo Variavel e' custo ligado a producao, e a Gerencia
+   nao produz - logo nao deveria existir nenhum custo Variavel nela
+   (correcao explicita da usuaria, 2026-08-26). Se a Base Intermediaria
+   trouxer algo tipo='V' pra Gerencia mesmo assim (deveria ser impossivel),
+   e' tratado como anomalia de lancamento e ignorado no rateio, nunca
+   silenciosamente - ver _apenas_fixo.
 3. Unidades ENCERRADAS (ontology/fitted_units.json ->
    centros_de_custo_por_unidade, status "encerrada", chave por Centro de
    Custo - mesma fonte que gerar_base_intermediaria.py ja usa) nunca entram
@@ -104,14 +111,13 @@ ORDEM_VARIAVEL = ["Labour", "Handling", "Direct Materials", "Transportation", "O
 ORDEM_FIXO = ["Labour", "Depreciation", "IFRS16", "Rents", "Condominio", "Other Fixed"]
 
 # A Base Intermediária (aba Intermediária) já traz, em colunas próprias,
-# a classificação RESOLVIDA de cada linha - achado em 2026-08-25: a coluna
-# H ("Tp.Custo") vem em branco pra algumas unidades (ex: todo o SJP em
-# Julho/2026 veio em branco), mas as colunas AA ("Var.") e AJ ("Conta
-# Geral") vêm sempre preenchidas. Pedido explícito da usuária: "usa a base
-# intermediária... os valores têm que voltar exatamente" - usar essas
-# colunas prontas (em vez de reclassificar por conta na mão, que já deu
-# resultado errado pra Handling/Rents num teste anterior) é o que faz os
-# valores baterem de verdade.
+# a classificação RESOLVIDA de cada linha. Usamos EXCLUSIVAMENTE AA ("Var.")
+# e AJ ("Conta Geral") - a coluna H ("Tp.Custo") nunca é lida (correção
+# explícita da usuária, 2026-08-26: não é só que H "vem em branco às vezes",
+# é que H nunca deve ser considerado pra variabilidade, ponto final). Usar
+# essas colunas prontas (em vez de reclassificar por conta na mão, que já
+# deu resultado errado pra Handling/Rents num teste anterior) é o que faz
+# os valores baterem de verdade.
 COL_VAR = 27          # AA - 'F' ou 'V', já resolvido linha a linha
 COL_CONTA_GERAL = 36  # AJ - subcategoria (Labour, Handling, Depreciations,
                       # IFRS16 (Amortization), Rents, Transport, Others,
@@ -217,12 +223,10 @@ def ler_e_classificar(caminho_base_intermediaria: Path, mes: int, log):
     Valores em '000 BRL, custo positivo (mesma convencao do arquivo antigo:
     o valor bruto do SAP vem negativo pra custo, aqui ja inverte o sinal).
 
-    Classificação Variável/Fixo e subcategoria vêm DIRETO das colunas AA
-    ("Var.") e AJ ("Conta Geral") da própria Base Intermediária (achado real
-    em 2026-08-25: a coluna H "Tp.Custo" vem em branco pra algumas unidades,
-    mas AA/AJ vêm sempre preenchidas - são a classificação já resolvida,
-    pedido explícito da usuária pra usar a Base Intermediária como
-    referência)."""
+    Classificação Variável/Fixo e subcategoria vêm DIRETO e EXCLUSIVAMENTE
+    das colunas AA ("Var.") e AJ ("Conta Geral") da própria Base
+    Intermediária - a coluna H ("Tp.Custo") nunca é lida nem considerada
+    (correção explícita da usuária, 2026-08-26)."""
     wb = __import__("openpyxl").load_workbook(
         caminho_base_intermediaria, read_only=True, data_only=True, keep_links=False
     )
@@ -318,12 +322,14 @@ def ler_e_classificar(caminho_base_intermediaria: Path, mes: int, log):
 
 
 def _apenas_fixo(dados_unidade: dict, log=None, sigla="") -> dict:
-    """O custo da Gerência é 100% Fixo por definição (confirmado pela
-    usuária, 2026-08-25) - custo Variável não existe pra ela e NUNCA deve
-    entrar no rateio. Filtra o dicionário {(tipo, subcategoria): valor}
-    mantendo só as chaves tipo='F'. Se aparecer algo tipo='V' com valor
-    (não deveria, mas a Base Intermediária é a fonte de verdade e pode trazer
-    isso por engano de lançamento), avisa e ignora - nunca vira rateio."""
+    """O custo da Gerência é 100% Fixo por definição de negócio (correção
+    explícita da usuária, 2026-08-26): custo Variável é custo ligado à
+    produção, e a Gerência não produz - então não deveria existir NENHUM
+    custo Variável nela, nunca. Filtra o dicionário {(tipo, subcategoria):
+    valor} mantendo só as chaves tipo='F'. Se aparecer algo tipo='V' com
+    valor mesmo assim (não deveria ser possível, mas a Base Intermediária é
+    a fonte de verdade e pode trazer isso por engano de lançamento), é
+    tratado como anomalia: avisa e ignora - nunca vira rateio."""
     resultado = {}
     for chave, valor in dados_unidade.items():
         if isinstance(chave, tuple) and chave[0] == "V":
