@@ -562,6 +562,30 @@ def main():
 
     botoes = {}
 
+    def _rateio_precisa_confirmacao_janeiro():
+        """True se hoje for Janeiro E ninguém tiver salvo uma entrada de
+        rateio específica pra esse ano (vigente_desde == 'AAAA-01') ainda -
+        pedido explícito da usuária (2026-08-25, implementado 2026-08-26):
+        o rateio geralmente muda em Janeiro, e ela quer ser avisada na tela
+        do cockpit se esquecer de confirmar/atualizar. Não bloqueia nada -
+        se ninguém confirmar, `carregar_rateio_vigente` simplesmente segue
+        usando a entrada anterior (comportamento já garantido, sem risco de
+        travar o fechamento por causa do aviso)."""
+        hoje = datetime.now()
+        if hoje.month != 1:
+            return False
+        try:
+            from gerar_rateio_custos import RATEIO_CONFIG_PATH
+            import json as _json
+
+            dados = _json.loads(RATEIO_CONFIG_PATH.read_text(encoding="utf-8"))
+        except Exception:
+            return False
+        alvo = f"{hoje.year:04d}-01"
+        return not any(e.get("vigente_desde") == alvo for e in dados.get("entradas", []))
+
+    aviso_rateio_janeiro = _rateio_precisa_confirmacao_janeiro()
+
     def fazer_aba(passo, indice):
         aba = ttk.Frame(notebook, style="Card.TFrame", padding=24)
         notebook.add(aba, text=passo["aba"])
@@ -570,6 +594,18 @@ def main():
         ttk.Label(aba, text=passo["descricao"], style="Descricao.TLabel", justify="left").pack(
             anchor="w", pady=(8, 20)
         )
+
+        if indice == 4 and aviso_rateio_janeiro:
+            tk.Label(
+                aba,
+                text=(
+                    "⚠  É Janeiro — ninguém confirmou o % de rateio da Gerência pra este "
+                    "ano ainda. Se não mudou, clique 'Atualizar Rateio' e salve com a mesma "
+                    "vigência pra confirmar; se mudou, atualize os percentuais."
+                ),
+                bg="#FBEAEA", fg="#9C0006", font=("Segoe UI", 10, "bold"),
+                justify="left", wraplength=620, padx=12, pady=8,
+            ).pack(anchor="w", fill=tk.X, pady=(0, 16))
 
         widgets = []
         rotulos = passo["botoes"]
@@ -582,6 +618,20 @@ def main():
 
     for i, passo in enumerate(PASSOS):
         fazer_aba(passo, i)
+
+    if aviso_rateio_janeiro:
+        # Alem do banner na aba (que so' aparece se ela clicar la'), avisa na
+        # hora que a janela abre - garante que ela ve mesmo sem entrar na
+        # aba de Rateio de Custos.
+        root.after(
+            600,
+            lambda: messagebox.showwarning(
+                "Rateio da Gerência — confirmar pra este ano",
+                "É Janeiro e ninguém confirmou (ou atualizou) o % de rateio da Gerência "
+                "pra este ano ainda.\n\nVá na aba '⑤ Rateio de Custos' → 'Atualizar Rateio' "
+                "pra confirmar (mesmo que os percentuais não mudem).",
+            ),
+        )
 
     # --- Console de log (compartilhado, sempre visivel embaixo) ------
     ttk.Label(corpo, text="LOG", font=("Consolas", 8, "bold"), style="TLabel").pack(
