@@ -7,7 +7,15 @@ arquivo "Gestoriais" do mesmo mes.
 Regra de negocio (confirmada pela Juliana em 2026-08-10):
 - Check 1: no "Sem Agrupamento", ignorar as contas contabeis que nao entram
   nessa comparacao porque nunca vao ter agrupamento gestorial (contas fixas
-  da lista IGNORAR_EXATAS + qualquer conta que comece com "B").
+  da lista IGNORAR_EXATAS + qualquer conta que comece com "B"). Cada conta
+  em IGNORAR_EXATAS tem um "vigente_desde" (mes/ano, formato 'AAAA-MM') -
+  None significa "sempre ignorada"; um mes/ano especifico significa que so
+  passa a ser ignorada A PARTIR daquele fechamento (mesmo racional de
+  vigencia do rateio da Gerencia, ontology/rateio_gerencia.json) - pedido
+  explicito da usuaria, 2026-08-26: "N410400000" so' deve ser ignorada a
+  partir do fechamento de Agosto/2026 em diante, sem data final. Meses
+  ANTERIORES a essa vigencia continuam checando a conta normalmente (ela
+  entra no Check 2 igual qualquer outra conta nao-ignorada).
 - Check 2: das contas que sobraram, verificar se todas aparecem no arquivo
   "Gestoriais". As que nao aparecerem precisam ser mandadas para o time de
   controladoria central vincular ao agrupamento gestorial.
@@ -30,12 +38,16 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "_shared"))
 from ksb1_core import localizar_extracao_ksb1  # noqa: E402
 
 IGNORAR_EXATAS = {
-    "C23020JJ15",
-    "K610100000",
-    "M120400001",
-    "M12040J001",
-    "M130120110",
-    "B220400000",
+    "C23020JJ15": None,
+    "K610100000": None,
+    "M120400001": None,
+    "M12040J001": None,
+    "M130120110": None,
+    "B220400000": None,
+    # Vigente a partir do fechamento de Agosto/2026, sem data final - pedido
+    # explícito da usuária, 2026-08-26. Meses anteriores (Jan-Jul/2026)
+    # continuam checando essa conta normalmente.
+    "N410400000": "2026-08",
 }
 
 COL_CONTA = 4   # "Classe de custo"
@@ -45,8 +57,20 @@ AMARELO_INDEXED = {13}
 AMARELO_RGB = {"FFFFFF00", "00FFFF00", "FFFFFF00FF"}
 
 
-def eh_conta_ignorada(conta: str) -> bool:
-    return conta in IGNORAR_EXATAS or conta.upper().startswith("B")
+def eh_conta_ignorada(conta: str, mes: int, ano: int) -> bool:
+    """True se `conta` deve ser ignorada no Check 1 pro mes/ano dados.
+    Contas começadas com "B" são sempre ignoradas (padrão, não lista
+    fechada). As demais vêm de IGNORAR_EXATAS - cada uma com seu
+    'vigente_desde' (None = sempre; 'AAAA-MM' = só a partir daquele
+    fechamento, nunca antes)."""
+    if conta.upper().startswith("B"):
+        return True
+    if conta not in IGNORAR_EXATAS:
+        return False
+    vigente_desde = IGNORAR_EXATAS[conta]
+    if vigente_desde is None:
+        return True
+    return f"{ano:04d}-{mes:02d}" >= vigente_desde
 
 
 def linha_e_subtotal(ws, r: int) -> bool:
@@ -92,7 +116,7 @@ def gerar_check(mes: int, ano: int, ciclo: str, log=print) -> Path:
     linhas_filtradas = []
     for conta, valor in linhas_sem:
         soma_por_conta_sem[conta] = soma_por_conta_sem.get(conta, 0.0) + valor
-        if not eh_conta_ignorada(conta):
+        if not eh_conta_ignorada(conta, mes, ano):
             linhas_filtradas.append((conta, valor))
 
     contas_faltando = {}
@@ -118,7 +142,8 @@ def gerar_check(mes: int, ano: int, ciclo: str, log=print) -> Path:
 
     ws.append(["Check 1: contas ignoradas (nunca têm agrupamento gestorial)"])
     ws.append(["Conta contábil", "Valor no Sem Agrupamento"])
-    for conta in sorted(IGNORAR_EXATAS):
+    contas_ignoradas_no_mes = sorted(c for c in IGNORAR_EXATAS if eh_conta_ignorada(c, mes, ano))
+    for conta in contas_ignoradas_no_mes:
         ws.append([conta, soma_por_conta_sem.get(conta, 0.0)])
     for conta in contas_b_encontradas:
         ws.append([conta, soma_por_conta_sem[conta]])
