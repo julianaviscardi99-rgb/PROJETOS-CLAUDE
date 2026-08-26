@@ -3,6 +3,35 @@
 > Manter apenas as últimas 2 sessões inline — sessões mais antigas vão para long_term/.
 
 ---
+## Continuação 2026-08-26 (mesmo dia) — NOVO PROJETO: "Mensalização" (Passo 6) — em análise/scoping, ainda não implementado
+
+**Pedido da usuária:** automatizar o "arquivo de mensalização" (hoje 100% manual) — Passo 6 do processo recorrente, depois do Rateio de Custos (Passo 5). Só conversa de escopo até agora, **nada implementado, nada alterado na rede** (só li arquivos existentes, via PowerShell/win32com read-only).
+
+**Onde vive (confirmado explorando a rede):** `\\FSS024-01BR.group.pirelli.com\EO_FITTED\BU FITTED\Forecast\`, com subpastas `Fcst` (Forecast por revisão: `Fcst 2026\R1 2026` ... hoje até `R7 2026`), `Flash` (por mês: `Flash\2026\07 - July`), `Actual` (por mês: `Actual\2026\07 - July`), mais `MP`, `Pre Flash`, `SP` (ainda não explorados).
+
+**Convenção de nome de arquivo (confirmada):** `MENS FITTED <CICLO> <MÊS EM PORTUGUÊS>.xls` (formato antigo `.xls`, não `.xlsx`) — ex: `MENS FITTED FORECAST JULHO.xls` (em `Fcst\Fcst 2026\R7 2026\`), `MENS FITTED FLASH JULHO.xls` (em `Flash\2026\07 - July\`), `MENS FITTED ACTUAL JULHO.xls` (em `Actual\2026\07 - July\`).
+
+**Regra da base pro Flash:**
+- Normal: copiar o Forecast (Rn) mais recente existente.
+- Exceção (mês sem Forecast ainda, ex: Agosto/2026 agora — só existe até R7/Julho): usar o **Actual do mês anterior** como base dos NÚMEROS, mas ainda assim usar o **último Forecast (R7)** como fonte das colunas de "cenário de comparação" (a "perfumaria": E5/S5/C47/linha 47/Q→S) — ou seja, combina 2 arquivos-fonte nesse caso (Actual pros números + último Forecast pro cenário de comparação). **Usuária indicou olhar o arquivo real "Flash Agosto de 2025" pra ver como foi feito da vez passada** — **procurei e NÃO ACHEI ainda** (Flash\2025\ só tem Out/Nov/Dez; Pre Flash está vazio; busca recursiva por "AGOSTO"+"FLASH" na árvore inteira do Forecast não achou nada). **PRECISO PERGUNTAR À USUÁRIA onde esse arquivo está** antes de continuar essa parte.
+- Número da revisão R1-R12 = mês do refresh (R1=Jan, R2=Fev, ..., R7=Jul, confirmado pela usuária) - não pula números, é 1:1 com o mês.
+
+**Abas que entram no processo (confirmado):** só as 5 abas VISÍVEIS — **SJP, IBI, GO/GOI, RES, TOTAL**. O arquivo real de Julho tem 11 abas no total (as 5 + `Action Plan Ibirite, MDO, Rateio Fixo, Confronto, Sheet1, Proposta`) — as outras 6 ficam de fora do processo (provavelmente ocultas/auxiliares, não confirmado explicitamente mas inferido da resposta "todas as abas que estão abertas").
+
+**Mecânica da "perfumaria" (edições cosméticas), confirmada olhando o arquivo real `MENS FITTED FLASH JULHO.xls` (só leitura):**
+- Só editar direto na aba **SJP** (as outras abas puxam o cenário dela por fórmula, propaga sozinho) - MAS os passos de linha 47 e Q→S precisam ser repetidos em cada uma das 5 abas (não propaga via fórmula).
+- `E5`: texto do Ciclo → "Flash" (confirmado no arquivo real: `FLASH`)
+- `S5`: número da revisão → "R7" (confirmado: `R7`)
+- `C47`: mesmo número de revisão → "R7" (confirmado: `R7`)
+- `E47:Q47` ← copia de `E43:Q43` (confirmado nas duas linhas do arquivo real, quase idênticas - 1 coluna diferente, provavelmente ajuste manual posterior, não investigado a fundo)
+- `S8:S44` ← cola como VALOR o que está em `Q8:Q44` (confirmado: valores diferentes entre as duas colunas no arquivo real, consistente com "colar como valor" e não fórmula viva)
+- Depois: renomear o arquivo (trocar o nome do Ciclo de origem pelo novo, ex: "FORECAST"→"FLASH", mês mantém).
+- **MP26**: só ajustado no Flash de Janeiro, usuária vai explicar separadamente mais pra frente ("de perfumaria é isso").
+
+### PRÓXIMO PASSO (bloqueado, aguardando a usuária)
+**Perguntar onde está o arquivo real "Flash Agosto de 2025"** (ela indicou pra eu olhar e entender o caso "sem Forecast", mas não achei no caminho esperado - `Flash\2025\` só tem Out/Nov/Dez). Depois disso, ela ainda vai continuar explicando "a atualização do arquivo" (a parte de atualizar os números de verdade, além dessa "perfumaria" inicial) - ainda não chegamos nessa parte.
+
+---
 ## Continuação 2026-08-26 (mesmo dia) — Lembrete automático de rateio em Janeiro implementado; Resende confirmada pra Agosto
 
 **Usuária corrigiu um detalhe:** Resende recebe os PRIMEIROS custos reais em **Agosto** (não "mês que vem" como eu tinha entendido antes — Agosto é o mês corrente). Ou seja, a validação de RES com dado real só vai ser possível no fechamento de Agosto (ela confirmou isso também: "validar resende vai ser possivel apenas no fechamento de agosto").
