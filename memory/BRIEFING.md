@@ -3,6 +3,26 @@
 > Manter apenas as últimas 2 sessões inline — sessões mais antigas vão para long_term/.
 
 ---
+## Continuação 2026-08-26 (mesmo dia) — Passo 5: mais 2 contas forçadas (Handling/Transportation) — Passo 6 agora bate 100% exato (exceto linha fora de escopo)
+
+**Pedido da usuária:** "tenta encontrar o motivo pelo qual se divide" sobre a diferença Handling/Other Variable que apareceu no Passo 6 — investiguei a fundo, olhando conta por conta (não só "Aluguéis" isolado) nos 7 meses.
+
+**Achado (confirmado nos 7 meses, 3 unidades - não é coincidência de um mês só):**
+- Conta `4257000` "Aluguéis", quando Variável (AJ="Rents", que não existe como categoria Variável) → o arquivo real **sempre** classifica em **"Handling"**, nunca "Other Variable" (fallback do script).
+- Conta `4211000` "Transporte De Mats. Vários", quando Variável → o arquivo real **sempre** classifica em **"Transportation"**, MESMO nas linhas em que a própria Conta Geral (AJ) vem "Others" em vez de "Transport" (a mesma conta aparece com os dois valores de AJ dependendo do centro de custo/mês - o arquivo real classifica pelo NÚMERO DA CONTA, não pela AJ daquela linha específica).
+
+**Implementado:** `CONTAS_FORCADAS_HANDLING_VARIAVEL = {4257000}` e `CONTAS_FORCADAS_TRANSPORTATION_VARIAVEL = {4211000}` em `gerar_rateio_custos.py` (mesmo racional da exceção já existente pra conta 4255200/Depreciation). Revalidado: 7 meses × 2 Ciclos (Actual+Flash) = 14 combinações, todos os checks por unidade continuam ✓ (mudança category-neutra, não afeta nenhum total).
+
+**Resultado no Passo 6 (Mensalização):** revalidei linha a linha contra o arquivo real de Julho/2026 Flash - **agora bate 100% exato em TODAS as linhas de custo, nas 5 abas** (SJP/IBI/GO/RES/TOTAL). A única diferença que sobra é a linha 26 (Variabile/Pc), que depende de Pieces/Net Sales - fora de escopo, esperado.
+
+**Commitado.**
+
+### PRÓXIMO PASSO
+1. Ainda existe 1 aviso residual não resolvido: conta 4211000 "Transporte De Mats. Vários" quando **Fixo** (tipo='F') com AJ="Transport" (que também não existe como categoria Fixa) - só apareceu em Jan/Fev/2026 até agora, não confirmado com a usuária ainda, não corrigido.
+2. Testar o caso "sem Forecast" (Agosto/2026 de verdade) quando o Passo 5 de Agosto estiver pronto.
+3. Net Sales (Pieces) e MP26 - ainda não escopados em detalhe.
+
+---
 ## Continuação 2026-08-26 (mesmo dia) — Passo 6 (Mensalização): PRIMEIRA VERSÃO FUNCIONANDO (caso normal, Flash), validada contra Julho real
 
 **Usuária confirmou entender o escopo (rateio flexionado por volume nos custos variáveis, direto nos fixos - conferido e correto) e mandou: "pode começar a automatizar em ambiente de teste, nao quero nada na rede ainda".**

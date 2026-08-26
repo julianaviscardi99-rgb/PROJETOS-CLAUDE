@@ -149,6 +149,20 @@ _CONTA_GERAL_PARA_SUBCATEGORIA = {
 # só corrige a categoria pra bater com o histórico.
 CONTAS_FORCADAS_DEPRECIATION = {4255200}
 
+# Duas exceções pontuais a mais (mesmo racional acima), achadas em
+# 2026-08-26 comparando o Passo 6 (Mensalização) linha a linha contra o
+# arquivo real de Julho/2026 Flash, e confirmadas nos 7 meses (Jan-Jul) e
+# nas 3 unidades (SJP/IBI/GOI) - sempre a mesma conta, sempre a mesma
+# categoria, independente do que a Conta Geral (AJ) diz naquela linha:
+# - 4257000 "Aluguéis", quando Variável (vem com AJ="Rents", que não existe
+#   como categoria Variável) -> sempre "Handling" no arquivo real.
+# - 4211000 "Transporte De Mats. Vários", quando Variável -> sempre
+#   "Transportation" no arquivo real, mesmo nas linhas em que a Conta Geral
+#   vem "Others" em vez de "Transport" (a mesma conta aparece com os dois
+#   valores de AJ dependendo do centro de custo/mês).
+CONTAS_FORCADAS_HANDLING_VARIAVEL = {4257000}
+CONTAS_FORCADAS_TRANSPORTATION_VARIAVEL = {4211000}
+
 
 def _resolver_subcategoria(tipo: str, conta_geral):
     """Traduz o valor da coluna AJ (Conta Geral) da Base Intermediária pro
@@ -290,6 +304,10 @@ def ler_e_classificar(caminho_base_intermediaria: Path, mes: int, log):
             chave = "Não Classificado"
         elif conta_int in CONTAS_FORCADAS_DEPRECIATION:
             chave = ("F", "Depreciation")
+        elif tipo == "V" and conta_int in CONTAS_FORCADAS_HANDLING_VARIAVEL:
+            chave = ("V", "Handling")
+        elif tipo == "V" and conta_int in CONTAS_FORCADAS_TRANSPORTATION_VARIAVEL:
+            chave = ("V", "Transportation")
         else:
             subcat = _resolver_subcategoria(tipo, conta_geral)
             if subcat is None:
