@@ -3,6 +3,24 @@
 > Manter apenas as últimas 2 sessões inline — sessões mais antigas vão para long_term/.
 
 ---
+## Continuação 2026-08-26 (mesmo dia) — Rateio de Custos: check por unidade + aba "Comentários" implementados; pedido de botão de rateio no cockpit (EM ANDAMENTO)
+
+**Contexto:** depois de investigar Jan/Mai/Jun (ver bloco abaixo) a usuária perguntou "você acha que o arquivo vai se comportar certo nos próximos meses?" — respondi que a lógica é consistente nos 7 meses testados (todo diff teve explicação de negócio ou foi confirmado por ela), mas que comparar contra arquivos antigos CONGELADOS tem limite (não prova nada sobre "ao vivo") — sugeri um teste em paralelo no fechamento real de Agosto em vez de continuar cavando meses antigos. Ela não respondeu diretamente essa sugestão ainda; em vez disso pediu 3 coisas novas:
+
+1. **Um "check" logo abaixo do Total de cada unidade, no quadro "sem rateio"** — IMPLEMENTADO e testado (Jan-Jul, todos ✓). Adicionei `raw_por_mini_fabrica` (soma bruta por Mini-Fábrica, sem passar pela classificação V/F) em `ler_e_classificar`, e `calcular_check_por_unidade` compara isso contra o total que realmente entrou no quadro pra cada unidade (SJP/IBI/GOI/RES/GER, considerando pra GER o resíduo de encerradas somado). Uma linha "Check (bate c/ Base Interm.)" aparece logo abaixo de "Total Costs" no quadro 1, com ✓ verde ou um aviso vermelho com o valor da diferença.
+2. **Aba nova "Comentários"** — IMPLEMENTADA: reúne o resultado do check por unidade (tabela), linhas "fora de escopo" (Mini-Fábrica/Centro de Custo não reconhecido - **antes eram descartadas em silêncio total, agora ficam registradas** via `fora_de_escopo`, novo retorno de `ler_e_classificar`), e as contas com Conta Geral (AJ) não reconhecida (`contas_nao_mapeadas`, já existia mas só ia pro log).
+3. **Botão no cockpit pra atualizar o rateio** (abre um quadro editável com % por unidade, se não mudar mantém o anterior) — **AINDA NÃO IMPLEMENTADO**, próximo passo.
+
+**Importante sobre o que o check PROVA e o que NÃO prova:** ele garante que nada se perde silenciosamente na classificação do PRÓPRIO script (testado: Jan-Jul, todos ✓, incluindo os meses com diff pequeno contra o arquivo antigo) — ou seja, os diffs pequenos de Jan/Mai/Jun **não vêm de uma falha de classificação interna do script** (isso já está descartado agora, com prova). O check não compara contra o arquivo antigo, então não fecha a dúvida da usuária sobre "vai bater no futuro" sozinho — só elimina uma categoria de causa possível.
+
+**Testado (Jan-Jul/2026, Actual), local, nada na rede:** todos os 7 meses rodaram sem erro, checks todos ✓, nenhuma linha fora de escopo apareceu em nenhum mês até agora. Ainda não commitado.
+
+### PRÓXIMO PASSO
+1. Implementar o botão "Atualizar Rateio" no cockpit (`atualizar_ksb1_gui.py`) — abre diálogo editável com % atual de SJP/IBI/GOI/RES (pré-preenchido com o vigente), salva nova entrada em `ontology/rateio_gerencia.json` com `vigente_desde`. Se ela não mexer, mantém o rateio anterior (comportamento já garantido por `carregar_rateio_vigente`, só falta a UI).
+2. Confirmar com a usuária que o rateio de Agosto/2026 já está correto (SJP 21% / IBI 49% / GOI 27% / RES 3%, `ontology/rateio_gerencia.json` entrada "2026-08") — já está assim desde 2026-08-25, é só confirmar que é o que ela mandou.
+3. Retomar a pergunta em aberto: continuar investigando o resíduo de Maio (R$4,07 mil) e decidir sobre a conta 4255200, OU aceitar o teste em paralelo no fechamento de Agosto como próximo passo de validação real.
+
+---
 ## Sessão 2026-08-26 — "Rateio de Custos" (Passo 5): testes de Fev/Mar/Abr/Mai/Jun — todos explicados, nenhum erro de script (nada salvo na rede)
 
 **Achado de Abril (GOI, R$ -601,69 mil) ESCLARECIDO pela usuária:** não é erro de sistema/script — foi um lançamento que ELA mesma precisou acrescentar manualmente ("eu que tive que acrescentar na mão"). Ou seja, o script novo está certo (pega o valor real, já lançado no SAP); o arquivo antigo congelado (12/05) é que não tinha esse ajuste manual. **Abril fechado, sem pendência.**

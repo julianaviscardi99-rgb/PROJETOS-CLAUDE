@@ -411,6 +411,37 @@ def calcular_rateio(totais_ativos: dict, residuos_encerradas: list, percentuais:
     return rateio_por_unidade, gerencia_total, residuo_somado_gerencia, residuo_sorocaba_fora
 
 
+def calcular_check_por_unidade(totais_ativos: dict, raw_por_mini_fabrica: dict, residuos_encerradas: list) -> dict:
+    """Confere, unidade por unidade, se o total que entrou no quadro "sem
+    rateio" bate com o total bruto da Base Intermediária pra aquele
+    Mini-Fábrica - pedido explícito da usuária, 2026-08-26: um check logo
+    abaixo do Total Costs de cada unidade, provando que nada se perdeu
+    silenciosamente na classificação. Devolve {sigla: (diff, esperado,
+    classificado)}.
+
+    Pras unidades ativas, `esperado` é só a soma bruta do próprio código de
+    Mini-Fábrica - deveria SEMPRE bater exato (diff=0), porque toda linha
+    com esse código vai pra `totais_ativos[sigla]` sem exceção. Pra
+    Gerência, `esperado` soma o próprio código (0499) MAIS o resíduo de
+    unidades encerradas (exceto Sorocaba) - que por regra de negócio entra
+    no balde da Gerência antes do rateio (ver ler_e_classificar) - também
+    deveria bater exato."""
+    codigo_por_sigla = {v: k for k, v in UNIDADES_ATIVAS.items()}
+    residuo_gerencia = sum(
+        r["valor"] for r in residuos_encerradas if r["unidade"].upper() != "SOROCABA"
+    )
+    checks = {}
+    for sigla in ORDEM_UNIDADES_ATIVAS:
+        codigo = codigo_por_sigla[sigla]
+        esperado = raw_por_mini_fabrica.get(codigo, 0)
+        classificado = sum(totais_ativos.get(sigla, {}).values())
+        checks[sigla] = (classificado - esperado, esperado, classificado)
+    esperado_ger = raw_por_mini_fabrica.get(GERENCIA_MINIFABRICA, 0) + residuo_gerencia
+    classificado_ger = sum(totais_ativos.get(SIGLA_GERENCIA, {}).values())
+    checks[SIGLA_GERENCIA] = (classificado_ger - esperado_ger, esperado_ger, classificado_ger)
+    return checks
+
+
 def calcular_dados_com_rateio(totais_ativos: dict, percentuais: dict, log=None) -> dict:
     """Devolve {unidade: {(tipo, subcategoria): valor}} pras unidades ATIVAS,
     com o custo da Gerência ja' espalhado categoria a categoria - mesma
@@ -602,10 +633,113 @@ def _finalizar_quadro_com_total(ws, info, linhas_extra_antes_do_total=None):
     return linha_total_costs, linha + 1
 
 
+def _escrever_linha_check(ws, linha, col_inicio, colunas, checks):
+    """Escreve, logo abaixo do Total Costs do quadro "sem rateio", uma linha
+    de check unidade por unidade: "✓" se o total bater com o valor bruto da
+    Base Intermediária pra aquele Mini-Fábrica (diferença < R$ 0,05 mil,
+    tolerância de arredondamento), ou um aviso com a diferença em reais se
+    não bater - pedido explícito da usuária, 2026-08-26."""
+    c = ws.cell(row=linha, column=col_inicio, value="Check (bate c/ Base Interm.)")
+    c.font = FONTE_NOTA
+    for i, colname in enumerate(colunas):
+        diff = checks.get(colname, (0, 0, 0))[0]
+        cc = ws.cell(row=linha, column=col_inicio + 1 + i)
+        if abs(diff) < 0.05:
+            cc.value = "✓"
+            cc.font = Font(name="Calibri", size=10, bold=True, color="2E7D32")
+        else:
+            cc.value = f"⚠ R$ {diff * 1000:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            cc.font = Font(name="Calibri", size=9, bold=True, color="9C0006")
+        cc.alignment = Alignment(horizontal="center")
+    return linha + 1
+
+
+def _escrever_aba_comentarios(wb, checks, fora_de_escopo, contas_nao_mapeadas):
+    """Aba "Comentários" - reúne tudo que merece atenção da usuária num só
+    lugar (pedido explícito, 2026-08-26), em vez de ficar só no log:
+    resultado do check por unidade, linhas fora de escopo (Mini-Fábrica/
+    Centro de Custo não reconhecido - antes descartadas em silêncio) e
+    contas cuja Conta Geral não bateu com nenhuma subcategoria esperada."""
+    ws = wb.create_sheet("Comentários")
+    ws.sheet_view.showGridLines = False
+    linha = 1
+    ws.cell(row=linha, column=1, value="Comentários e verificações").font = Font(size=13, bold=True)
+    linha += 2
+
+    ws.cell(row=linha, column=1, value="Check por unidade (Total classificado vs. total bruto da Base Intermediária)").font = Font(bold=True)
+    linha += 1
+    cab = ["Unidade", "Total bruto (Base Interm.)", "Total classificado (quadro)", "Diferença (R$)", "Status"]
+    for i, cnome in enumerate(cab):
+        ws.cell(row=linha, column=1 + i, value=cnome).font = Font(bold=True)
+    linha += 1
+    for sigla in ORDEM_UNIDADES_ATIVAS + [SIGLA_GERENCIA]:
+        diff, esperado, classificado = checks.get(sigla, (0, 0, 0))
+        ws.cell(row=linha, column=1, value=sigla)
+        c2 = ws.cell(row=linha, column=2, value=round(esperado, 1))
+        c2.number_format = "#,##0.0;(#,##0.0)"
+        c3 = ws.cell(row=linha, column=3, value=round(classificado, 1))
+        c3.number_format = "#,##0.0;(#,##0.0)"
+        c4 = ws.cell(row=linha, column=4, value=round(diff * 1000, 2))
+        c4.number_format = "#,##0.00;(#,##0.00)"
+        status = "✓ OK" if abs(diff) < 0.05 else "⚠ Verificar"
+        cs = ws.cell(row=linha, column=5, value=status)
+        if abs(diff) >= 0.05:
+            cs.font = Font(bold=True, color="9C0006")
+        linha += 1
+    linha += 2
+
+    if fora_de_escopo:
+        ws.cell(row=linha, column=1, value="⚠ Linhas fora de escopo (Mini-Fábrica/Centro de Custo não reconhecido - não entraram no quadro)").font = Font(bold=True, color="9C0006")
+        linha += 1
+        cab2 = ["Conta", "Descrição", "Mini-Fábrica", "Centro de Custo", "Valor ('000 BRL)"]
+        for i, cnome in enumerate(cab2):
+            ws.cell(row=linha, column=1 + i, value=cnome).font = Font(bold=True)
+        linha += 1
+        for f in fora_de_escopo:
+            ws.cell(row=linha, column=1, value=f["conta"])
+            ws.cell(row=linha, column=2, value=f["descricao"])
+            ws.cell(row=linha, column=3, value=f["mini_fabrica"])
+            ws.cell(row=linha, column=4, value=f["centro_custo"])
+            cv = ws.cell(row=linha, column=5, value=round(f["valor"], 1))
+            cv.number_format = "#,##0.0;(#,##0.0)"
+            linha += 1
+        linha += 2
+    else:
+        ws.cell(row=linha, column=1, value="Nenhuma linha fora de escopo neste mês.").font = FONTE_NOTA
+        linha += 2
+
+    if contas_nao_mapeadas:
+        ws.cell(row=linha, column=1, value="Contas com Conta Geral (AJ) não reconhecida - caíram em 'Other Variable/Fixed' por padrão").font = Font(bold=True, color="9C0006")
+        linha += 1
+        cab3 = ["Tipo (Var.)", "Conta Geral (AJ)", "Descrição"]
+        for i, cnome in enumerate(cab3):
+            ws.cell(row=linha, column=1 + i, value=cnome).font = Font(bold=True)
+        linha += 1
+        for tipo, conta_geral, desc in sorted(contas_nao_mapeadas, key=lambda x: (x[0], str(x[1]))):
+            ws.cell(row=linha, column=1, value=tipo)
+            ws.cell(row=linha, column=2, value=conta_geral)
+            ws.cell(row=linha, column=3, value=desc)
+            linha += 1
+    else:
+        ws.cell(row=linha, column=1, value="Nenhuma conta com Conta Geral não reconhecida neste mês.").font = FONTE_NOTA
+
+    for col, largura in [(1, 14), (2, 40), (3, 16), (4, 18), (5, 16)]:
+        ws.column_dimensions[get_column_letter(col)].width = largura
+
+
 def gerar_arquivo_rateio_custos(mes: int, ano: int, ciclo: str, pasta_saida: Path, log=print) -> Path:
     caminho_base = localizar_base_intermediaria(mes, ano, ciclo)
     log(f"Lendo Base Intermediária: {caminho_base.name}...")
-    totais_ativos, residuos_encerradas, _ = ler_e_classificar(caminho_base, mes, log)
+    totais_ativos, residuos_encerradas, contas_nao_mapeadas, raw_por_mini_fabrica, fora_de_escopo = (
+        ler_e_classificar(caminho_base, mes, log)
+    )
+    checks = calcular_check_por_unidade(totais_ativos, raw_por_mini_fabrica, residuos_encerradas)
+    for sigla, (diff, esperado, classificado) in checks.items():
+        if abs(diff) >= 0.05:
+            log(
+                f"AVISO: check de {sigla} não bateu (diferença de {_fmt_moeda(diff)} mil) — "
+                "ver aba 'Comentários' no arquivo gerado."
+            )
 
     percentuais, vigente_desde = carregar_rateio_vigente(mes, ano)
     log(f"Rateio vigente desde {vigente_desde}: {percentuais}")
@@ -685,6 +819,7 @@ def gerar_arquivo_rateio_custos(mes: int, ano: int, ciclo: str, pasta_saida: Pat
         colunas_sem_rateio, totais_ativos, ORDEM_VARIAVEL, ORDEM_FIXO,
     )
     linha_total1, linha_prox_bloco = _finalizar_quadro_com_total(ws, info1, linhas_extra_antes_do_total=extras_quadro1)
+    linha_prox_bloco = _escrever_linha_check(ws, linha_prox_bloco, info1["col_inicio"], colunas_sem_rateio, checks)
     linha_prox_bloco += 2
 
     # --- Bloco 3: quadro com rateio (SJP | IBI | GOI | RES | TOTAL) ---
@@ -747,6 +882,8 @@ def gerar_arquivo_rateio_custos(mes: int, ano: int, ciclo: str, pasta_saida: Pat
 
     for col in range(1, 8):
         ws.column_dimensions[get_column_letter(col)].width = 16 if col > 1 else 22
+
+    _escrever_aba_comentarios(wb, checks, fora_de_escopo, contas_nao_mapeadas)
 
     pasta_saida.mkdir(parents=True, exist_ok=True)
     nome_arquivo = nome_com_versao(pasta_saida, f"Rateio de Custos Fitted Units {MESES_INGLES[mes]} {ciclo} {ano}.xlsx")
