@@ -3,6 +3,40 @@
 > Manter apenas as últimas 2 sessões inline — sessões mais antigas vão para long_term/.
 
 ---
+## Continuação 2026-08-26 (mesmo dia) — Passo 6 (Mensalização): PRIMEIRA VERSÃO FUNCIONANDO (caso normal, Flash), validada contra Julho real
+
+**Usuária confirmou entender o escopo (rateio flexionado por volume nos custos variáveis, direto nos fixos - conferido e correto) e mandou: "pode começar a automatizar em ambiente de teste, nao quero nada na rede ainda".**
+
+**Script criado:** `scripts/sap/fitted_units/fitted_units_despesas/gerar_mensalizacao.py`. Cobre só o **caso normal** (existe Forecast R<mes> pro mês sendo fechado) e só **Ciclo Flash** - o caso "sem Forecast" (usar Actual anterior + perfumaria do último Forecast, como vai ser preciso agora em Agosto/2026) está no código (`determinar_fonte`) mas **ainda não testado contra dado real** (não tem como testar sem rodar de verdade em Agosto).
+
+**O que o script faz:**
+1. Localiza o Forecast R<mês> (`Fcst\Fcst <ano>\R<mês> <ano>\MENS FITTED FORECAST <MÊS>.xls`).
+2. Copia pra pasta de saída (SEMPRE por parâmetro - nunca hardcoda a pasta oficial `Flash\<ano>\<mês>`) e renomeia trocando FORECAST→FLASH.
+3. Abre via win32com (arquivo `.xls` legado) e aplica a "perfumaria" nas 5 abas (SJP/IBI/GO/RES/TOTAL): E5/S5/C47 (só SJP, as outras puxam por fórmula), linha 47 (copia de linha 43) e S8:S44 (cola Q8:Q44 como valor) - repetido em cada aba.
+4. Lê o Passo 5 (`ler_e_classificar` + `calcular_dados_com_rateio`, direto do módulo `gerar_rateio_custos`, sem gerar o arquivo Excel do Passo 5) e cola os valores nas linhas de detalhe (19-23 Variável, 32-37 Fixo) da coluna do mês sendo fechado - NUNCA toca nas linhas 18/31/26 (fórmulas, recalculam sozinhas).
+5. Aba TOTAL: soma simples das 4 unidades ativas (SJP+IBI+GOI+RES), mesma lógica.
+6. Check: compara TOTAL COST (linha 39, já recalculado pelo Excel) contra o total que o Passo 5 devolveu.
+
+**Achado real corrigido durante o teste:** o Passo 5 guarda custo como NEGATIVO (mesma convenção do arquivo antigo `_Abertura custos...`), mas o arquivo de Mensalização guarda como POSITIVO (confirmado lendo o arquivo real - linha 39 mostra 1.561,08, não -1.561,08). Sem inverter o sinal, o Check batia (comparava negativo com negativo) mas o valor gravado na planilha saía errado. Corrigido em `_colar_valores_rateio` (inverte o sinal antes de colar).
+
+**Validação rigorosa (Julho/2026, Flash, caso normal) - comparação linha a linha contra o arquivo REAL na rede (só leitura, dois processos Excel separados pra não colidir nome de arquivo):**
+- **Fixed Cost: exato em TODAS as 6 linhas, nas 5 abas.**
+- **TOTAL COST (linha 39): exato nas 5 abas** (SJP 1.561,08 / IBI 3.566,15 / GO 1.633,52 / RES 0,00 / TOTAL 6.760,75).
+- Labour e Direct Materials (Variable Cost): exato.
+- **Handling/Transportation/Other Variable: diferentes do arquivo real, mas sempre se cancelando (soma da Variable Cost bate igual)** - é o MESMO problema já conhecido da conta "Aluguéis" marcada Variável (Passo 5 joga em "Other Variable", arquivo real histórico usa "Handling") - não é bug novo, é o mesmo already-known category-neutral quirk se propagando pra cá. Ainda não corrigido na fonte (Passo 5).
+- **Linha 26 (Variabile/Pc) diferente, mas ESPERADO** - depende de "Pieces" (linha 8, parte de Net Sales), que ainda não é tocado (fora de escopo por enquanto, confirmado pela usuária).
+
+**Testado só local** (`data/processed/fitted_units_despesas/mensalizacao_teste/`) - nada escrito na rede oficial. Leitura do Forecast R7 e comparação com o arquivo real de Julho foram só leitura (`ReadOnly=True`, `SaveChanges=False`).
+
+**Ainda não commitado** (script criado nesta sessão, muito longa - ver se cabe commitar antes de fechar).
+
+### PRÓXIMO PASSO
+1. Decidir com a usuária se corrige a conta "Aluguéis" (Handling vs Other Variable) na fonte (Passo 5) - resolveria automaticamente aqui também.
+2. Testar o caso "sem Forecast" (Agosto/2026 de verdade, quando o Passo 5 de Agosto estiver pronto) - ainda não validado contra dado real.
+3. Net Sales (linha 8/Pieces em diante) e MP26 (Flash de Janeiro) - explicitamente adiados pela usuária, ainda não escopados em detalhe.
+4. Abas TOTAL: confirmar com a usuária se a soma simples das 4 unidades está certa, ou se a aba TOTAL do arquivo real tem alguma lógica própria diferente (não testado explicitamente, só validado via check numérico que bateu).
+
+---
 ## Continuação 2026-08-26 (mesmo dia) — Passo 6 (Mensalização): escopo aprofundado com leitura real dos arquivos — AINDA EM ANÁLISE, nada implementado
 
 **Continua o escopo iniciado mais cedo hoje (ver bloco "NOVO PROJETO: Mensalização" abaixo).** Nada foi alterado em nenhum arquivo real - só leitura (win32com, ReadOnly=True, sempre `wb.Close(SaveChanges=False)`).
