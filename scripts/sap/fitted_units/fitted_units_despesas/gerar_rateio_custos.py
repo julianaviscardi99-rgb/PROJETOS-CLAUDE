@@ -531,7 +531,14 @@ def _escrever_quadro(ws, linha_inicio, col_inicio, titulo, colunas, dados, ordem
         c.font = FONTE_ITEM
         for i, colname in enumerate(colunas):
             valor = dados.get(colname, {}).get((tipo_macro, nome), 0)
-            cc = ws.cell(row=linha, column=col_inicio + 1 + i, value=round(valor, 1))
+            # Guarda o valor CHEIO na célula (não arredondado) - só o
+            # number_format exibe 1 casa decimal. Arredondar o VALOR (não só
+            # a exibição) fazia o Check final (soma de quadro1 - soma de
+            # quadro2) sobrar R$ 0,10 mil em vez de R$ 0,00 - cada célula
+            # arredondada isoladamente antes de somar (~50 células) acumula
+            # deriva de arredondamento, mesmo a matemática de verdade batendo
+            # exato (achado real, testando contra a rede, 2026-08-26).
+            cc = ws.cell(row=linha, column=col_inicio + 1 + i, value=valor)
             cc.font = FONTE_ITEM
             cc.number_format = "#,##0.0;(#,##0.0)"
         linha += 1
