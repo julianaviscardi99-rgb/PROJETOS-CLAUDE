@@ -40,7 +40,21 @@ Confirmado em **todos os 7 arquivos Actual de 2026 já fechados** (Jan-Jul) — 
 
 **Decisão da usuária (mesma política do bug do PY):** não corrigir retroativamente Mai/Jun/Jul. A automação do Passo 7 sempre monta o caminho completo (com "MM - Mês") e sempre usa EO_FITTED — nunca replica os caminhos quebrados atuais.
 
-**Próximo passo imediato:** confirmar a estrutura do arquivo Flash (aba "Resumo Resultado Mês"/"Resumo Resultado Ano") ao vivo antes de escrever `gerar_pnl.py` (só o Actual foi inspecionado célula a célula até agora), e então propor à usuária o desenho concreto do script (funções, ordem das operações) antes de codar.
+**Escopo confirmado pela usuária pra v1 do `gerar_pnl.py`:** Actual e Flash juntos (não só Actual primeiro); o arquivo "congelado" (`..._` sem fórmula) fica pra depois — v1 só gera o arquivo com fórmulas vivas.
+
+**Diff Junho→Julho feito (leitura, ambos os Ciclos) — é a especificação exata do que muda todo mês, salvo em `data/processed/fitted_units_despesas/pnl_teste/diff_jun_jul_2026_actual_flash.txt` (fora do Git, tem valor financeiro real).** Resumo dos achados (célula por célula, comparando o arquivo real de Junho com o de Julho, que nasceu de uma cópia dele):
+
+**Aba "Resumo Resultado Ano" (ambos Ciclos):**
+- Bloco D:O (Jan-Dez): TODAS as colunas apontam pro MESMO arquivo externo (Mensalização do Ciclo/mês fechando) — só a coluna-fonte desliza (col Excel do mês = D+mes-1). Confirmado que ao fechar um novo mês, o arquivo de Mensalização writes é reaberto/relinkado inteiro (não só a coluna nova).
+- Bloco S:AD (Forecast completo, 12 colunas): mesmo mecanismo, aponta pro arquivo de Forecast do mês (frozen `_`), desliza igual.
+- Textos que mudam: `Q4` = "Actual `<Mês>`" (Actual) / "`<Mês>` Flash" (Flash); `AF4` = "Forecast R`<mês>`"; linha 5 nas colunas D:O que correspondem ao mês fechando muda de "Forecast"→"Actual" (Actual) ou "Flash"→"Actual" seguido da nova coluna virando "Forecast"→"Flash" (Flash) — o rótulo "anda" 1 coluna pra direita a cada mês fechado.
+- No Ciclo Flash, a coluna do mês fechando (ex: J pra Julho) troca de fonte: não é mais link pro Forecast (como nos meses "Forecast" futuros) — passa a linkar direto pro `MENS FITTED FLASH <Mês>.xls` (mesma lógica do D:O, já é o novo mês virando "Flash").
+
+**Aba "Resumo Resultado Mês" (ambos Ciclos):** colunas D/E/F/G(/H) são só referência deslizante pra 'Resumo Resultado Ano' dentro do MESMO arquivo (não link externo) — ex: Actual `D8:'Resumo Resultado Ano'!I8` (Junho) → `J8` (Julho), e as demais colunas (Flash/Forecast/MP/PY) deslizam pro mesmo padrão (colunas bem mais distantes tipo AN/BC, sempre +1 por mês). No Actual, a única troca de LINK externo de verdade nessa aba é a coluna Flash (aponta pro arquivo Flash do mesmo mês). `D4`="`<Mês>` Month" muda todo mês; rótulo de Forecast (`F5` no Actual, `E5` no Flash) muda de "Forecast R6"→"Forecast R7".
+
+**Aba "Resultado YTD":** ao fechar um novo mês, ganha uma NOVA coluna de fórmulas (a do mês novo, ex: coluna J pra Julho) que **não existia vazia antes** — são todas `='Resumo Resultado Ano'!<mesma_coluna><linha>` pras ~30 linhas de dado (replicando o padrão já usado nas colunas dos meses anteriores). `Q4` muda de "YTD `<Mês>`"/"`<Mês>` YTD" a cada mês. No Flash, a coluna nova YTD tem 4 blocos (J/Y/AN/BC — Actual-YTD/Flash/Forecast/MP dentro da própria aba YTD) com o mesmo padrão de link+SUM.
+
+**Próximo passo (início da próxima sessão):** com esse diff em mãos, desenhar e propor à usuária a estrutura de funções do `gerar_pnl.py` (nunca hardcoded — cada regra acima vira uma função pequena testável) antes de escrever o código de verdade. Ainda não escrevi nenhuma linha do script.
 
 ---
 ## PRÓXIMA SESSÃO — desenho do Passo 7 (P&L) FECHADO, falta só decidir formato e implementar
