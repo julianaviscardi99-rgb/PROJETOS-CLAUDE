@@ -58,8 +58,6 @@ import shutil
 import sys
 from pathlib import Path
 
-import win32com.client
-
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "_shared"))
 from ksb1_core import MESES_NOMES, abrir_excel_isolado, nome_com_versao  # noqa: E402
 

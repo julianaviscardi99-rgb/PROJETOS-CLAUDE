@@ -1216,6 +1216,38 @@ def main():
         y = root.winfo_rooty() + (root.winfo_height() - dialogo.winfo_height()) // 2
         dialogo.geometry(f"+{max(0, x)}+{max(0, y)}")
 
+    def ao_clicar_atualizar_custo_mensalizacao():
+        from gerar_mensalizacao import MESES_INGLES, REDE_BASE_MENSALIZACAO, gerar_arquivo_mensalizacao
+
+        mes_ano = ler_mes_ano()
+        if mes_ano is None:
+            return
+        mes, ano = mes_ano
+        ciclo = ciclo_var.get()
+
+        pasta_saida = REDE_BASE_MENSALIZACAO / ciclo / str(ano) / f"{mes:02d} - {MESES_INGLES[mes]}"
+
+        def func(log, pid_callback):
+            return gerar_arquivo_mensalizacao(mes, ano, pasta_saida, ciclo, log=log, pid_callback=pid_callback)
+
+        def ao_concluir(resultado, erro):
+            if erro is not None:
+                messagebox.showerror("Erro ao atualizar o Custo (Mensalização)", str(erro))
+                return
+            caminho, checks = resultado
+            messagebox.showinfo("Concluído", f"Mensalização (Custo) atualizada:\n{caminho}")
+            # Pedido explicito da usuaria, 2026-08-26: ate' o Faturamento ser
+            # automatizado, avisar pra atualizar essa parte na mao assim que
+            # o Custo terminar.
+            messagebox.showwarning(
+                "Atualize o Faturamento manualmente",
+                "O Custo do Passo 6 foi atualizado. A parte de Faturamento (Net Sales) "
+                "ainda não foi automatizada — não esqueça de atualizar essa parte "
+                "manualmente no arquivo antes de considerar a Mensalização completa.",
+            )
+
+        rodar_em_thread("Atualizando Custo (Mensalização)", func, ao_concluir)
+
     botoes[0][0].config(command=ao_clicar_extrair)
     botoes[1][0].config(command=ao_clicar_check)
     botoes[2][0].config(command=ao_clicar_lancar_provisoes)
@@ -1224,6 +1256,13 @@ def main():
     botoes[3][1].config(command=ao_clicar_finalizar_intermediaria)
     botoes[4][0].config(command=ao_clicar_rateio_custos)
     botoes[4][1].config(command=ao_clicar_atualizar_rateio)
+    botoes[5][1].config(command=ao_clicar_atualizar_custo_mensalizacao)
+
+    # "Atualizar Faturamento" (Passo 6) ainda nao foi automatizado - fica
+    # desabilitado, e o helper _todos_botoes ja sabe manter ele assim mesmo
+    # depois de outras operacoes terminarem (ver botoes_sempre_desabilitados).
+    botoes_sempre_desabilitados.add(botoes[5][0])
+    botoes[5][0].config(state="disabled")
 
     root.mainloop()
 
