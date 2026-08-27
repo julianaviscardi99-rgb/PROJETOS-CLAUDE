@@ -682,3 +682,15 @@ Mecanismo validado via COM: `wb.LinkSources(1)` lista os links; `wb.ChangeLink(n
 **Decisão da usuária:** **não corrigir retroativamente Jan-Jul/2026** (já fechados/enviados). A correção do link de PY entra a partir do arquivo de **Agosto/2026** (quando for criado a partir da cópia de Julho) — como PY só muda 1x/ano, deve durar até Jan/2027.
 
 **Ainda pendente antes de implementar o Passo 7 de verdade:** a usuária ainda vai explicar a lógica do arquivo/aba Flash (só o Actual foi coberto até aqui). Nada foi implementado em script ainda — só análise e teste isolado (leitura) contra os arquivos reais.
+
+---
+
+## 2026-08-27 (continuação) — Segundo erro real achado nos links do P&L: Flash/Forecast apontam pra pasta sem o nível "MM - Mês" (Mai/Jun/Jul); EO_CONSUMER vs EO_FITTED
+
+**Achado (retomada da sessão, antes de codar o Passo 7):** os links de Flash (coluna E, "Resumo Resultado Mês") e Forecast (coluna AF, "Resumo Resultado Ano") dos arquivos Actual de **Maio, Junho e Julho/2026** apontam pra `...\Resultados Fitted\2026\<MM>_<Mês3>_Flash\...` — falta o nível de pasta `<MM> - <Mês3>` que existe de verdade na rede (`...\2026\07 - Jul\07_Jul_Flash\...`). Confirmado com `Test-Path` (PowerShell nativo, não só `ls`) que o caminho curto não existe nos 3 meses. O valor mostrado na célula (ex: Flash de Julho = 451.071) bate com o valor real hoje só por coincidência — é cache congelado de antes do link quebrar, não atualiza mais se a fonte mudar. Detalhe completo em `memory/errors/2026-08-27_pnl_link_flash_forecast_pasta_faltando.md`.
+
+**Causa confirmada pela usuária:** a pasta de rede foi reorganizada (nível "MM - Mês" adicionado) e os links dentro dos arquivos de P&L (trocados manualmente todo mês) nunca foram re-apontados pra incluir esse nível — mesmo padrão de "correção não propagada" do bug do PY.
+
+**Achado relacionado, também confirmado:** o link de Mensalização usa `EO_CONSUMER\BU FITTED\...` em Maio/Junho mas `EO_FITTED\BU FITTED\...` em Julho (os dois compartilhamentos existem de fato). **Usuária confirmou: `EO_FITTED` é o correto/atual** — `EO_CONSUMER` não deve ser usado daqui pra frente.
+
+**Decisão da usuária:** mesma política do bug do PY — **não corrigir retroativamente** Mai/Jun/Jul (já fechados/enviados). A automação do Passo 7 (`gerar_pnl.py`, ainda a implementar) sempre monta o caminho de destino do `ChangeLink` com o nível "MM - Mês" incluído (nunca replica o caminho curto) e sempre usa `EO_FITTED` pro link de Mensalização.
