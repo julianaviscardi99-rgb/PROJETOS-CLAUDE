@@ -366,6 +366,18 @@ PASSOS = [
         ),
         "botoes": ["Abertura de Custos por Unidade", "Atualizar Rateio"],
     },
+    {
+        "aba": "⑥  Mensalização",
+        "titulo": "Passo 6 · Mensalização",
+        "descricao": (
+            "Gera o arquivo 'MENS FITTED <Ciclo> <Mês>.xls' - copia a base certa "
+            "(Forecast do mês, ou o Flash do mesmo mês já fechado se for Ciclo Actual), "
+            "aplica a 'perfumaria' quando necessário, e cola os valores do Passo 5 "
+            "(Rateio de Custos) na coluna do mês sendo fechado. 'Atualizar Faturamento' "
+            "ainda não foi automatizado (Net Sales continua manual por enquanto)."
+        ),
+        "botoes": ["Atualizar Faturamento", "Atualizar Custo"],
+    },
 ]
 
 
@@ -719,10 +731,19 @@ def main():
 
     root.after(80, _drenar_fila)
 
+    # Botoes que ficam desabilitados por padrao (funcionalidade ainda nao
+    # automatizada) e NUNCA devem ser reativados pelo "liberar janela" no
+    # fim de uma operacao - "Atualizar Faturamento" (Passo 6), pedido
+    # explicito da usuaria, 2026-08-26 (Net Sales continua manual).
+    botoes_sempre_desabilitados = set()
+
     def _todos_botoes(estado):
         for lista in botoes.values():
             for btn in lista:
-                btn.config(state=estado)
+                if estado == "normal" and btn in botoes_sempre_desabilitados:
+                    btn.config(state="disabled")
+                else:
+                    btn.config(state=estado)
 
     def _liberar_janela():
         parar_progresso()

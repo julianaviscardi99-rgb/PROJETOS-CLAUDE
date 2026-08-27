@@ -299,7 +299,7 @@ def _conferir_total_cost(wb, mes: int, totais_colados: dict, log) -> dict:
 
 
 def gerar_arquivo_mensalizacao(
-    mes: int, ano: int, pasta_saida: Path, ciclo: str = "Flash", log=print
+    mes: int, ano: int, pasta_saida: Path, ciclo: str = "Flash", log=print, pid_callback=None
 ) -> tuple[Path, dict]:
     """Gera o arquivo de Mensalização pro mês/ano/Ciclo pedido, salvando em
     `pasta_saida` (NUNCA a pasta oficial de rede direto - quem chama decide
@@ -344,9 +344,7 @@ def gerar_arquivo_mensalizacao(
 
     caminho_novo = _copiar_e_renomear(base, pasta_saida, mes, ano, ciclo, log)
 
-    excel = win32com.client.DispatchEx("Excel.Application")
-    excel.Visible = False
-    excel.DisplayAlerts = False
+    excel = abrir_excel_isolado(log, pid_callback)
     excel.AskToUpdateLinks = False
     try:
         wb = excel.Workbooks.Open(str(caminho_novo.resolve()))
