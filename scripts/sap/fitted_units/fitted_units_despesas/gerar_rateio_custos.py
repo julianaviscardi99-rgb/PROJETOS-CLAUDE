@@ -163,12 +163,19 @@ CONTAS_FORCADAS_DEPRECIATION = {4255200}
 #   3 unidades): a categoria "Handling" sempre lista "Aluguéis" como
 #   sub-item fixo, junto de "M.O. Direta-Prestação de Serviço" e "IFRS16 -
 #   Alugueis" - não é coincidência de valores, é estrutura do arquivo.
-# - 4211000 "Transporte De Mats. Vários", quando Variável -> sempre
-#   "Transportation" no arquivo real, mesmo nas linhas em que a Conta Geral
-#   vem "Others" em vez de "Transport" (a mesma conta aparece com os dois
-#   valores de AJ dependendo do centro de custo/mês).
+# REVERTIDO em 2026-08-26 (mesmo dia): tinha uma exceção aqui forçando
+# 4211000 "Transporte De Mats. Vários" pra "Transportation" quando Variável
+# - baseada só num ÚNICO ponto de dado (bateu com o total de Julho/Flash/
+# Ibirité). Ao extrair a estrutura COMPLETA do arquivo antigo "_Abertura
+# custos..." (pedido da usuária, "abaixo de cada voz tem as gestoriais que
+# estão dentro"), essa conta aparece SEMPRE dentro de "Other Fixed", NUNCA
+# dentro de "Transportation" (Variável), nas 3 unidades - contradiz a
+# exceção. Diferente da 4257000 (que tem apoio duplo: bate numericamente E
+# está na estrutura), essa não tem apoio estrutural nenhum - só coincidência
+# de um mês. Removida até ter uma explicação de negócio ou mais evidência
+# (prefere cair no fallback neutro "Other Variable" a manter uma regra sem
+# base sólida).
 CONTAS_FORCADAS_HANDLING_VARIAVEL = {4257000}
-CONTAS_FORCADAS_TRANSPORTATION_VARIAVEL = {4211000}
 
 
 def _resolver_subcategoria(tipo: str, conta_geral):
@@ -313,8 +320,6 @@ def ler_e_classificar(caminho_base_intermediaria: Path, mes: int, log):
             chave = ("F", "Depreciation")
         elif tipo == "V" and conta_int in CONTAS_FORCADAS_HANDLING_VARIAVEL:
             chave = ("V", "Handling")
-        elif tipo == "V" and conta_int in CONTAS_FORCADAS_TRANSPORTATION_VARIAVEL:
-            chave = ("V", "Transportation")
         else:
             subcat = _resolver_subcategoria(tipo, conta_geral)
             if subcat is None:
