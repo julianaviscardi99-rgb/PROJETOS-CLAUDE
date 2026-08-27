@@ -377,7 +377,42 @@ def atualizar_ytd(wb, mes: int, ciclo: str, log):
     log(f"Resultado YTD: coluna(s) do novo mês copiada(s) da coluna anterior ({len(blocos)} bloco(s)).")
 
 
-def gerar_arquivo_pnl(mes: int, ano: int, ciclo: str, pasta_saida: Path, log=print, pid_callback=None) -> Path:
+def gerar_copia_congelada(caminho_formula: Path, log=print) -> Path:
+    """Gera a 2ª cópia do fechamento - mesmo nome do arquivo com fórmula
+    viva, mais um '_' antes da extensão (`..._July-26_.xlsx`) - só valor,
+    sem fórmula nem link externo. Mesmo padrão manual de hoje (2 arquivos
+    por fechamento, mesma pasta), confirmado com a usuária 2026-08-27.
+
+    Usa `Range.Value = Range.Value` (não Copy/PasteSpecial) pra converter
+    fórmula em valor: testado em gerar_pnl.py que Copy/PasteSpecial falha
+    numa instância isolada/invisível do Excel (sem acesso à área de
+    transferência) - essa técnica tem o mesmo efeito sem depender disso.
+    Depois de congelar os valores, quebra (`BreakLink`) qualquer link
+    externo que ainda reste no arquivo (não deveria sobrar nenhum, já que
+    nenhuma fórmula aponta mais pra fora - é só uma garantia extra)."""
+    stem, ext = caminho_formula.stem, caminho_formula.suffix
+    nome_congelado = nome_com_versao(caminho_formula.parent, f"{stem}_{ext}")
+    caminho_congelado = caminho_formula.parent / nome_congelado
+    shutil.copy2(caminho_formula, caminho_congelado)
+
+    excel = abrir_excel_isolado(log)
+    excel.AskToUpdateLinks = False
+    try:
+        wb = excel.Workbooks.Open(str(caminho_congelado))
+        for ws in wb.Worksheets:
+            ws.UsedRange.Value = ws.UsedRange.Value
+        for link in list(wb.LinkSources(1) or []):
+            wb.BreakLink(link, 1)
+        wb.Save()
+        wb.Close(SaveChanges=False)
+    finally:
+        excel.Quit()
+
+    log(f"Cópia congelada (só valor) gerada: {caminho_congelado}")
+    return caminho_congelado
+
+
+def gerar_arquivo_pnl(mes: int, ano: int, ciclo: str, pasta_saida: Path, log=print, pid_callback=None) -> tuple[Path, Path]:
     pasta_saida = Path(pasta_saida).resolve()
     mes_ant, ano_ant = mes_anterior(mes, ano)
     caminho_anterior = localizar_pnl(mes_ant, ano_ant, ciclo)
@@ -410,7 +445,8 @@ def gerar_arquivo_pnl(mes: int, ano: int, ciclo: str, pasta_saida: Path, log=pri
         excel.Quit()
 
     log(f"\nArquivo de P&L gerado: {caminho_novo}")
-    return caminho_novo
+    caminho_congelado = gerar_copia_congelada(caminho_novo, log)
+    return caminho_novo, caminho_congelado
 
 
 if __name__ == "__main__":

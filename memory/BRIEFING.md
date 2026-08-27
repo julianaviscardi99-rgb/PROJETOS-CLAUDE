@@ -88,6 +88,15 @@ Confirmado em **todos os 7 arquivos Actual de 2026 já fechados** (Jan-Jul) — 
 
 **Se a usuária for rodar de verdade (ex: Agosto/2026) pela primeira vez pelo botão:** lembrar que é a primeira vez que esse caminho de rede real vai ser escrito por este script - vale acompanhar o log da primeira rodada com atenção antes de confiar cegamente. A janela do cockpit, se já estava aberta antes desta mudança, precisa ser fechada e reaberta (Tkinter carregado em memória, sem hot-reload - mesmo aviso já dado outras vezes neste projeto).
 
+### Continuação (mesmo dia) — arquivo "congelado" (2ª rodada, pedida pela usuária depois de aprovar os arquivos com fórmula)
+A usuária abriu os 2 arquivos que mandei (Actual e Flash de Julho) e confirmou "está 100%". Pediu na sequência pra já gerar também a cópia congelada (nome com "_" no final, só valor, sem fórmula/link) - o item que tínhamos decidido deixar pra depois.
+
+**Implementado em `gerar_pnl.py` (`gerar_copia_congelada`):** depois de salvar o arquivo com fórmula viva, copia ele pra um novo nome (`..._July-26_.xlsx`, versionado com `nome_com_versao` por segurança) e converte fórmula em valor com `Range.Value = Range.Value` em cada aba (não usa Copy/PasteSpecial - já sabemos que falha numa instância isolada do Excel, mesmo achado do resto do script). Depois quebra (`BreakLink`) qualquer link externo residual, por garantia. `gerar_arquivo_pnl` agora devolve `(caminho_formula, caminho_congelado)` - GUI (`atualizar_ksb1_gui.py`) e a mensagem de conclusão do cockpit atualizados pra mostrar os dois caminhos.
+
+**Validado contra os dois arquivos congelados REAIS de Julho/2026** (Actual e Flash, comparação célula a célula por VALOR, não fórmula, já que a fonte não tem fórmula mesmo): **zero diferença nos dois Ciclos**, e confirmado que os links ficam vazios (`LinkSources` devolve `None`) nos dois, gerado e real.
+
+**Commitado e no GitHub.** Nada escrito na rede - toda validação em pasta de teste local, só leitura dos arquivos reais pra comparar.
+
 ---
 ## PRÓXIMA SESSÃO — desenho do Passo 7 (P&L) FECHADO, falta só decidir formato e implementar
 **Retomar exatamente daqui, pedido explícito da usuária no fim da sessão 2026-08-27:** decidir junto com ela, no início da próxima sessão, se implementamos como **script standalone primeiro** (como os outros passos — recomendado, testa isolado antes de tocar rede) ou **já direto integrado no cockpit**. Pergunta já foi feita a ela nesta sessão mas ficou pra responder na próxima (ela precisou desligar).

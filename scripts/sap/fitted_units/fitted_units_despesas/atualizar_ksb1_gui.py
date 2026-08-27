@@ -1282,7 +1282,12 @@ def main():
             if erro is not None:
                 messagebox.showerror("Erro ao gerar o P&L", str(erro))
                 return
-            messagebox.showinfo("Concluído", f"P&L gerado:\n{resultado}")
+            caminho_formula, caminho_congelado = resultado
+            messagebox.showinfo(
+                "Concluído",
+                f"P&L gerado (2 arquivos):\n\nCom fórmula:\n{caminho_formula}\n\n"
+                f"Congelado (só valor):\n{caminho_congelado}",
+            )
 
         rodar_em_thread("Gerando P&L", func, ao_concluir)
 
