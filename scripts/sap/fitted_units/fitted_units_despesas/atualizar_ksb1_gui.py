@@ -370,11 +370,11 @@ PASSOS = [
         "aba": "⑥  Mensalização",
         "titulo": "Passo 6 · Mensalização",
         "descricao": (
-            "Gera o arquivo 'MENS FITTED <Ciclo> <Mês>.xls' - copia a base certa "
-            "(Forecast do mês, ou o Flash do mesmo mês já fechado se for Ciclo Actual), "
-            "aplica a 'perfumaria' quando necessário, e cola os valores do Passo 5 "
-            "(Rateio de Custos) na coluna do mês sendo fechado. 'Atualizar Faturamento' "
-            "ainda não foi automatizado (Net Sales continua manual por enquanto)."
+            "Gera o arquivo de Mensalização - copia a base certa (Forecast do mês, ou "
+            "o Flash já fechado quando o Ciclo for Actual), aplica os ajustes de cenário "
+            "quando necessário, e cola os valores do Passo 5 (Rateio de Custos) na "
+            "coluna do mês sendo fechado. 'Atualizar Faturamento' ainda não foi "
+            "automatizado (Net Sales continua manual por enquanto)."
         ),
         "botoes": ["Atualizar Faturamento", "Atualizar Custo"],
     },
