@@ -385,10 +385,13 @@ PASSOS = [
             "Gera o arquivo de P&L do mês/Ciclo selecionado - copia o P&L do mesmo Ciclo "
             "do mês anterior (Actual ou Flash já fechados precisam existir) e troca os "
             "links (Mensalização, Forecast, Flash - e PY/MP se for Janeiro) e os textos "
-            "que mudam todo mês. Validado contra os arquivos reais de Julho/2026 "
-            "(Actual e Flash, zero diferença) antes de ligar neste botão."
+            "que mudam todo mês. Gera também a cópia congelada (só valor). Validado "
+            "contra os arquivos reais de Julho/2026 (Actual e Flash, zero diferença). "
+            "'Enviar P&L para Controladoria Central via email' abre um rascunho no "
+            "Outlook (com a diferença de EBIT já calculada e o arquivo congelado em "
+            "anexo) - NUNCA envia sozinho, você confere e aperta enviar."
         ),
-        "botoes": ["Gerar Arquivo de P&L"],
+        "botoes": ["Gerar Arquivo de P&L", "Enviar P&L para Controladoria Central via email"],
     },
 ]
 
@@ -1291,6 +1294,30 @@ def main():
 
         rodar_em_thread("Gerando P&L", func, ao_concluir)
 
+    def ao_clicar_enviar_email_pnl():
+        from gerar_pnl import montar_email_pnl
+
+        mes_ano = ler_mes_ano()
+        if mes_ano is None:
+            return
+        mes, ano = mes_ano
+        ciclo = ciclo_var.get()
+
+        def func(log, pid_callback):
+            return montar_email_pnl(mes, ano, ciclo, log=log)
+
+        def ao_concluir(resultado, erro):
+            if erro is not None:
+                messagebox.showerror("Erro ao montar o e-mail do P&L", str(erro))
+                return
+            messagebox.showinfo(
+                "Rascunho aberto no Outlook",
+                f"'{resultado}' foi aberto como rascunho - NÃO foi enviado.\n\n"
+                "Confira destinatários e ajuste o motivo do resultado antes de enviar.",
+            )
+
+        rodar_em_thread("Montando e-mail do P&L", func, ao_concluir)
+
     botoes[0][0].config(command=ao_clicar_extrair)
     botoes[1][0].config(command=ao_clicar_check)
     botoes[2][0].config(command=ao_clicar_lancar_provisoes)
@@ -1301,6 +1328,7 @@ def main():
     botoes[4][1].config(command=ao_clicar_atualizar_rateio)
     botoes[5][1].config(command=ao_clicar_atualizar_custo_mensalizacao)
     botoes[6][0].config(command=ao_clicar_gerar_pnl)
+    botoes[6][1].config(command=ao_clicar_enviar_email_pnl)
 
     # "Atualizar Faturamento" (Passo 6) ainda nao foi automatizado - fica
     # desabilitado, e o helper _todos_botoes ja sabe manter ele assim mesmo

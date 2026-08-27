@@ -449,6 +449,127 @@ def gerar_arquivo_pnl(mes: int, ano: int, ciclo: str, pasta_saida: Path, log=pri
     return caminho_novo, caminho_congelado
 
 
+# Linha do EBIT em "Resumo Resultado Mês" - achado inspecionando o arquivo
+# real de Julho/2026 (2026-08-27): D44=valor do mês, E44=comparação (Flash
+# no Actual, Forecast R<n> no Flash). Conferido contra o e-mail real da
+# usuária: 432,53 - 327,55 ≈ 105 ('000 BRL) bate exato com "ganho de BRL
+# 105K vs flash" do e-mail modelo do Actual de Julho.
+LINHA_EBIT_RESUMO_MES = 44
+
+# Destinatários fixos do e-mail de envio do P&L (Passo 7), extraídos pela
+# usuária de 2 e-mails reais já enviados (um Actual de 2025, um Flash de
+# 2026) - 2026-08-27. Nomes no formato exato que o Outlook da Pirelli
+# resolve contra o diretório corporativo (não são e-mails "adivinhados").
+# Se a lista de distribuição mudar, atualizar aqui (não há outra fonte).
+DESTINATARIOS_EMAIL_PNL = {
+    "Actual": {
+        "para": [
+            "Machado Vitoria Ferreira, BR",
+            "Chiaretti Guilherme Augusto Amaral, BR",
+            "Correa Marcella Chiozzotto, BR",
+        ],
+        "copia": [
+            "Gama Fernanda Afonso Da, BR",
+            "Briquezi Thiago Pacheco, BR",
+            "Souza Bianca Leticia De (STAG), BR",
+        ],
+    },
+    "Flash": {
+        "para": [
+            "Chiaretti Guilherme Augusto Amaral, BR",
+            "Machado Vitoria Ferreira, BR",
+            "Correa Marcella Chiozzotto, BR",
+            "Briquezi Thiago Pacheco, BR",
+        ],
+        "copia": [
+            "Gama Fernanda Afonso Da, BR",
+            "Zangarini Daniel, BR",
+            "Moreira Rafaela Cristal De La Torre Francisco, BR",
+            "Souza Bianca Leticia De (STAG), BR",
+        ],
+    },
+}
+
+
+def localizar_pnl_congelado(mes: int, ano: int, ciclo: str) -> Path:
+    pasta = resolver_pasta_ciclo(REDE_BASE / str(ano) / MESES_PASTA[mes], mes, ciclo)
+    base = Path(nome_arquivo_pnl(mes, ano, ciclo))
+    nome_congelado_base = f"{base.stem}_{base.suffix}"
+    caminho = _localizar_versao_com_formula(pasta, nome_congelado_base)
+    if caminho is None:
+        raise FileNotFoundError(
+            f"Não encontrei o P&L congelado de {ciclo} de {MESES_NOMES[mes]}/{ano} em {pasta} "
+            "- gere o P&L (botão 'Gerar Arquivo de P&L') antes de montar o e-mail."
+        )
+    return caminho
+
+
+def calcular_resultado_email(caminho_arquivo: Path, ciclo: str, log=print) -> tuple[float, str]:
+    """Lê o EBIT do mês e da comparação (linha 44, 'Resumo Resultado Mês')
+    e devolve (diferença em '000 BRL, rótulo da comparação) - ex: (104.98,
+    'flash') ou (12.3, 'R7'). Abre o arquivo CONGELADO (só valor, mais
+    rápido/seguro de ler que o de fórmula - não precisa recalcular nada)."""
+    excel = abrir_excel_isolado(log)
+    excel.AskToUpdateLinks = False
+    try:
+        wb = excel.Workbooks.Open(str(caminho_arquivo), ReadOnly=True, UpdateLinks=0)
+        ws = wb.Worksheets("Resumo Resultado Mês")
+        valor_proprio = ws.Cells(LINHA_EBIT_RESUMO_MES, 4).Value or 0.0  # D44
+        valor_comparacao = ws.Cells(LINHA_EBIT_RESUMO_MES, 5).Value or 0.0  # E44
+        if ciclo == "Actual":
+            rotulo = "flash"
+        else:
+            rotulo_bruto = str(ws.Range("E5").Value or "Forecast")
+            rotulo = rotulo_bruto.replace("Forecast ", "").strip()
+        wb.Close(SaveChanges=False)
+    finally:
+        excel.Quit()
+    return valor_proprio - valor_comparacao, rotulo
+
+
+def montar_corpo_email(mes: int, ciclo: str, diferenca: float, rotulo: str) -> str:
+    sinal = "ganho" if diferenca >= 0 else "perda"
+    valor_fmt = f"{abs(diferenca):,.0f}".replace(",", ".")
+    if ciclo == "Actual":
+        return (
+            f"Segue anexo P&L do Actual {MESES_INGLES[mes]} da Fitted Units e o resultado "
+            f"está com {sinal} de BRL {valor_fmt}K vs {rotulo}.<br>"
+            "[AJUSTAR antes de enviar: motivo do resultado - ex: phasing, melhora efetiva, etc.]"
+        )
+    return (
+        f"Segue anexo P&L do flash {MESES_INGLES[mes]} da Fitted Units.<br>"
+        f"O resultado está com {sinal} de BRL {valor_fmt}K vs {rotulo}."
+    )
+
+
+def montar_email_pnl(mes: int, ano: int, ciclo: str, log=print) -> str:
+    """Monta (NUNCA envia - .Display(), nunca .Send()) o e-mail de envio do
+    P&L pra Controladoria Central, com o arquivo congelado em anexo e a
+    diferença de EBIT já calculada no corpo. A usuária revisa (ajusta o
+    motivo do resultado, confere destinatários) e aperta enviar ela mesma -
+    pedido explícito, 2026-08-27 (envio de e-mail é ação irreversível)."""
+    import win32com.client
+
+    caminho_congelado = localizar_pnl_congelado(mes, ano, ciclo)
+    diferenca, rotulo = calcular_resultado_email(caminho_congelado, ciclo, log)
+    corpo_html = montar_corpo_email(mes, ciclo, diferenca, rotulo)
+    destinatarios = DESTINATARIOS_EMAIL_PNL[ciclo]
+
+    outlook = win32com.client.Dispatch("Outlook.Application")
+    mail = outlook.CreateItem(0)  # olMailItem
+    mail.GetInspector  # força o Outlook a carregar a assinatura padrão no HTMLBody
+    mail.To = "; ".join(destinatarios["para"])
+    mail.CC = "; ".join(destinatarios["copia"])
+    mail.Subject = f"P&L Fitted Units - {MESES_INGLES[mes]} {ciclo}"
+    assinatura_atual = mail.HTMLBody
+    mail.HTMLBody = f"<p>Boa tarde,</p><p>{corpo_html}</p>" + assinatura_atual
+    mail.Attachments.Add(str(caminho_congelado))
+    mail.Display()
+
+    log(f"Rascunho de e-mail aberto no Outlook: '{mail.Subject}' (NÃO enviado - revise e envie você mesma).")
+    return mail.Subject
+
+
 if __name__ == "__main__":
     import argparse
 

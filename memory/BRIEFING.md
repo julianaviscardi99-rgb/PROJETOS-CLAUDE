@@ -116,9 +116,17 @@ A usuária avisou que o Passo 7 também inclui montar (não enviar - ela revisa 
 - Flash: "Segue anexo P&L do flash <Mês> da Fitted Units.\nO resultado está em linha vs R7."
 - Assinatura fixa (nome, cargo, logo Pirelli, endereço) - vem do print, aparece igual nos dois.
 
-**Ainda NÃO implementado nesta sessão** (interrompido pelo alerta de sessão longa) - próximo passo imediato: achar a linha do EBIT no P&L real (pra calcular a diferença automaticamente), depois escrever a função de montar o e-mail via Outlook COM (`win32com.client.Dispatch("Outlook.Application")`, `MailItem.Display()` - NUNCA `.Send()`) e ligar o botão novo na aba "⑦ P&L" do cockpit.
+**IMPLEMENTADO E TESTADO AO VIVO (mesma sessão, depois do alerta):**
+- **Achado:** linha 44 de "Resumo Resultado Mês" = EBIT (D=valor do mês, E=comparação). Conferido contra o P&L real de Julho/Actual: 432,53-327,55=104,98 → arredonda pra "105K", bate **exatamente** com "ganho de BRL 105K vs flash" do e-mail real da usuária. Constante `LINHA_EBIT_RESUMO_MES = 44` em `gerar_pnl.py`.
+- **Novas funções em `gerar_pnl.py`:** `localizar_pnl_congelado` (acha o arquivo `_` já gerado, com fallback de versão `_v2` etc.), `calcular_resultado_email` (lê D44/E44 do congelado, devolve diferença + rótulo da comparação - "flash" fixo no Actual, ou o texto de E5 tipo "R7" no Flash), `montar_corpo_email` (monta a frase - no Actual deixa `[AJUSTAR antes de enviar: motivo do resultado...]` pra usuária completar, no Flash só o número), `montar_email_pnl` (função principal - abre o Outlook via COM, `CreateItem(0)`, preenche Para/Cc/Assunto/Corpo (preservando a assinatura padrão do Outlook, carregada via `mail.GetInspector` antes de mexer no `HTMLBody`), anexa o arquivo congelado, e chama **`mail.Display()` - NUNCA `.Send()`**).
+- **`DESTINATARIOS_EMAIL_PNL`** (dict Actual/Flash, listas fixas extraídas dos 2 e-mails modelo, com a Bianca já incluída nos dois "copia") - hardcoded no script (não é caminho, é lista de negócio - comentário no código avisa que só tem essa fonte, atualizar ali se a lista mudar).
+- **Testado ao vivo contra a rede real** (Julho/2026, Actual): `calcular_resultado_email` leu o congelado real e devolveu diferença 104,98/"flash" (bate exato com o e-mail real); `montar_email_pnl(7, 2026, "Actual")` rodado de verdade - abriu um rascunho real no Outlook da usuária (não enviado), ela vai conferir se os destinatários resolveram certo contra o diretório da Pirelli.
+- **Cockpit:** aba "⑦ P&L" ganhou o 2º botão, nome exato pedido: **"Enviar P&L para Controladoria Central via email"** - chama `montar_email_pnl(mes, ano, ciclo)` com o mês/ano/Ciclo já selecionados no topo da janela. Compilado sem erro.
+- **Commitado e no GitHub.**
 
-**Risco/cuidado a manter:** nunca chamar `.Send()` em lugar nenhum deste fluxo - é ação irreversível e a usuária foi explícita que quem envia é ela.
+**Risco/cuidado a manter (todo o fluxo de e-mail):** nunca chamar `.Send()` em lugar nenhum - é ação irreversível e a usuária foi explícita que quem envia é ela.
+
+**Pendente pra confirmar com a usuária na próxima sessão:** ela ainda não confirmou se o rascunho de teste (Julho/Actual) abriu com os destinatários certos (nomes resolvidos pelo Outlook) e se o texto/assinatura ficaram bons visualmente - perguntar assim que ela voltar, antes de considerar este item fechado.
 
 ---
 ## PRÓXIMA SESSÃO — desenho do Passo 7 (P&L) FECHADO, falta só decidir formato e implementar
