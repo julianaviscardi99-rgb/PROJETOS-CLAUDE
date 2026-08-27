@@ -262,9 +262,15 @@ def atualizar_coluna_mes_corrente_flash(wb, mes: int, ano: int, log):
     nome_antigo = f"MENS FITTED FLASH {MESES_NOMES[mes - 1].upper()}.xls"
     nome_novo = f"MENS FITTED FLASH {MESES_NOMES[mes].upper()}.xls"
 
+    # Começa na linha 6 (não 1): linhas 1-4 são cabeçalho estático do
+    # calendário (ex: J4='Jul' sempre, independente do mês fechando - não
+    # é rótulo do "mês atual") e a linha 5 é tratada à parte, depois desta
+    # função, por `atualizar_textos` - copiar a partir da linha 1 sobrescreve
+    # esses cabeçalhos com o valor da coluna anterior (achado real testando
+    # este script, 2026-08-27: J4 virava 'Jun' em vez de manter 'Jul').
     ws = wb.Worksheets("Resumo Resultado Ano")
-    origem = ws.Range(f"{col_anterior}1:{col_anterior}{ULTIMA_LINHA_YTD}")
-    destino = ws.Range(f"{col_novo}1:{col_novo}{ULTIMA_LINHA_YTD}")
+    origem = ws.Range(f"{col_anterior}6:{col_anterior}{ULTIMA_LINHA_YTD}")
+    destino = ws.Range(f"{col_novo}6:{col_novo}{ULTIMA_LINHA_YTD}")
     destino.FormulaR1C1 = origem.FormulaR1C1
     destino.Replace(What=nome_antigo, Replacement=nome_novo, LookAt=2, MatchCase=False)  # xlPart
     log(f"Resumo Resultado Ano: coluna {col_novo} (mês fechando) agora puxa de '{nome_novo}'.")

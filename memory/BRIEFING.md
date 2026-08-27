@@ -57,6 +57,33 @@ Confirmado em **todos os 7 arquivos Actual de 2026 já fechados** (Jan-Jul) — 
 **Próximo passo (início da próxima sessão):** com esse diff em mãos, desenhar e propor à usuária a estrutura de funções do `gerar_pnl.py` (nunca hardcoded — cada regra acima vira uma função pequena testável) antes de escrever o código de verdade. Ainda não escrevi nenhuma linha do script.
 
 ---
+## Continuação 2026-08-27 (retomada 2, "podemos continuar") — `gerar_pnl.py` ESCRITO e validado contra os dois arquivos reais de Julho (Actual e Flash)
+
+**Método de validação usado (mais forte que os passos anteriores):** em vez de só ler os arquivos reais, gerei o P&L de Julho/2026 (Actual e Flash) com o script, usando como base o arquivo REAL de Junho (rede, só leitura) e salvando a saída numa pasta de teste local (`data/processed/fitted_units_despesas/pnl_teste/saida_jul_actual` e `saida_jul_flash` — nada de rede foi escrito). Depois comparei célula a célula o arquivo GERADO contra o arquivo REAL de Julho que já existe na rede. Isso serviu de "gabarito" perfeito.
+
+**Resultado final, CONFIRMADO com zero diferenças (depois de 4 rodadas de bugs achados e corrigidos pelo próprio processo de validação):**
+- **Actual:** bate 100% com o real, exceto exatamente as células que eu CORRIGI de propósito (o link de Flash/Forecast agora usa o caminho completo com "MM - Mês", que é o fix do bug já registrado — o real ainda tem o caminho quebrado).
+- **Flash:** **zero diferenças em qualquer célula**, nas 3 abas, depois de corrigir 4 bugs reais achados durante o teste (não suposição, foram erros de verdade no meu próprio script):
+  1. Busca de arquivo confundia a versão "congelada" (`..._July-26_.xlsx`, sem link) com a versão viva - corrigido com `_localizar_versao_com_formula` (só aceita nome exato ou `_v2`/`_v3`, nunca o sufixo `_` sozinho).
+  2. `Copy`/`PasteSpecial` (usado pra "Resultado YTD") falha via COM numa instância isolada/invisível do Excel (sem acesso a área de transferência) - trocado por atribuição direta de `FormulaR1C1` (mesmo efeito - referências relativas se ajustam - sem depender de clipboard).
+  3. **Achado de negócio real, não só bug de código:** no Ciclo Flash, a coluna do MÊS QUE ESTÁ FECHANDO no bloco D:O de "Resumo Resultado Ano" precisa TROCAR DE FONTE (de Forecast pra Mensalização Flash) com um mapeamento de linha totalmente diferente entre as duas fontes (não é 1:1, tem linha com sinal invertido) - resolvido copiando o padrão exato já existente na coluna do mês anterior (`FormulaR1C1`) e só trocando o nome do arquivo via `Range.Replace` escopado a essa coluna (constante `LookAt` errada quebrou na 1ª tentativa - corrigido pra `2`/xlPart, igual ao padrão já usado em `gerar_mensalizacao.py`).
+  - Também corrigido: aba "Resultado YTD" tem estrutura DIFERENTE entre os Ciclos (Actual só tem 1 bloco de coluna nova e não tem "Forecast R7" nem rótulo de linha5; Flash tem 4 blocos, tem "Forecast R7" e replica os rótulos de linha5 de "Resumo Resultado Ano") - só descoberto comparando contra o real, não era óbvio.
+  - Ordem das funções importa: `atualizar_ytd` precisa rodar ANTES de `atualizar_textos` (a cópia de coluna inteira sobrescrevia o rótulo recém-corrigido se rodasse depois).
+  4. A cópia da coluna do mês corrente (achado #3 acima) também sobrescrevia sem querer o cabeçalho estático do calendário (linha 4, ex: J4 devia continuar "Jul" sempre, independente do mês fechando) - corrigido limitando a cópia a partir da linha 6 (linhas 1-4 nunca são tocadas por essa função).
+
+**Script:** `scripts/sap/fitted_units/fitted_units_despesas/gerar_pnl.py` — cobre Actual e Flash (Flash e Actual juntos, conforme decidido), NÃO gera a cópia congelada (decidido deixar pra depois), NÃO cobre a virada Dezembro->Janeiro (bloco Jan-Dez provavelmente precisa reset maior, ainda não detalhado pela usuária - roda normalmente de Fevereiro em diante).
+
+**Assunção pendente de confirmar com a usuária:** quando existem as duas versões do P&L de Forecast (viva e congelada `_`) na mesma pasta, o script agora prefere a viva (bateu com o real de Julho) - mas Maio/Junho reais usavam a congelada. Não é um problema pra rodar (mês novo real, ninguém sabe qual vai existir), só registrar que é uma escolha, não uma regra confirmada por ela ainda.
+
+**Nada foi escrito na rede** - toda a validação usou pasta de teste local, só LEITURA dos arquivos reais de Junho/Julho pra comparar. Rodado com sucesso via linha de comando (`--mes --ano --ciclo --pasta-saida`), ainda não integrado no cockpit (GUI) - próximo passo natural depois da usuária revisar/aprovar.
+
+**Pendências pra próxima sessão:**
+1. Mostrar o resultado pra usuária e pedir aprovação (mesmo padrão dos Passos 5/6 - ela precisa dizer "bateu, pode seguir" antes de ir pra produção).
+2. Perguntar sobre a assunção do Forecast vivo-vs-congelado acima.
+3. Decidir com ela: promover pra rede oficial + integrar no cockpit (novo Passo ⑦), ou testar mais meses primeiro (só Julho foi testado até agora).
+4. Ainda pendente, fora do escopo combinado: arquivo congelado (2ª rodada) e virada de ano (Dez->Jan).
+
+---
 ## PRÓXIMA SESSÃO — desenho do Passo 7 (P&L) FECHADO, falta só decidir formato e implementar
 **Retomar exatamente daqui, pedido explícito da usuária no fim da sessão 2026-08-27:** decidir junto com ela, no início da próxima sessão, se implementamos como **script standalone primeiro** (como os outros passos — recomendado, testa isolado antes de tocar rede) ou **já direto integrado no cockpit**. Pergunta já foi feita a ela nesta sessão mas ficou pra responder na próxima (ela precisou desligar).
 
