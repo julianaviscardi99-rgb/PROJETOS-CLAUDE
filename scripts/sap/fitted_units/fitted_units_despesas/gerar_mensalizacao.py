@@ -107,56 +107,62 @@ def coluna_do_mes(mes: int) -> int:
     return COL_MES_INICIAL + mes
 
 
-def localizar_forecast_do_mes(mes: int, ano: int) -> Path | None:
+def _achar_arquivo_por_prefixo(pasta: Path, prefixo: str, log=print) -> Path | None:
+    """Acha o único arquivo '.xls' na pasta cujo nome começa com `prefixo` -
+    NÃO monta o nome do mês (ex: 'MENS FITTED FLASH JULHO.xls') porque o
+    nome do mês NÃO é consistente entre os arquivos reais (achado real,
+    2026-08-26: Jan-Jun usam inglês - 'JANUARY', 'FEBRUARY', 'MARCH', até
+    abreviado - 'APR' - e só Julho usa português 'JULHO'). Avisa (não
+    levanta erro) se achar mais de um candidato - quem chama decide."""
+    if not pasta.exists():
+        return None
+    candidatos = sorted(pasta.glob(f"{prefixo}*.xls"))
+    if not candidatos:
+        return None
+    if len(candidatos) > 1:
+        log(f"AVISO: mais de um arquivo '{prefixo}*.xls' em {pasta} - usando o primeiro: {candidatos}")
+    return candidatos[0]
+
+
+def localizar_forecast_do_mes(mes: int, ano: int, log=print) -> Path | None:
     """Devolve o caminho do arquivo Forecast pro mes/ano pedido, se a
     revisao Rn (n=mes) existir - None se ainda nao existir (ex: fechamento
     de Agosto/2026, so' existe ate R7)."""
     pasta = REDE_BASE_MENSALIZACAO / "Fcst" / f"Fcst {ano}" / f"R{mes} {ano}"
-    if not pasta.exists():
-        return None
-    nome = f"MENS FITTED FORECAST {MESES_NOMES[mes].upper()}.xls"
-    caminho = pasta / nome
-    return caminho if caminho.exists() else None
+    return _achar_arquivo_por_prefixo(pasta, "MENS FITTED FORECAST ", log)
 
 
-def localizar_forecast_mais_recente(mes: int, ano: int) -> tuple[Path, int] | None:
+def localizar_forecast_mais_recente(mes: int, ano: int, log=print) -> tuple[Path, int] | None:
     """Devolve (caminho, revisao) do Forecast mais recente ANTERIOR ou
     igual ao mes pedido (usado pra buscar a 'perfumaria' quando o mes
     sendo fechado ainda nao tem Forecast proprio - ex: Agosto/2026 usa a
     revisao R7). Percorre de tras pra frente (mes, mes-1, ...) ate achar."""
     for m in range(mes, 0, -1):
-        caminho = localizar_forecast_do_mes(m, ano)
+        caminho = localizar_forecast_do_mes(m, ano, log)
         if caminho is not None:
             return caminho, m
     return None
 
 
-def localizar_actual_do_mes(mes: int, ano: int) -> Path | None:
+def localizar_actual_do_mes(mes: int, ano: int, log=print) -> Path | None:
     # As pastas de Actual/Flash usam o mes por extenso em INGLES (ex:
     # "07 - July"), diferente das pastas do Passo 1-5 (GFU_DAC, que usam
     # abreviação em inglês, "07 - Jul", MESES_PASTA) - confirmado
-    # explorando a rede em 2026-08-26, corrigido depois de um bug real (a
-    # versão anterior usava o mês em português, nunca testada contra a rede).
+    # explorando a rede em 2026-08-26. O NOME DO ARQUIVO dentro da pasta
+    # não é consistente (ver _achar_arquivo_por_prefixo) - por isso busca
+    # por prefixo, não monta o nome do mês.
     pasta = REDE_BASE_MENSALIZACAO / "Actual" / str(ano) / f"{mes:02d} - {MESES_INGLES[mes]}"
-    if not pasta.exists():
-        return None
-    nome = f"MENS FITTED ACTUAL {MESES_NOMES[mes].upper()}.xls"
-    caminho = pasta / nome
-    return caminho if caminho.exists() else None
+    return _achar_arquivo_por_prefixo(pasta, "MENS FITTED ACTUAL ", log)
 
 
-def localizar_flash_do_mes(mes: int, ano: int) -> Path | None:
+def localizar_flash_do_mes(mes: int, ano: int, log=print) -> Path | None:
     """Devolve o caminho do arquivo Flash já fechado pro mes/ano pedido -
     é a base pro Ciclo Actual (confirmado pela usuária, 2026-08-26: 'o
     arquivo base que você deve pegar é do flash pra continuar com o
     actual... a perfumaria já deve estar toda ok, porque você já arrumou
     no flash')."""
     pasta = REDE_BASE_MENSALIZACAO / "Flash" / str(ano) / f"{mes:02d} - {MESES_INGLES[mes]}"
-    if not pasta.exists():
-        return None
-    nome = f"MENS FITTED FLASH {MESES_NOMES[mes].upper()}.xls"
-    caminho = pasta / nome
-    return caminho if caminho.exists() else None
+    return _achar_arquivo_por_prefixo(pasta, "MENS FITTED FLASH ", log)
 
 
 def determinar_fonte(mes: int, ano: int, log) -> dict:
@@ -168,13 +174,13 @@ def determinar_fonte(mes: int, ano: int, log) -> dict:
       (confirmado pela usuaria, 2026-08-26, com o exemplo real de Agosto/
       2025: 'MENS FITTED 2025 FLASH AGO com JUL EFETIVO.xls', S5='R7 JUL act').
     """
-    forecast_do_mes = localizar_forecast_do_mes(mes, ano)
+    forecast_do_mes = localizar_forecast_do_mes(mes, ano, log)
     if forecast_do_mes is not None:
         log(f"Forecast R{mes}/{ano} encontrado - caso normal (base e perfumaria vêm dele).")
         return {"caso": "normal", "base": forecast_do_mes, "revisao_perfumaria": mes}
 
     mes_anterior, ano_anterior = (12, ano - 1) if mes == 1 else (mes - 1, ano)
-    actual_anterior = localizar_actual_do_mes(mes_anterior, ano_anterior)
+    actual_anterior = localizar_actual_do_mes(mes_anterior, ano_anterior, log)
     if actual_anterior is None:
         raise FileNotFoundError(
             f"Não achei nem o Forecast R{mes}/{ano} nem o Actual de "
@@ -292,16 +298,27 @@ def _conferir_total_cost(wb, mes: int, totais_colados: dict, log) -> dict:
     return checks
 
 
-def gerar_arquivo_mensalizacao(mes: int, ano: int, pasta_saida: Path, log=print) -> tuple[Path, dict]:
-    """Gera o arquivo de Mensalização (Flash) pro mês/ano pedido, salvando
-    em `pasta_saida` (NUNCA a pasta oficial de rede direto - quem chama
-    decide isso, mesmo racional do Passo 5). Devolve (caminho_gerado,
-    checks) - checks = {aba: (total_excel, total_passo5, diferença)}."""
-    pasta_saida = pasta_saida.resolve()
-    fonte = determinar_fonte(mes, ano, log)
+def gerar_arquivo_mensalizacao(
+    mes: int, ano: int, pasta_saida: Path, ciclo: str = "Flash", log=print
+) -> tuple[Path, dict]:
+    """Gera o arquivo de Mensalização pro mês/ano/Ciclo pedido, salvando em
+    `pasta_saida` (NUNCA a pasta oficial de rede direto - quem chama decide
+    isso, mesmo racional do Passo 5). Devolve (caminho_gerado, checks) -
+    checks = {aba: (total_excel, total_passo5, diferença)}.
 
-    caminho_base_intermediaria = localizar_base_intermediaria(mes, ano, "Flash")
-    log(f"Lendo Base Intermediária (Passo 5): {caminho_base_intermediaria.name}...")
+    Ciclo Flash: base = Forecast do mês (ou Actual anterior + perfumaria do
+    último Forecast, se ainda não existir Forecast pro mês) - ver
+    determinar_fonte. Aplica a "perfumaria" completa (E5/S5/C47/linha47/
+    S8:S44) nas 5 abas.
+
+    Ciclo Actual: base = o Flash DO MESMO MÊS, já fechado - confirmado pela
+    usuária, 2026-08-26 ("o arquivo base que você deve pegar é do flash
+    pra continuar com o actual"). A perfumaria NÃO é refeita (já veio certa
+    do Flash) - só troca todo texto "Flash" por "Actual" nas 5 abas."""
+    pasta_saida = pasta_saida.resolve()
+
+    caminho_base_intermediaria = localizar_base_intermediaria(mes, ano, ciclo)
+    log(f"Lendo Base Intermediária (Passo 5, Ciclo {ciclo}): {caminho_base_intermediaria.name}...")
     totais_ativos, residuos, _, _, _ = ler_e_classificar(caminho_base_intermediaria, mes, log)
     percentuais, vigente_desde = carregar_rateio_vigente(mes, ano)
     log(f"Rateio vigente desde {vigente_desde}: {percentuais}")
@@ -313,9 +330,19 @@ def gerar_arquivo_mensalizacao(mes: int, ano: int, pasta_saida: Path, log=print)
         for chave, valor in dados.items():
             dados_por_unidade["TOTAL"][chave] = dados_por_unidade["TOTAL"].get(chave, 0) + valor
 
-    caminho_novo = _copiar_e_renomear(fonte["base"], pasta_saida, mes, ano, log)
+    if ciclo == "Actual":
+        base = localizar_flash_do_mes(mes, ano, log)
+        if base is None:
+            raise FileNotFoundError(
+                f"Não achei o Flash de {MESES_NOMES[mes]}/{ano} já fechado - preciso dele "
+                "como base pra montar o Actual (a perfumaria vem de lá)."
+            )
+        log(f"Ciclo Actual: base = Flash {MESES_NOMES[mes]}/{ano} já fechado ({base.name}).")
+    else:
+        fonte = determinar_fonte(mes, ano, log)
+        base = fonte["base"]
 
-    sufixo_texto = f" {MESES_NOMES[mes][:3].upper()} act" if fonte["caso"] == "sem_forecast" else ""
+    caminho_novo = _copiar_e_renomear(base, pasta_saida, mes, ano, ciclo, log)
 
     excel = win32com.client.DispatchEx("Excel.Application")
     excel.Visible = False
@@ -323,7 +350,11 @@ def gerar_arquivo_mensalizacao(mes: int, ano: int, pasta_saida: Path, log=print)
     excel.AskToUpdateLinks = False
     try:
         wb = excel.Workbooks.Open(str(caminho_novo.resolve()))
-        _aplicar_perfumaria(wb, mes, fonte["revisao_perfumaria"], sufixo_texto, log)
+        if ciclo == "Actual":
+            _trocar_flash_por_actual(wb, log)
+        else:
+            sufixo_texto = f" {MESES_NOMES[mes][:3].upper()} act" if fonte["caso"] == "sem_forecast" else ""
+            _aplicar_perfumaria(wb, mes, fonte["revisao_perfumaria"], sufixo_texto, log)
         totais_colados = _colar_valores_rateio(wb, mes, dados_por_unidade, log)
         wb.Save()
         checks = _conferir_total_cost(wb, mes, totais_colados, log)
@@ -338,10 +369,11 @@ def gerar_arquivo_mensalizacao(mes: int, ano: int, pasta_saida: Path, log=print)
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(description="Gera o arquivo de Mensalização - Flash (Passo 6)")
+    parser = argparse.ArgumentParser(description="Gera o arquivo de Mensalização (Passo 6)")
     parser.add_argument("--mes", type=int, required=True)
     parser.add_argument("--ano", type=int, required=True)
+    parser.add_argument("--ciclo", choices=["Flash", "Actual"], default="Flash")
     parser.add_argument("--pasta-saida", type=Path, required=True, help="Pasta de saída (teste local ou rede)")
     args = parser.parse_args()
 
-    gerar_arquivo_mensalizacao(args.mes, args.ano, args.pasta_saida)
+    gerar_arquivo_mensalizacao(args.mes, args.ano, args.pasta_saida, args.ciclo)
