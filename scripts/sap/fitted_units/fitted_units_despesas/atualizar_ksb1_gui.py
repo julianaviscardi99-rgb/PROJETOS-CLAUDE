@@ -378,6 +378,18 @@ PASSOS = [
         ),
         "botoes": ["Atualizar Faturamento", "Atualizar Custo"],
     },
+    {
+        "aba": "⑦  P&L",
+        "titulo": "Passo 7 · P&L",
+        "descricao": (
+            "Gera o arquivo de P&L do mês/Ciclo selecionado - copia o P&L do mesmo Ciclo "
+            "do mês anterior (Actual ou Flash já fechados precisam existir) e troca os "
+            "links (Mensalização, Forecast, Flash - e PY/MP se for Janeiro) e os textos "
+            "que mudam todo mês. Validado contra os arquivos reais de Julho/2026 "
+            "(Actual e Flash, zero diferença) antes de ligar neste botão."
+        ),
+        "botoes": ["Gerar Arquivo de P&L"],
+    },
 ]
 
 
@@ -1252,6 +1264,28 @@ def main():
 
         rodar_em_thread("Atualizando Custo (Mensalização)", func, ao_concluir)
 
+    def ao_clicar_gerar_pnl():
+        from gerar_pnl import gerar_arquivo_pnl
+
+        mes_ano = ler_mes_ano()
+        if mes_ano is None:
+            return
+        mes, ano = mes_ano
+        ciclo = ciclo_var.get()
+
+        pasta_saida = resolver_pasta_ciclo(REDE_BASE / str(ano) / MESES_PASTA[mes], mes, ciclo)
+
+        def func(log, pid_callback):
+            return gerar_arquivo_pnl(mes, ano, ciclo, pasta_saida, log=log, pid_callback=pid_callback)
+
+        def ao_concluir(resultado, erro):
+            if erro is not None:
+                messagebox.showerror("Erro ao gerar o P&L", str(erro))
+                return
+            messagebox.showinfo("Concluído", f"P&L gerado:\n{resultado}")
+
+        rodar_em_thread("Gerando P&L", func, ao_concluir)
+
     botoes[0][0].config(command=ao_clicar_extrair)
     botoes[1][0].config(command=ao_clicar_check)
     botoes[2][0].config(command=ao_clicar_lancar_provisoes)
@@ -1261,6 +1295,7 @@ def main():
     botoes[4][0].config(command=ao_clicar_rateio_custos)
     botoes[4][1].config(command=ao_clicar_atualizar_rateio)
     botoes[5][1].config(command=ao_clicar_atualizar_custo_mensalizacao)
+    botoes[6][0].config(command=ao_clicar_gerar_pnl)
 
     # "Atualizar Faturamento" (Passo 6) ainda nao foi automatizado - fica
     # desabilitado, e o helper _todos_botoes ja sabe manter ele assim mesmo
