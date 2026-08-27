@@ -65,6 +65,7 @@ from ksb1_core import MESES_NOMES, abrir_excel_isolado, nome_com_versao  # noqa:
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from gerar_rateio_custos import (  # noqa: E402
+    MESES_INGLES,
     ORDEM_FIXO,
     ORDEM_VARIAVEL,
     calcular_dados_com_rateio,
@@ -131,11 +132,29 @@ def localizar_forecast_mais_recente(mes: int, ano: int) -> tuple[Path, int] | No
 
 
 def localizar_actual_do_mes(mes: int, ano: int) -> Path | None:
-    pasta = REDE_BASE_MENSALIZACAO / "Actual" / str(ano) / f"{mes:02d} - {MESES_NOMES[mes]}"
+    # As pastas de Actual/Flash usam o mes por extenso em INGLES (ex:
+    # "07 - July"), diferente das pastas do Passo 1-5 (GFU_DAC, que usam
+    # abreviação em inglês, "07 - Jul", MESES_PASTA) - confirmado
+    # explorando a rede em 2026-08-26, corrigido depois de um bug real (a
+    # versão anterior usava o mês em português, nunca testada contra a rede).
+    pasta = REDE_BASE_MENSALIZACAO / "Actual" / str(ano) / f"{mes:02d} - {MESES_INGLES[mes]}"
     if not pasta.exists():
-        # Formato alternativo visto na rede: "MM - <mes em ingles>"
         return None
     nome = f"MENS FITTED ACTUAL {MESES_NOMES[mes].upper()}.xls"
+    caminho = pasta / nome
+    return caminho if caminho.exists() else None
+
+
+def localizar_flash_do_mes(mes: int, ano: int) -> Path | None:
+    """Devolve o caminho do arquivo Flash já fechado pro mes/ano pedido -
+    é a base pro Ciclo Actual (confirmado pela usuária, 2026-08-26: 'o
+    arquivo base que você deve pegar é do flash pra continuar com o
+    actual... a perfumaria já deve estar toda ok, porque você já arrumou
+    no flash')."""
+    pasta = REDE_BASE_MENSALIZACAO / "Flash" / str(ano) / f"{mes:02d} - {MESES_INGLES[mes]}"
+    if not pasta.exists():
+        return None
+    nome = f"MENS FITTED FLASH {MESES_NOMES[mes].upper()}.xls"
     caminho = pasta / nome
     return caminho if caminho.exists() else None
 
@@ -176,13 +195,30 @@ def determinar_fonte(mes: int, ano: int, log) -> dict:
     return {"caso": "sem_forecast", "base": actual_anterior, "revisao_perfumaria": revisao}
 
 
-def _copiar_e_renomear(fonte: Path, pasta_saida: Path, mes: int, ano: int, log) -> Path:
+def _copiar_e_renomear(fonte: Path, pasta_saida: Path, mes: int, ano: int, ciclo: str, log) -> Path:
     pasta_saida.mkdir(parents=True, exist_ok=True)
-    nome_novo = nome_com_versao(pasta_saida, f"MENS FITTED FLASH {MESES_NOMES[mes].upper()}.xls")
+    nome_novo = nome_com_versao(pasta_saida, f"MENS FITTED {ciclo.upper()} {MESES_NOMES[mes].upper()}.xls")
     caminho_novo = pasta_saida / nome_novo
     shutil.copy2(fonte, caminho_novo)
     log(f"Copiado {fonte.name} -> {caminho_novo}")
     return caminho_novo
+
+
+def _trocar_flash_por_actual(wb, log):
+    """Ciclo Actual: a perfumaria já está toda certa (herdada do Flash do
+    mesmo mês, que já foi fechado e corrigido antes) - só precisa trocar
+    todo texto 'Flash' por 'Actual' nas 5 abas (pedido explícito da
+    usuária, 2026-08-26: 'tudo o que estiver escrito flash, vira actual').
+    Usa Find/Replace do próprio Excel (LookAt=xlWhole, só troca célula cujo
+    conteúdo INTEIRO é 'Flash' - não mexe em texto que só contém a palavra
+    como parte de algo maior, nem em fórmulas com link externo)."""
+    xlWhole = 1
+    for aba in ABAS_MENSALIZACAO:
+        ws = wb.Worksheets(aba)
+        trocou = ws.Cells.Replace(
+            What="Flash", Replacement="Actual", LookAt=xlWhole, MatchCase=False
+        )
+        log(f"{aba}: texto 'Flash' trocado por 'Actual' onde encontrado.")
 
 
 def _aplicar_perfumaria(wb, mes: int, revisao_perfumaria: int, sufixo_texto: str, log):
