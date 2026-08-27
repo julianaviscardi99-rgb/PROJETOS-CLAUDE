@@ -3,142 +3,26 @@
 > Manter apenas as últimas 2 sessões inline — sessões mais antigas vão para long_term/.
 
 ---
-## RESUMO DO DIA 2026-08-27 — Passo 7 (P&L) iniciado: escopo do Actual explicado, mecanismo de links validado, erro real de PY encontrado e corrigido a partir de Agosto
+## RESUMO DO DIA 2026-08-27 — Passo 7 (P&L) desenhado, implementado, validado e FECHADO de ponta a ponta (arquivo + e-mail)
 
-**Retomada:** confirmado com a usuária que Passo 5 (Rateio) e Passo 6 (Mensalização) seguem aprovados e fechados (ver sessão 2026-08-26 abaixo). Início do escopo do último passo do cockpit: o **arquivo de P&L** — o que é enviado mensalmente pro time de gestão consolidar o resultado.
+**Detalhe completo de todo o dia (todas as etapas, achados e decisões, sub-sessão por sub-sessão) arquivado em `memory/long_term/2026-08-27_195904_briefing_snapshot.md`.** Resumo do que ficou pronto:
 
-### Estrutura do P&L (Actual) explicada pela usuária — Flash ainda pendente
-- **2 arquivos por fechamento**, mesma pasta de rede (`.../<MM>_<Mês>_<Ciclo>/`): um com fórmulas vivas (`07_P&L Fitted Units_Actual_July-26.xlsx`) e outro com `_` no nome, sem fórmula (só valor, `..._July-26_.xlsx`) — provavelmente uma versão "congelada" pra envio.
-- **3 abas:** "Resultado YTD" (copia a coluna de fórmula do mês anterior pra formar o YTD, ajusta `Q4` = nome do mês, sem link externo), "Resumo Resultado Ano" (todos os cenários em visão FY, é onde ficam os links externos), "Resumo Resultado Mês" (isola o mês fechado, textos `D4`/`F5`/`G5`/`H5` precisam do nome/cenário certo).
-- **Lógica do Flash explicada pela usuária (2026-08-27, continuação):** mesmo racional do Actual — a única diferença é que não existe coluna "Actual" (porque o mês ainda não fechou) e a coluna Flash é um link pro arquivo de Mensalização (mesmo mecanismo, só que apontando pra saída Flash do Passo 6 em vez da saída Actual).
-- **Regra confirmada pra criação do arquivo base (Actual e Flash), importante pro desenho da automação:** o ponto de partida de cada fechamento é sempre uma cópia do arquivo do **mesmo Ciclo do mês anterior** — ex: pra montar o Actual de Julho, copia o Actual de Junho e troca os links (não parte de um template em branco). Confirmado explicitamente pela usuária: vale igual pro Flash (Flash de Julho parte do Flash de Junho).
+1. **Desenho do P&L explicado pela usuária** (Actual e Flash): 2 arquivos por fechamento (fórmula viva + `_` congelado, só valor), 3 abas ("Resumo Resultado Ano" = links externos por mês, "Resumo Resultado Mês" = mês fechado isolado, "Resultado YTD" = acumulado). Ponto de partida de todo fechamento é sempre cópia do mesmo Ciclo do mês anterior, nunca template em branco.
+2. **2 erros reais encontrados nos arquivos já fechados de 2026** (não corrigidos retroativamente, por decisão da usuária — só entram a partir de Agosto/2026):
+   - Link de PY apontava pra 2024 em vez de 2025 (rollover de Janeiro não aconteceu) — `memory/errors/2026-08-27_pnl_link_py_apontava_2024.md`.
+   - Links de Flash/Forecast (Mai/Jun/Jul) apontavam pra um caminho sem o nível "MM - Mês" (pasta reorganizada, links nunca re-apontados) — `memory/errors/2026-08-27_pnl_link_flash_forecast_pasta_faltando.md`.
+3. **`scripts/sap/fitted_units/fitted_units_despesas/gerar_pnl.py` escrito e validado célula a célula** contra os arquivos reais de Julho/2026 (Actual e Flash) — zero diferença, depois de achar e corrigir 5 bugs reais no processo (detalhe no snapshot arquivado). Cobre: geração do arquivo com fórmula (`gerar_arquivo_pnl`) + cópia congelada (`gerar_copia_congelada`, também validada com zero diferença de valor contra os congelados reais).
+4. **Montagem do e-mail pra Controladoria Central** (`montar_email_pnl`) — abre rascunho no Outlook (Para/Cc fixos por Ciclo, incluindo a Bianca Souza nos dois a partir de agora), assunto padrão, corpo com a diferença de EBIT já calculada automaticamente (linha 44 de "Resumo Resultado Mês", validado batendo exato com e-mail real: "105K vs flash"), arquivo congelado em anexo. **Nunca chama `.Send()`** — só `.Display()`, a usuária revisa e envia ela mesma. Testado ao vivo contra a rede real, **confirmado pela usuária: "ficou exatamente como eu queria"**.
+5. **Cockpit atualizado:** nova aba "⑦ P&L" com 2 botões — "Gerar Arquivo de P&L" e "Enviar P&L para Controladoria Central via email" — os dois já escrevendo/lendo na rede oficial (não pasta de teste).
 
-**Com isso, o desenho lógico do Passo 7 (P&L) está fechado** — falta só decidir formato de implementação (script standalone vs. integração direta no cockpit) antes de codar.
-
-### Mecanismo de automação dos links confirmado — mais simples do que parecia
-Investigando o arquivo real (Julho e Janeiro/2026) pra responder a pergunta da usuária ("é mais seguro manter os links, trocando o destino todo mês?"): **sim**, e o ponto que mais consumia tempo dela (trocar a fórmula das colunas D/F/G/H em "Resumo Resultado Mês" todo mês) **não é link externo** — é só a coluna deslizando dentro do próprio arquivo (`='Resumo Resultado Ano'!J8`), automatizável por reescrita direta de fórmula.
-
-Os links externos de verdade (aba "Resumo Resultado Ano") mapeados no arquivo real:
-- **Mensalização** (bloco Actual D:O, aba "TOTAL" de `MENS FITTED ACTUAL <Mês>.xls` — já é a saída do Passo 6) e **Forecast** (coluna AF, mesmo fallback R8→R7 já usado na Mensalização) e **Flash** (coluna E) — **trocam todo mês**.
-- **PY** (coluna BJ, "Actual <ano-1>") e **MP** (coluna AU) — **só trocam em Janeiro**.
-
-Mecanismo validado via COM e testado com sucesso: `wb.LinkSources(1)` lista os links, `wb.ChangeLink(antigo, novo, 1)` troca o destino mantendo o link vivo (não converte pra valor), `excel.CalculateFullRebuild()` recalcula. Testado com `ReadOnly=True` + `Close(SaveChanges=False)` — zero risco ao arquivo real.
-
-### Erro real encontrado e quantificado: link de PY apontava para 2024, não 2025
-Confirmado em **todos os 7 arquivos Actual de 2026 já fechados** (Jan-Jul) — o link de PY (coluna BJ, "Actual 2025") aponta pra `2024\12_December_Actual\...December-24.xlsx` em vez de `2025\...December-25.xlsx` (existe na rede, fechado 09/01/2026). O rollover de Janeiro não aconteceu. Testado o fix (`ChangeLink`) contra o arquivo real de Julho, só leitura, nada salvo: **EBIT PY de 18.317,80 mil → 22.513,66 mil (+4.195,86 mil), ROS de 19,59% → 23,44% (+3,85 p.p.)** — todo P&L enviado pra consolidação em 2026 subestimou o EBIT do ano anterior. Link de MP conferido, está correto.
-
-**Decisão da usuária:** não corrigir retroativamente Jan-Jul (já fechados/enviados). O fix entra a partir do arquivo de **Agosto/2026** (herdado da cópia de Julho) — como PY só muda 1x/ano, deve durar até Jan/2027. Detalhe completo em `memory/errors/2026-08-27_pnl_link_py_apontava_2024.md` e `memory/DECISOES.md`.
-
-**Nada foi implementado em script ainda** — só análise e testes isolados (leitura) contra os arquivos reais da rede, nenhum arquivo de produção foi alterado.
+**Passo 7 (P&L) está fechado de ponta a ponta.** Tudo commitado e no GitHub ao longo do dia.
 
 ---
-## Continuação 2026-08-27 (retomada) — decidido: script standalone; 2º erro real achado nos links (Flash/Forecast sem nível "MM - Mês")
+## PRÓXIMA SESSÃO (2026-08-28) — pedido explícito da usuária no fim do dia
 
-**Decisão de formato:** implementar o Passo 7 como **script standalone primeiro** (`gerar_pnl.py`, mesmo padrão dos Passos 5/6 — testa isolado antes de tocar rede), confirmado pela usuária no início desta retomada.
-
-**Antes de codar, inspecionei ao vivo (só leitura, via COM) os arquivos reais de Maio/Junho/Julho e achei um 2º erro real** (além do link de PY já documentado): os links de **Flash e Forecast** apontam pra um caminho de rede sem o nível de pasta "MM - Mês" (ex: `2026\07_Jul_Flash\...` em vez de `2026\07 - Jul\07_Jul_Flash\...`) — confirmado com `Test-Path` que o caminho curto não existe. O valor na célula bate hoje só por coincidência (cache congelado de antes da pasta ser reorganizada — **usuária confirmou que a pasta de rede foi mudada** e os links nunca foram re-apontados). Também achado: link de Mensalização usa `EO_CONSUMER` em Mai/Jun mas `EO_FITTED` em Jul — **usuária confirmou que EO_FITTED é o correto**. Detalhe completo em `memory/errors/2026-08-27_pnl_link_flash_forecast_pasta_faltando.md` e `memory/DECISOES.md`.
-
-**Decisão da usuária (mesma política do bug do PY):** não corrigir retroativamente Mai/Jun/Jul. A automação do Passo 7 sempre monta o caminho completo (com "MM - Mês") e sempre usa EO_FITTED — nunca replica os caminhos quebrados atuais.
-
-**Escopo confirmado pela usuária pra v1 do `gerar_pnl.py`:** Actual e Flash juntos (não só Actual primeiro); o arquivo "congelado" (`..._` sem fórmula) fica pra depois — v1 só gera o arquivo com fórmulas vivas.
-
-**Diff Junho→Julho feito (leitura, ambos os Ciclos) — é a especificação exata do que muda todo mês, salvo em `data/processed/fitted_units_despesas/pnl_teste/diff_jun_jul_2026_actual_flash.txt` (fora do Git, tem valor financeiro real).** Resumo dos achados (célula por célula, comparando o arquivo real de Junho com o de Julho, que nasceu de uma cópia dele):
-
-**Aba "Resumo Resultado Ano" (ambos Ciclos):**
-- Bloco D:O (Jan-Dez): TODAS as colunas apontam pro MESMO arquivo externo (Mensalização do Ciclo/mês fechando) — só a coluna-fonte desliza (col Excel do mês = D+mes-1). Confirmado que ao fechar um novo mês, o arquivo de Mensalização writes é reaberto/relinkado inteiro (não só a coluna nova).
-- Bloco S:AD (Forecast completo, 12 colunas): mesmo mecanismo, aponta pro arquivo de Forecast do mês (frozen `_`), desliza igual.
-- Textos que mudam: `Q4` = "Actual `<Mês>`" (Actual) / "`<Mês>` Flash" (Flash); `AF4` = "Forecast R`<mês>`"; linha 5 nas colunas D:O que correspondem ao mês fechando muda de "Forecast"→"Actual" (Actual) ou "Flash"→"Actual" seguido da nova coluna virando "Forecast"→"Flash" (Flash) — o rótulo "anda" 1 coluna pra direita a cada mês fechado.
-- No Ciclo Flash, a coluna do mês fechando (ex: J pra Julho) troca de fonte: não é mais link pro Forecast (como nos meses "Forecast" futuros) — passa a linkar direto pro `MENS FITTED FLASH <Mês>.xls` (mesma lógica do D:O, já é o novo mês virando "Flash").
-
-**Aba "Resumo Resultado Mês" (ambos Ciclos):** colunas D/E/F/G(/H) são só referência deslizante pra 'Resumo Resultado Ano' dentro do MESMO arquivo (não link externo) — ex: Actual `D8:'Resumo Resultado Ano'!I8` (Junho) → `J8` (Julho), e as demais colunas (Flash/Forecast/MP/PY) deslizam pro mesmo padrão (colunas bem mais distantes tipo AN/BC, sempre +1 por mês). No Actual, a única troca de LINK externo de verdade nessa aba é a coluna Flash (aponta pro arquivo Flash do mesmo mês). `D4`="`<Mês>` Month" muda todo mês; rótulo de Forecast (`F5` no Actual, `E5` no Flash) muda de "Forecast R6"→"Forecast R7".
-
-**Aba "Resultado YTD":** ao fechar um novo mês, ganha uma NOVA coluna de fórmulas (a do mês novo, ex: coluna J pra Julho) que **não existia vazia antes** — são todas `='Resumo Resultado Ano'!<mesma_coluna><linha>` pras ~30 linhas de dado (replicando o padrão já usado nas colunas dos meses anteriores). `Q4` muda de "YTD `<Mês>`"/"`<Mês>` YTD" a cada mês. No Flash, a coluna nova YTD tem 4 blocos (J/Y/AN/BC — Actual-YTD/Flash/Forecast/MP dentro da própria aba YTD) com o mesmo padrão de link+SUM.
-
-**Próximo passo (início da próxima sessão):** com esse diff em mãos, desenhar e propor à usuária a estrutura de funções do `gerar_pnl.py` (nunca hardcoded — cada regra acima vira uma função pequena testável) antes de escrever o código de verdade. Ainda não escrevi nenhuma linha do script.
-
----
-## Continuação 2026-08-27 (retomada 2, "podemos continuar") — `gerar_pnl.py` ESCRITO e validado contra os dois arquivos reais de Julho (Actual e Flash)
-
-**Método de validação usado (mais forte que os passos anteriores):** em vez de só ler os arquivos reais, gerei o P&L de Julho/2026 (Actual e Flash) com o script, usando como base o arquivo REAL de Junho (rede, só leitura) e salvando a saída numa pasta de teste local (`data/processed/fitted_units_despesas/pnl_teste/saida_jul_actual` e `saida_jul_flash` — nada de rede foi escrito). Depois comparei célula a célula o arquivo GERADO contra o arquivo REAL de Julho que já existe na rede. Isso serviu de "gabarito" perfeito.
-
-**Resultado final, CONFIRMADO com zero diferenças (depois de 4 rodadas de bugs achados e corrigidos pelo próprio processo de validação):**
-- **Actual:** bate 100% com o real, exceto exatamente as células que eu CORRIGI de propósito (o link de Flash/Forecast agora usa o caminho completo com "MM - Mês", que é o fix do bug já registrado — o real ainda tem o caminho quebrado).
-- **Flash:** **zero diferenças em qualquer célula**, nas 3 abas, depois de corrigir 4 bugs reais achados durante o teste (não suposição, foram erros de verdade no meu próprio script):
-  1. Busca de arquivo confundia a versão "congelada" (`..._July-26_.xlsx`, sem link) com a versão viva - corrigido com `_localizar_versao_com_formula` (só aceita nome exato ou `_v2`/`_v3`, nunca o sufixo `_` sozinho).
-  2. `Copy`/`PasteSpecial` (usado pra "Resultado YTD") falha via COM numa instância isolada/invisível do Excel (sem acesso a área de transferência) - trocado por atribuição direta de `FormulaR1C1` (mesmo efeito - referências relativas se ajustam - sem depender de clipboard).
-  3. **Achado de negócio real, não só bug de código:** no Ciclo Flash, a coluna do MÊS QUE ESTÁ FECHANDO no bloco D:O de "Resumo Resultado Ano" precisa TROCAR DE FONTE (de Forecast pra Mensalização Flash) com um mapeamento de linha totalmente diferente entre as duas fontes (não é 1:1, tem linha com sinal invertido) - resolvido copiando o padrão exato já existente na coluna do mês anterior (`FormulaR1C1`) e só trocando o nome do arquivo via `Range.Replace` escopado a essa coluna (constante `LookAt` errada quebrou na 1ª tentativa - corrigido pra `2`/xlPart, igual ao padrão já usado em `gerar_mensalizacao.py`).
-  - Também corrigido: aba "Resultado YTD" tem estrutura DIFERENTE entre os Ciclos (Actual só tem 1 bloco de coluna nova e não tem "Forecast R7" nem rótulo de linha5; Flash tem 4 blocos, tem "Forecast R7" e replica os rótulos de linha5 de "Resumo Resultado Ano") - só descoberto comparando contra o real, não era óbvio.
-  - Ordem das funções importa: `atualizar_ytd` precisa rodar ANTES de `atualizar_textos` (a cópia de coluna inteira sobrescrevia o rótulo recém-corrigido se rodasse depois).
-  4. A cópia da coluna do mês corrente (achado #3 acima) também sobrescrevia sem querer o cabeçalho estático do calendário (linha 4, ex: J4 devia continuar "Jul" sempre, independente do mês fechando) - corrigido limitando a cópia a partir da linha 6 (linhas 1-4 nunca são tocadas por essa função).
-
-**Script:** `scripts/sap/fitted_units/fitted_units_despesas/gerar_pnl.py` — cobre Actual e Flash (Flash e Actual juntos, conforme decidido), NÃO gera a cópia congelada (decidido deixar pra depois), NÃO cobre a virada Dezembro->Janeiro (bloco Jan-Dez provavelmente precisa reset maior, ainda não detalhado pela usuária - roda normalmente de Fevereiro em diante).
-
-**Assunção pendente de confirmar com a usuária:** quando existem as duas versões do P&L de Forecast (viva e congelada `_`) na mesma pasta, o script agora prefere a viva (bateu com o real de Julho) - mas Maio/Junho reais usavam a congelada. Não é um problema pra rodar (mês novo real, ninguém sabe qual vai existir), só registrar que é uma escolha, não uma regra confirmada por ela ainda.
-
-**Nada foi escrito na rede** - toda a validação usou pasta de teste local, só LEITURA dos arquivos reais de Junho/Julho pra comparar. Rodado com sucesso via linha de comando (`--mes --ano --ciclo --pasta-saida`), ainda não integrado no cockpit (GUI) - próximo passo natural depois da usuária revisar/aprovar.
-
-**Pendências pra próxima sessão:**
-1. ~~Mostrar o resultado pra usuária~~ — feito: enviados os 2 arquivos gerados (Actual e Flash de Julho), ela abriu no Excel pra conferir os links.
-2. Perguntar sobre a assunção do Forecast vivo-vs-congelado acima (ainda não perguntado formalmente - ela seguiu direto pro cockpit).
-3. ~~Decidir promover pra rede/cockpit~~ — decidido: **não precisa "promover" nada retroativo** (Mai/Jun/Jul já existem na rede, feitos manualmente - só os meses gerados DAQUI PRA FRENTE usam o script). **Botão do cockpit já integrado** (ver abaixo).
-4. Ainda pendente, fora do escopo combinado: arquivo congelado (2ª rodada) e virada de ano (Dez->Jan).
-
-### Cockpit: novo Passo ⑦ "P&L" integrado
-`atualizar_ksb1_gui.py` ganhou a aba "⑦ P&L", botão único "Gerar Arquivo de P&L" - chama `gerar_pnl.gerar_arquivo_pnl(mes, ano, ciclo, pasta_saida)` com `pasta_saida` já apontando pra rede oficial (`resolver_pasta_ciclo(REDE_BASE/<ano>/<MM - Mês>, mes, ciclo)`, mesmo padrão dos outros passos - **não é pasta de teste**, é a rede de produção real). Compilado e testado o import isolado (`from gerar_pnl import gerar_arquivo_pnl` funciona a partir da pasta da GUI) - **ainda não clicado ao vivo pela usuária pela interface** (só testado via linha de comando até agora). Commitado e no GitHub.
-
-**Se a usuária for rodar de verdade (ex: Agosto/2026) pela primeira vez pelo botão:** lembrar que é a primeira vez que esse caminho de rede real vai ser escrito por este script - vale acompanhar o log da primeira rodada com atenção antes de confiar cegamente. A janela do cockpit, se já estava aberta antes desta mudança, precisa ser fechada e reaberta (Tkinter carregado em memória, sem hot-reload - mesmo aviso já dado outras vezes neste projeto).
-
-### Continuação (mesmo dia) — arquivo "congelado" (2ª rodada, pedida pela usuária depois de aprovar os arquivos com fórmula)
-A usuária abriu os 2 arquivos que mandei (Actual e Flash de Julho) e confirmou "está 100%". Pediu na sequência pra já gerar também a cópia congelada (nome com "_" no final, só valor, sem fórmula/link) - o item que tínhamos decidido deixar pra depois.
-
-**Implementado em `gerar_pnl.py` (`gerar_copia_congelada`):** depois de salvar o arquivo com fórmula viva, copia ele pra um novo nome (`..._July-26_.xlsx`, versionado com `nome_com_versao` por segurança) e converte fórmula em valor com `Range.Value = Range.Value` em cada aba (não usa Copy/PasteSpecial - já sabemos que falha numa instância isolada do Excel, mesmo achado do resto do script). Depois quebra (`BreakLink`) qualquer link externo residual, por garantia. `gerar_arquivo_pnl` agora devolve `(caminho_formula, caminho_congelado)` - GUI (`atualizar_ksb1_gui.py`) e a mensagem de conclusão do cockpit atualizados pra mostrar os dois caminhos.
-
-**Validado contra os dois arquivos congelados REAIS de Julho/2026** (Actual e Flash, comparação célula a célula por VALOR, não fórmula, já que a fonte não tem fórmula mesmo): **zero diferença nos dois Ciclos**, e confirmado que os links ficam vazios (`LinkSources` devolve `None`) nos dois, gerado e real.
-
-**Commitado e no GitHub.** Nada escrito na rede - toda validação em pasta de teste local, só leitura dos arquivos reais pra comparar.
-
-### Continuação (mesmo dia) — Passo 7 NÃO estava completo: falta o envio do e-mail pra Controladoria Central
-A usuária avisou que o Passo 7 também inclui montar (não enviar - ela revisa e aperta enviar) o e-mail "P&L Fitted Units - <Mês> <Ciclo>" pro time de Controladoria Central, com o arquivo congelado (`_...xlsx`) em anexo. Mandou 2 prints de e-mails modelo reais (Actual de 2025 e Flash de 2026) com destinatários/corpo/assinatura reais.
-
-**Decisões confirmadas com a usuária:**
-1. **Bianca Letícia de Souza (`bianca.souza.st@pirelli.com`, tag "(STAG)")** entra na cópia dos DOIS e-mails (Actual e Flash) daqui pra frente - no print do Flash (2026, mais recente) ela já aparece; no do Actual (2025) ainda não, então o modelo do Actual precisa ser atualizado.
-2. A frase de resultado do corpo (ex: "ganho de BRL 105K vs flash", "em linha vs R7") muda todo mês - decidido que EU calculo a diferença de EBIT automaticamente (lendo do próprio P&L gerado) e escrevo o número na frase; a EXPLICAÇÃO do motivo (ex: "refere-se a phasing, não é melhora efetiva") continua sendo escrita/ajustada por ela na revisão antes de enviar.
-3. **Botão do cockpit, nome exato pedido pela usuária:** "Enviar P&L para Controladoria Central via email".
-
-**Destinatários fixos, extraídos dos prints (usar exatamente esses nomes - Outlook resolve contra o diretório da Pirelli, não preciso adivinhar e-mail):**
-- **Actual** — Para: Machado Vitoria Ferreira, BR; Chiaretti Guilherme Augusto Amaral, BR; Correa Marcella Chiozzotto, BR. Cópia: Gama Fernanda Afonso Da, BR; Briquezi Thiago Pacheco, BR; **+ Bianca (nova)**.
-- **Flash** — Para: Chiaretti Guilherme Augusto Amaral, BR; Machado Vitoria Ferreira, BR; Correa Marcella Chiozzotto, BR; Briquezi Thiago Pacheco, BR. Cópia: Gama Fernanda Afonso Da, BR; Zangarini Daniel, BR; Moreira Rafaela Cristal De La Torre Francisco, BR; Souza Bianca Leticia De (STAG), BR (já estava).
-
-**Assunto:** `P&L Fitted Units - <Mês em inglês> <Ciclo>` (ex: "P&L Fitted Units - July Actual").
-
-**Corpo (modelo):**
-- Actual: "Segue anexo P&L do Actual <Mês> da Fitted Units e o resultado está com ganho de BRL 105K vs flash.\nO ganho refere-se a phasing, portanto não é melhora efetiva."
-- Flash: "Segue anexo P&L do flash <Mês> da Fitted Units.\nO resultado está em linha vs R7."
-- Assinatura fixa (nome, cargo, logo Pirelli, endereço) - vem do print, aparece igual nos dois.
-
-**IMPLEMENTADO E TESTADO AO VIVO (mesma sessão, depois do alerta):**
-- **Achado:** linha 44 de "Resumo Resultado Mês" = EBIT (D=valor do mês, E=comparação). Conferido contra o P&L real de Julho/Actual: 432,53-327,55=104,98 → arredonda pra "105K", bate **exatamente** com "ganho de BRL 105K vs flash" do e-mail real da usuária. Constante `LINHA_EBIT_RESUMO_MES = 44` em `gerar_pnl.py`.
-- **Novas funções em `gerar_pnl.py`:** `localizar_pnl_congelado` (acha o arquivo `_` já gerado, com fallback de versão `_v2` etc.), `calcular_resultado_email` (lê D44/E44 do congelado, devolve diferença + rótulo da comparação - "flash" fixo no Actual, ou o texto de E5 tipo "R7" no Flash), `montar_corpo_email` (monta a frase - no Actual deixa `[AJUSTAR antes de enviar: motivo do resultado...]` pra usuária completar, no Flash só o número), `montar_email_pnl` (função principal - abre o Outlook via COM, `CreateItem(0)`, preenche Para/Cc/Assunto/Corpo (preservando a assinatura padrão do Outlook, carregada via `mail.GetInspector` antes de mexer no `HTMLBody`), anexa o arquivo congelado, e chama **`mail.Display()` - NUNCA `.Send()`**).
-- **`DESTINATARIOS_EMAIL_PNL`** (dict Actual/Flash, listas fixas extraídas dos 2 e-mails modelo, com a Bianca já incluída nos dois "copia") - hardcoded no script (não é caminho, é lista de negócio - comentário no código avisa que só tem essa fonte, atualizar ali se a lista mudar).
-- **Testado ao vivo contra a rede real** (Julho/2026, Actual): `calcular_resultado_email` leu o congelado real e devolveu diferença 104,98/"flash" (bate exato com o e-mail real); `montar_email_pnl(7, 2026, "Actual")` rodado de verdade - abriu um rascunho real no Outlook da usuária (não enviado), ela vai conferir se os destinatários resolveram certo contra o diretório da Pirelli.
-- **Cockpit:** aba "⑦ P&L" ganhou o 2º botão, nome exato pedido: **"Enviar P&L para Controladoria Central via email"** - chama `montar_email_pnl(mes, ano, ciclo)` com o mês/ano/Ciclo já selecionados no topo da janela. Compilado sem erro.
-- **Commitado e no GitHub.**
-
-**Risco/cuidado a manter (todo o fluxo de e-mail):** nunca chamar `.Send()` em lugar nenhum - é ação irreversível e a usuária foi explícita que quem envia é ela.
-
-**CONFIRMADO pela usuária, mesma sessão:** "ficou exatamente como eu queria" - o rascunho de teste (Julho/2026, Actual) abriu com destinatários resolvidos certo, corpo e assinatura como esperado. **Passo 7 (P&L) está fechado de ponta a ponta**: gerar arquivo (fórmula + congelado) e montar e-mail (nunca enviar), os dois com botão no cockpit, os dois validados contra dado real.
-
-**Itens que ficam de fora do escopo, por decisão explícita ou ainda não abordados:** virada de ano (Dezembro->Janeiro, bloco Jan-Dez precisa de reset maior, não detalhado); a assunção de qual versão do Forecast linkar quando existem viva e congelada juntas (ver nota acima, não chegou a ser perguntado formalmente, mas nunca deu problema nos testes).
-
----
-## PRÓXIMA SESSÃO — desenho do Passo 7 (P&L) FECHADO, falta só decidir formato e implementar
-**Retomar exatamente daqui, pedido explícito da usuária no fim da sessão 2026-08-27:** decidir junto com ela, no início da próxima sessão, se implementamos como **script standalone primeiro** (como os outros passos — recomendado, testa isolado antes de tocar rede) ou **já direto integrado no cockpit**. Pergunta já foi feita a ela nesta sessão mas ficou pra responder na próxima (ela precisou desligar).
-
-Desenho lógico completo, já validado com a usuária (nada mais a perguntar sobre o "o quê", só falta o "como" implementar):
-1. **Lógica do Flash confirmada:** mesmo racional do Actual, só que sem coluna "Actual" (mês não fechou) e a coluna Flash é link pro arquivo de Mensalização (saída Flash do Passo 6, mesmo mecanismo de link do Actual).
-2. **Arquivo base sempre é cópia do mesmo Ciclo do mês anterior** (confirmado pra Actual E Flash) — ex: Actual Julho parte de uma cópia do Actual Junho, troca os links; Flash Julho parte do Flash Junho. Nunca de template em branco.
-3. Quando implementar de verdade: aplicar o fix do link de PY (a partir de Agosto) + os 3 links mensais que trocam todo mês (Mensalização/Forecast/Flash) + os textos que mudam (Q4/AF4/D4/F5/G5/H5) — sempre testado em cópia isolada antes de tocar na rede (regra do processo, `DECISOES.md` 2026-08-14).
-4. Ainda em aberto (mencionado pela usuária, sem decisão): mecanismo de lembrete/automação pra atualizar PY e MP na virada de Janeiro (reminder no cockpit ou aviso) — "podemos pensar depois".
+1. **Revisar se todos os passos do cockpit (① a ⑦) estão OK** — passar por cada um de novo com ela antes de considerar o processo recorrente 100% fechado.
+2. **Avaliar um botão único que rode tudo automático** (do Passo 1 ao 7, sem clicar em cada aba) — ela quer discutir se isso é viável/desejável, ainda não é uma decisão tomada, só uma ideia a explorar.
+3. **Discutir o cenário de outro usuário enviar o e-mail no lugar dela** — hoje `montar_email_pnl` abre o rascunho no Outlook configurado NA MÁQUINA de quem roda o script (o remetente seria de quem clicou, não necessariamente da Juliana) — ela quer conversar sobre esse ponto (ex: cobertura em férias/ausência) antes de considerar esse fluxo definitivo pra qualquer pessoa do time.
 
 ---
 ## RESUMO DO DIA 2026-08-26 — Passo 5 aprovado e consolidado; Passo 6 (Mensalização) construído do zero e validado; cockpit ganhou 2 passos novos + UX
