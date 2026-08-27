@@ -138,6 +138,30 @@
         "Linhas de subtotal do KSB1 (preenchimento amarelo — cor indexada 13 no Excel, sem conta contábil na linha) são ignoradas nas somas."
       ],
       "saida": "Arquivo 'Check de agrupamentos - MM.YYYY.xlsx' salvo na mesma pasta de rede do mês (00.Extração Base KSB1/<mês>), com abas Check 1, Check 2 e Resumo (totais e diferença)."
+    },
+    "categorias_variavel_fixo_rateio_custos": {
+      "descricao": "O Passo 5 (Rateio de Custos, scripts/sap/fitted_units/fitted_units_despesas/gerar_rateio_custos.py) classifica cada linha de custo em subcategorias (Variable Cost: Labour/Handling/Direct Materials/Transportation/Other Variable; Fixed Cost: Labour/Depreciation/IFRS16/Rents/Condominio/Other Fixed), usando as colunas AA ('Var.') e AJ ('Conta Geral') da Base Intermediária. A coluna AJ nunca traz o valor 'Handling' diretamente (confirmado 2026-08-26, contando os valores distintos da coluna em Julho/2026: só existem Labour/Others/Prod.Consumables/Rents/Transport/Depreciations/IFRS16) - 'Handling' só é alcançado via exceção por conta específica.",
+      "excecoes_por_conta": [
+        {
+          "conta": "4257000",
+          "descricao_conta": "Aluguéis",
+          "regra": "Quando classificada como Variável (a coluna AJ traz 'Rents', que não existe como categoria dentro de Variable Cost), é forçada pra 'Handling', nunca 'Other Variable'.",
+          "motivo_de_negocio": "É aluguel de empilhadeira - custo variável de movimentação de material (Handling), não aluguel de imóvel/instalação (que seria Fixo/Rents). Confirmado pela usuária em 2026-08-26.",
+          "evidencia_estrutural": "O arquivo antigo '_Abertura custos Fitted Units <Mês> <Ciclo> <Ano>.xlsx' sempre lista 'Aluguéis' como sub-item fixo da categoria 'Handling' (junto de 'M.O. Direta-Prestação de Serviço' e 'IFRS16 - Alugueis') - confirmado em Julho e Abril/2026, nas 3 unidades (SJP, Ibirité, Goiana)."
+        },
+        {
+          "conta": "4211000",
+          "descricao_conta": "Transporte De Mats. Vários",
+          "regra": "Quando classificada como Variável, é forçada pra 'Transportation', mesmo nas linhas em que a coluna AJ traz 'Others' em vez de 'Transport' (a mesma conta aparece com os dois valores de AJ dependendo do centro de custo/mês na Base Intermediária).",
+          "motivo_de_negocio": "Ainda não confirmado explicitamente com a usuária - inferido pela consistência do padrão (7 meses, 3 unidades) e validado batendo 100% com o arquivo real de Mensalização (Passo 6) de Julho/2026."
+        },
+        {
+          "conta": "4255200",
+          "descricao_conta": "Recuperação PIS/COFINS Depreciação",
+          "regra": "Sempre forçada pra 'Depreciation' (Fixed Cost), mesmo a coluna AJ trazendo 'Others'. Category-neutra (não muda o Total Costs).",
+          "motivo_de_negocio": "É um crédito de PIS/COFINS sobre a própria depreciação - pertence à mesma categoria da despesa que gerou o crédito. Confirmado no arquivo antigo (Jan-Jul/2026, 3 unidades) - sempre dentro da seção 'Depreciation'."
+        }
+      ]
     }
   },
   "processo_recorrente": {

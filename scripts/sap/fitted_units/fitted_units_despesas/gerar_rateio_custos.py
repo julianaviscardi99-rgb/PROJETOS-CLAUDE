@@ -155,7 +155,14 @@ CONTAS_FORCADAS_DEPRECIATION = {4255200}
 # nas 3 unidades (SJP/IBI/GOI) - sempre a mesma conta, sempre a mesma
 # categoria, independente do que a Conta Geral (AJ) diz naquela linha:
 # - 4257000 "Aluguéis", quando Variável (vem com AJ="Rents", que não existe
-#   como categoria Variável) -> sempre "Handling" no arquivo real.
+#   como categoria Variável) -> sempre "Handling" no arquivo real. MOTIVO DE
+#   NEGÓCIO confirmado pela usuária, 2026-08-26: é aluguel de empilhadeira -
+#   custo variável de movimentação de material (Handling), não aluguel de
+#   imóvel/instalação (que seria Fixo/Rents). Confirmado estruturalmente
+#   também no arquivo antigo "_Abertura custos..." (Julho e Abril/2026, nas
+#   3 unidades): a categoria "Handling" sempre lista "Aluguéis" como
+#   sub-item fixo, junto de "M.O. Direta-Prestação de Serviço" e "IFRS16 -
+#   Alugueis" - não é coincidência de valores, é estrutura do arquivo.
 # - 4211000 "Transporte De Mats. Vários", quando Variável -> sempre
 #   "Transportation" no arquivo real, mesmo nas linhas em que a Conta Geral
 #   vem "Others" em vez de "Transport" (a mesma conta aparece com os dois
