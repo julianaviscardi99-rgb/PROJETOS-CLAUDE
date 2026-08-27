@@ -448,6 +448,10 @@ def main():
     root.geometry("1317x800")
     root.minsize(1000, 650)
     root.configure(bg=BG_ROOT)
+    # Abrir sempre maximizada (pedido explicito da usuaria, 2026-08-26) -
+    # "zoomed" e' o estado nativo do Windows (maximiza mantendo bordas/
+    # barra de titulo, diferente de "-fullscreen" que tira tudo isso).
+    root.state("zoomed")
 
     logo_img = tk.PhotoImage(data=LOGO_PIRELLI_B64)
     root.iconphoto(True, logo_img)
