@@ -3,6 +3,27 @@
 > Manter apenas as últimas 2 sessões inline — sessões mais antigas vão para long_term/.
 
 ---
+## Continuação 2026-08-26 (mesmo dia) — Usuária insegura com classificação; extração da estrutura COMPLETA do arquivo antigo achou contradição real — exceção da conta 4211000 REVERTIDA
+
+**Contexto:** usuária expressou medo explícito de classificação errada no futuro ("ainda estou insegura e com medo de um dia classificarmos errado"). Pediu pra eu abrir de novo a Base Intermediária + o arquivo antigo, e sugeriu uma ideia melhor do que eu vinha fazendo: **extrair a estrutura COMPLETA do arquivo antigo** (cada "voz"/categoria com todas as gestoriais que pertencem a ela, não só investigar conta por conta quando aparece um problema) — "isso é uma boa forma de gerar memória de cálculo para os itens e classificar com mais segurança".
+
+**Feito:** extraí a estrutura inteira (todas as categorias Variable/Fixed + todas as gestoriais dentro de cada uma) do `_Abertura custos Fitted Units July Actual 2026.xlsx`, nas 3 unidades (São J. dos Pinhais, Ibirité, Goiana) — idêntica nas 3, confirma que é um template fixo.
+
+**Resultado - CONFIRMA a exceção da conta 4257000 (Aluguéis/Handling):** aparece exatamente como sub-item de "Handling" nas 3 unidades, junto de "M.O. Direta-Prestação de Serviço" e "IFRS16 - Alugueis". Motivo de negócio também confirmado pela usuária: **é aluguel de empilhadeira** (custo de movimentação de material = Handling, não aluguel de imóvel = Rents/Fixo). Essa exceção agora tem apoio DUPLO (numérico + estrutural + motivo de negócio) — a mais sólida das três.
+
+**Resultado - CONTRADIZ a exceção da conta 4211000 (Transporte De Mats. Vários/Transportation):** essa conta aparece SEMPRE dentro de "Other Fixed" na estrutura do arquivo antigo, **nunca dentro de "Transportation" (Variável)**, nas 3 unidades. A exceção que eu tinha criado (2026-08-26, mais cedo hoje) tinha só UM ponto de evidência - bateu o total de Julho/Flash/Ibirité, coincidência possível, não confirmada em mais nenhum lugar. **REVERTIDA** - `CONTAS_FORCADAS_TRANSPORTATION_VARIAVEL` removida de `gerar_rateio_custos.py`, essa conta volta a cair no fallback neutro "Other Variable" quando Variável. Revalidado nos 7 meses × 2 Ciclos: todos os checks por unidade continuam OK (mudança category-neutra).
+
+**Registrado na ontologia** (`ontology/fitted_units.json` → `classificacao_despesas.categorias_variavel_fixo_rateio_custos`): a exceção 4257000 com motivo de negócio completo; a exceção 4211000 marcada como "REVERTIDA, não usar sem revisitar" (mantida documentada, não apagada, pra não perder o histórico da tentativa).
+
+**Lição pro processo (vale registrar como aprendizado):** achar uma exceção que bate numericamente em UM mês/unidade não é evidência suficiente sozinha — precisa de pelo menos um segundo tipo de confirmação (estrutura do arquivo antigo, motivo de negócio, ou recorrência em vários meses/unidades) antes de virar regra permanente. A exceção 4257000 tinha isso; a 4211000 não tinha.
+
+**Commitado** (automaticamente, pelo backup de sessão longa).
+
+### PRÓXIMO PASSO
+1. Se a usuária quiser, posso repetir esse exercício de "extrair estrutura completa" pra TODAS as gestoriais (não só as que já causaram problema) — geraria uma memória de cálculo completa, comparando cada conta da Base Intermediária contra o lugar declarado no arquivo antigo, pra achar proativamente outras contradições antes que apareçam como erro.
+2. Retomar o Passo 6 (Mensalização) com a exceção 4211000 removida - o Handling (SJP/GO) continua batendo exato, mas a Transportation de IBI/TOTAL provavelmente volta a divergir um pouco (não critica, o TOTAL COST continua batendo, só a linha individual).
+
+---
 ## Continuação 2026-08-26 (mesmo dia) — Passo 5: mais 2 contas forçadas (Handling/Transportation) — Passo 6 agora bate 100% exato (exceto linha fora de escopo)
 
 **Pedido da usuária:** "tenta encontrar o motivo pelo qual se divide" sobre a diferença Handling/Other Variable que apareceu no Passo 6 — investiguei a fundo, olhando conta por conta (não só "Aluguéis" isolado) nos 7 meses.
