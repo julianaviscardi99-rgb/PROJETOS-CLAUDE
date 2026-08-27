@@ -659,3 +659,26 @@
 - RES (Resende) segue sem custo real testado — usuária confirmou "resende ainda nao teve custo, mas tera a partir do proximo mes", ciente que a lógica de RES nunca foi exercitada com valor real ainda.
 
 **Rateio de Agosto/2026 (com Resende) confirmado alocado:** `ontology/rateio_gerencia.json`, entrada `vigente_desde: "2026-08"` — SJP 21% / IBI 49% / GOI 27% / RES 3%, já configurado desde 2026-08-25, confirmado pra usuária nesta sessão.
+
+---
+
+## 2026-08-27 — Passo 7 (P&L): mecanismo de automação dos links externos confirmado (ChangeLink) + erro real de PY encontrado e corrigido a partir de Agosto
+
+**Contexto:** início do escopo do Passo 7 (P&L), aba "Resumo Resultado Ano" do Actual. A usuária perguntou se era mais seguro manter os links externos (em vez de converter pra valor) e ir trocando o destino todo mês, já que o arquivo não é pesado.
+
+**Decisão confirmada, com evidência do arquivo real:** sim, manter os links — e a investigação mostrou que é mais simples do que parecia. O ponto que mais consumia tempo manual (trocar a fórmula das colunas D/F/G/H na aba "Resumo Resultado Mês" todo mês) **não é link externo**, é só referência de coluna dentro do próprio arquivo (`='Resumo Resultado Ano'!J8`, desliza 1 coluna por mês) — automatizável por reescrita direta da fórmula, sem precisar da API de Link do Excel.
+
+**Os links externos de verdade (aba "Resumo Resultado Ano") e a frequência de troca, mapeados no arquivo real:**
+- **Mensalização** (bloco Actual, colunas D:O — os 12 meses vêm de 1 arquivo só, aba "TOTAL") → aponta pro `MENS FITTED ACTUAL <Mês>.xls` do mês fechado, **já é a saída do Passo 6**. Troca todo mês.
+- **Forecast** (coluna AF) → aponta pro P&L Forecast do mês fechado, mesmo fallback R8→R7 já usado na Mensalização. Troca todo mês.
+- **Flash** (coluna E, aba "Resumo Resultado Mês") → aponta pro P&L Flash do mesmo mês. Troca todo mês.
+- **PY** (coluna BJ, "Actual <ano-1>") → só troca em Janeiro.
+- **MP** (coluna AU) → só troca em Janeiro.
+
+Mecanismo validado via COM: `wb.LinkSources(1)` lista os links; `wb.ChangeLink(nome_antigo, nome_novo, 1)` troca o destino mantendo a fórmula de link viva (não converte pra valor); `excel.CalculateFullRebuild()` recalcula depois. Testado com `Workbooks.Open(..., ReadOnly=True)` + `wb.Close(SaveChanges=False)` — zero risco ao arquivo de produção.
+
+**Erro real encontrado e quantificado (ver `memory/errors/2026-08-27_pnl_link_py_apontava_2024.md` para detalhe completo):** o link de PY (coluna BJ, "Actual 2025") está apontando pra `2024\12_December_Actual\...December-24.xlsx` em vez de `2025\...December-25.xlsx`, confirmado em **todos os 7 arquivos Actual de 2026 já fechados** (Jan-Jul) — o rollover de Janeiro não aconteceu. Testado o fix (`ChangeLink`) contra o arquivo real de Julho (só leitura, nada salvo): EBIT PY corrigido de 18.317,80 mil para 22.513,66 mil (+4.195,86 mil), ROS de 19,59% para 23,44% (+3,85 p.p.) — ou seja, todo P&L enviado pra consolidação em 2026 subestimou o EBIT do ano anterior. Link de MP conferido e está correto (não precisa de fix).
+
+**Decisão da usuária:** **não corrigir retroativamente Jan-Jul/2026** (já fechados/enviados). A correção do link de PY entra a partir do arquivo de **Agosto/2026** (quando for criado a partir da cópia de Julho) — como PY só muda 1x/ano, deve durar até Jan/2027.
+
+**Ainda pendente antes de implementar o Passo 7 de verdade:** a usuária ainda vai explicar a lógica do arquivo/aba Flash (só o Actual foi coberto até aqui). Nada foi implementado em script ainda — só análise e teste isolado (leitura) contra os arquivos reais.
