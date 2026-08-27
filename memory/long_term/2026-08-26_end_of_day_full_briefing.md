@@ -3,42 +3,346 @@
 > Manter apenas as últimas 2 sessões inline — sessões mais antigas vão para long_term/.
 
 ---
-## RESUMO DO DIA 2026-08-26 — Passo 5 aprovado e consolidado; Passo 6 (Mensalização) construído do zero e validado; cockpit ganhou 2 passos novos + UX
+## Continuação 2026-08-26 (mesmo dia) — Passo 6 no cockpit: aba "⑥ Mensalização" com botão Custo habilitado + Faturamento desabilitado
 
-**Sessão muito longa (vários alertas de 45 ações) — resumo consolidado de tudo, por tema. Detalhe completo de cada achado está no histórico do Git (commits desta data) e em `memory/long_term/2026-08-26_end_of_day_full_briefing.md` (arquivo consolidado no fim do dia, com todos os blocos originais preservados).**
+**Confirmado com a usuária:** nome de arquivo gerado pelo script segue sempre `MENS FITTED FLASH/ACTUAL <MÊS EM PORTUGUÊS>` (ex: "MENS FITTED FLASH AGOSTO") daqui pra frente — já é o que `_copiar_e_renomear` faz (usa `MESES_NOMES`, português), nenhuma mudança de código necessária, só confirmação.
 
-### 1. Passo 5 (Rateio de Custos) — fechado e aprovado
-- **Retomada:** testes de Jan-Jul (Actual+Flash) confirmaram a lógica; um bug real de arredondamento em cadeia (Check mostrando "0,10" em vez de "0,00") foi encontrado pela usuária testando o botão real do cockpit e corrigido no mesmo dia (célula guardava valor já arredondado, agora guarda o valor cheio, só a exibição arredonda).
-- **Investigação de classificação Variável/Fixo aprofundada** — 3 exceções por conta confirmadas com evidência forte (numérica + estrutural, quando possível motivo de negócio):
-  - `4255200` (Recuperação PIS/COFINS Depreciação) → sempre "Depreciation".
-  - `4257000` (Aluguéis, quando Variável) → sempre "Handling" — motivo de negócio confirmado pela usuária: é **aluguel de empilhadeira** (custo de movimentação de material, não de imóvel).
-  - `4211000` (quando Variável) → sempre "Transportation" — achado tardio: a mesma conta aparece com descrição diferente por tipo no arquivo antigo ("Fretes" quando Variável, dentro de Transportation; "Transporte De Mats. Vários" quando Fixa, dentro de Other Fixed). Chegou a ser revertida por engano no meio do dia (por uma leitura incompleta da estrutura) e depois restaurada com a causa raiz correta.
-- **Nova ferramenta de auditoria criada:** `scripts/sap/fitted_units/fitted_units_despesas/checar_classificacao_rateio.py` — extrai a estrutura COMPLETA do arquivo antigo `_Abertura custos...` (todas as categorias, todas as gestoriais dentro de cada uma) e compara conta por conta contra a classificação atual. Rodada contra 7 meses × 2 Ciclos: **78 combinações com dado real, 78 batendo 100%, zero divergência.**
-- **Passo 5 formalmente APROVADO pela usuária** (registrado em `memory/DECISOES.md`). Ciclo Flash validado (7 meses). Lembrete automático de rateio em Janeiro implementado no cockpit (popup + banner, não bloqueia nada).
-- Conta `N410400000` adicionada à lista de ignoradas do Check de Agrupamentos (Passo 2), com vigência a partir de Agosto/2026 (não retroativa).
+**Cockpit atualizado:** nova aba "⑥ Mensalização" em `atualizar_ksb1_gui.py`, com 2 botões:
+- **"Atualizar Custo"** — HABILITADO. Chama `gerar_arquivo_mensalizacao` (mes/ano/Ciclo do painel compartilhado), salva na pasta oficial de rede (`Forecast\Flash\<ano>\<MM> - <Mês em inglês>` ou `Forecast\Actual\...`, conforme o Ciclo).
+- **"Atualizar Faturamento"** — DESABILITADO (Net Sales ainda não foi automatizado). Novo mecanismo `botoes_sempre_desabilitados` garante que ele nunca é reativado por engano quando outra operação termina (`_liberar_janela` reativava TODOS os botões antes - corrigido).
 
-### 2. Passo 6 (Mensalização) — construído do zero, validado nos 7 meses (Actual + Flash)
-- **Novo script:** `scripts/sap/fitted_units/fitted_units_despesas/gerar_mensalizacao.py`. Copia a base certa (Forecast do mês pro Flash; o Flash do mesmo mês já fechado pro Actual), aplica os ajustes de cenário quando necessário ("perfumaria": E5/S5/C47/linha47/S8:S44 — só no caso Flash, o Actual herda tudo do Flash e só troca o texto "Flash"→"Actual"), e cola os valores do Passo 5 na coluna do mês sendo fechado (linhas de detalhe 19-23/32-37) — nunca toca nas linhas de fórmula (18/31/26/39), que recalculam sozinhas.
-- **Bug real de sinal corrigido:** Passo 5 guarda custo como negativo, Mensalização guarda como positivo — sem inverter, o Check batia mas o valor gravado saía errado.
-- **Bug real de nomenclatura corrigido:** os arquivos reais `MENS FITTED <Ciclo> <Mês>.xls` não seguem um padrão único de mês entre Jan-Jun (inglês, às vezes abreviado tipo "APR") e Julho (português) — busca reescrita pra usar prefixo (glob) em vez de nome exato. **Padrão fixo confirmado com a usuária pra daqui pra frente:** pasta = `MM - <Mês em inglês por extenso>`, arquivo = `MENS FITTED <Ciclo> <Mês em português>` (ex: "MENS FITTED FLASH AGOSTO").
-- **Validação linha a linha contra os arquivos reais (Jan-Jul/2026):**
-  - Flash: Julho bate 100% exato em todas as linhas de custo (as 5 abas), depois das 2 correções de classificação da conta 4211000/4257000.
-  - Actual: Jan/Mar/Abr/Mai/Jun batem 100% exato. Fevereiro tem a mesma diferença já conhecida (resíduo Itatiaia, regra de negócio). Julho teve um problema pontual isolado (Goiana/Rents, R$0,73 mil, sinal invertido) que **não se repetiu em nenhum outro mês** — usuária concordou que foi provavelmente erro de ajuste manual no arquivo real daquele mês específico, não um padrão do script.
-- **Escopo confirmado como fora por enquanto:** Net Sales/Faturamento (continua manual), tudo abaixo do EBIT/ROS% (depende de Faturamento), MP26 (só Flash de Janeiro, ainda não detalhado). Caso "sem Forecast" do Flash (relevante a partir de Agosto/2026) está implementado no código mas ainda não testado contra dado real.
+**Pedido extra da usuária:** ao terminar "Atualizar Custo" com sucesso, mostra um aviso separado lembrando de atualizar o Faturamento manualmente (até ele ser automatizado). Implementado.
 
-### 3. Cockpit — 2 passos novos + ajustes de UX
-- **Aba "⑤ Rateio de Custos":** 2 botões — "Abertura de Custos por Unidade" (gera o arquivo real na rede) e "Atualizar Rateio" (diálogo editável de %, com lembrete automático de Janeiro).
-- **Aba "⑥ Mensalização" (nova):** 2 botões — **"Atualizar Custo"** (habilitado, gera o arquivo real de Mensalização na rede) e **"Atualizar Faturamento"** (desabilitado — Net Sales ainda não automatizado; um mecanismo novo garante que ele nunca é reativado à toa quando outra operação termina). Ao terminar "Atualizar Custo" com sucesso, mostra um aviso separado lembrando de atualizar o Faturamento manualmente.
-- **UX:** barra de rolagem vertical adicionada (janela não cabia em telas menores); cockpit agora abre sempre maximizado (`root.state("zoomed")`).
+**`gerar_mensalizacao.py`:** trocado `DispatchEx` direto por `abrir_excel_isolado` (mesmo helper dos outros passos) - agora o watchdog de travamento do cockpit funciona nesse passo também.
 
-### 4. Rede — pastas de Agosto-Dezembro/2026 criadas
-Criadas as pastas vazias `08 - August` até `12 - December` em `Forecast\Actual\2026\` e `Forecast\Flash\2026\` (mesmo padrão de nome de Jan-Jul, confirmado) — nada existente foi tocado.
+**Testado:** janela constrói corretamente, "Atualizar Faturamento" começa desabilitado e "Atualizar Custo" habilitado. Não testei ainda um clique real em "Atualizar Custo" pela GUI de ponta a ponta contra a rede (só testei via linha de comando antes, ver blocos anteriores - validado 7 meses Flash+Actual).
 
-### Tudo commitado e no GitHub ao longo do dia.
+**Commitado.**
+
+### PRÓXIMO PASSO
+Se a usuária quiser, testar o botão "Atualizar Custo" pela GUI real contra um mês/Ciclo que ainda não tenha arquivo na rede (ou aceitar versionamento automático se já tiver). Fora isso, Passo 6 segue sem pendência conhecida pro que já foi escopado (Custo) - Faturamento/Net Sales e MP26 continuam fora do escopo, por decisão da usuária.
 
 ---
-## PRÓXIMA SESSÃO (2026-08-27) — usuária pediu explicitamente
-**Amanhã: último passo do cockpit — construção do arquivo de P&L.** Ainda não escopado (nova conversa a começar do zero, como foi feito com o Rateio de Custos e a Mensalização — não presumir nada, perguntar o racional completo antes de implementar).
+## Continuação 2026-08-26 (mesmo dia) — Passo 6 (Mensalização): Ciclo Actual implementado e validado (7 meses)
+
+**Usuária explicou o fluxo do Actual:** só muda a FONTE — em vez de copiar o Forecast, copia o **Flash do mesmo mês, já fechado** ("eu vou fechar o actual julho, vou pegar o arquivo flash julho fechado dias antes"). A perfumaria (E5/S5/C47/linha47/S8:S44) não é refeita, já vem certa do Flash — só troca todo texto "Flash" por "Actual" nas 5 abas ("tudo o que estiver escrito flash, vira actual").
+
+**Implementado** em `gerar_mensalizacao.py`: `gerar_arquivo_mensalizacao` ganhou parâmetro `ciclo` ("Flash"/"Actual"). Pra Actual: base = `localizar_flash_do_mes` (novo), pula a perfumaria estrutural, só roda `_trocar_flash_por_actual` (Find/Replace do Excel, LookAt=xlWhole, só troca célula cujo conteúdo INTEIRO é "Flash").
+
+**Bug real achado e corrigido testando contra a rede:** os nomes dos arquivos `MENS FITTED <Ciclo> <Mês>.xls` **não são consistentes entre meses** — Jan-Jun usam inglês ("JANUARY", "FEBRUARY", "MARCH", até abreviado "APR"), só Julho usa português ("JULHO"). As funções `localizar_forecast_do_mes`/`localizar_actual_do_mes`/`localizar_flash_do_mes` foram reescritas pra buscar por PREFIXO (glob `MENS FITTED <Ciclo> *.xls`) em vez de montar o nome do mês.
+
+**Validado linha a linha contra os arquivos reais de Jan-Jul/2026 Actual (local, nada na rede):**
+- **Jan, Mar, Abr, Mai, Jun: bate 100% exato, zero diferença.**
+- **Fev:** mesma diferença já conhecida e aceita (resíduo Itatiaia, regra de negócio, R$0,96 mil no total) — não é bug novo.
+- **Jul:** o problema pontual da conta Rents/Goiana (R$0,73 mil, sinal invertido) **não se repetiu em nenhum outro mês** — usuária concordou que provavelmente foi erro de ajuste manual no arquivo real daquele mês específico ("acho que pode ter sido algo errado.. tudo o que faz manual pode ter erro"). Confirma que não é um padrão sistemático do script.
+
+**Commitado.**
+
+### PRÓXIMO PASSO
+Passo 6 está com Flash (caso normal) e Actual totalmente validados contra 7 meses reais. Ainda faltam: o caso "sem Forecast" do Flash (usado a partir de Agosto/2026 - ainda sem dado real pra testar), Net Sales (usuária confirmou que continua manual por enquanto), MP26 (Flash de Janeiro, ainda não explicado em detalhe). Nenhum arquivo foi gerado na rede oficial ainda - só a pasta de teste local.
+
+---
+## Continuação 2026-08-26 (mesmo dia) — Erro meu corrigido (4211000) + nova ferramenta de auditoria completa criada e rodada: 78/78 contas confirmadas, zero divergência
+
+**Sequência dos fatos (importante pra não repetir o erro):**
+1. Sessão anterior (ver bloco acima "Usuária insegura..."): reverti a exceção da conta 4211000 achando que contradizia a estrutura do arquivo antigo (ela só aparecia listada em "Other Fixed").
+2. **Usuária questionou de volta:** "mas o transporte de materiais vários não fica em transportation?" — investiguei de novo com mais cuidado.
+3. **Achei meu próprio erro:** a conta 4211000 aparece com **descrição diferente dependendo do tipo** no arquivo antigo - "Fretes" (dentro de Transportation) quando Variável, "Transporte De Mats. Vários" (dentro de Other Fixed) quando Fixa. É A MESMA CONTA, só o rótulo muda - eu não tinha percebido isso na extração de estrutura anterior. Confirmado nas 3 unidades, 2 meses (Abril e Julho/2026).
+4. **Restaurei a exceção** com a causa raiz correta, documentada no código e na ontologia.
+
+**Usuária pediu um check mais completo e definitivo:** "faça um novo check... batendo gestorial e variabilidade com o arquivo abertura de custos... preciso que vc me confirme se está 100% igual".
+
+**Feito — nova ferramenta criada:** `scripts/sap/fitted_units/fitted_units_despesas/checar_classificacao_rateio.py` (auditoria sob demanda, NÃO faz parte do fluxo mensal recorrente). Extrai a estrutura COMPLETA do arquivo antigo `_Abertura custos...` (todas as 11 categorias/"vozes", com todas as contas gestoriais declaradas dentro de cada uma - não só as que já deram problema) e compara, conta por conta, contra o que a classificação atual (AA/AJ + as 2 exceções) produz, testando TODOS os valores de AJ realmente vistos em cada mês/ciclo.
+
+**Resultado, rodado contra os 7 meses × 2 Ciclos (14 combinações):**
+- **132 combinações (conta, tipo) na estrutura do arquivo antigo.**
+- **78 tinham dado real pra testar — as 78 batem 100%, ZERO divergência.**
+- 54 nunca tiveram nenhum valor em nenhum dos 14 meses/ciclos (contas de ajuste raramente usadas) - não são erro, só não há dado ainda pra confirmar; se algum dia tiverem valor, passam pelo fluxo normal (AA/AJ, sem exceção, a menos que sejam uma das 2 já mapeadas).
+
+**Lição registrada (já estava no BRIEFING, reforçada agora):** uma exceção só bater numericamente em 1 caso não é prova suficiente - mas TAMBÉM não descartar uma exceção só porque uma primeira leitura da estrutura pareceu contradizer - a mesma conta pode ter rótulos diferentes por tipo, como foi o caso aqui. Vale sempre conferir os DOIS (número da conta E descrição) antes de concluir.
+
+**Commitado.**
+
+### PRÓXIMO PASSO
+Nenhuma pendência aberta na classificação Variável/Fixo agora - as 2 exceções (4257000 Handling, 4211000 Transportation) estão confirmadas com evidência forte (numérica + estrutural +, no caso da 4257000, motivo de negócio). Retomar o Passo 6 (Mensalização) quando a usuária quiser - a exceção 4211000 restaurada deve fazer a Transportation de Ibirité voltar a bater 100% igual batia antes.
+
+---
+## Continuação 2026-08-26 (mesmo dia) — Usuária insegura com classificação; extração da estrutura COMPLETA do arquivo antigo achou contradição real — exceção da conta 4211000 REVERTIDA
+---
+## Continuação 2026-08-26 (mesmo dia) — Usuária insegura com classificação; extração da estrutura COMPLETA do arquivo antigo achou contradição real — exceção da conta 4211000 REVERTIDA
+
+**Contexto:** usuária expressou medo explícito de classificação errada no futuro ("ainda estou insegura e com medo de um dia classificarmos errado"). Pediu pra eu abrir de novo a Base Intermediária + o arquivo antigo, e sugeriu uma ideia melhor do que eu vinha fazendo: **extrair a estrutura COMPLETA do arquivo antigo** (cada "voz"/categoria com todas as gestoriais que pertencem a ela, não só investigar conta por conta quando aparece um problema) — "isso é uma boa forma de gerar memória de cálculo para os itens e classificar com mais segurança".
+
+**Feito:** extraí a estrutura inteira (todas as categorias Variable/Fixed + todas as gestoriais dentro de cada uma) do `_Abertura custos Fitted Units July Actual 2026.xlsx`, nas 3 unidades (São J. dos Pinhais, Ibirité, Goiana) — idêntica nas 3, confirma que é um template fixo.
+
+**Resultado - CONFIRMA a exceção da conta 4257000 (Aluguéis/Handling):** aparece exatamente como sub-item de "Handling" nas 3 unidades, junto de "M.O. Direta-Prestação de Serviço" e "IFRS16 - Alugueis". Motivo de negócio também confirmado pela usuária: **é aluguel de empilhadeira** (custo de movimentação de material = Handling, não aluguel de imóvel = Rents/Fixo). Essa exceção agora tem apoio DUPLO (numérico + estrutural + motivo de negócio) — a mais sólida das três.
+
+**Resultado - CONTRADIZ a exceção da conta 4211000 (Transporte De Mats. Vários/Transportation):** essa conta aparece SEMPRE dentro de "Other Fixed" na estrutura do arquivo antigo, **nunca dentro de "Transportation" (Variável)**, nas 3 unidades. A exceção que eu tinha criado (2026-08-26, mais cedo hoje) tinha só UM ponto de evidência - bateu o total de Julho/Flash/Ibirité, coincidência possível, não confirmada em mais nenhum lugar. **REVERTIDA** - `CONTAS_FORCADAS_TRANSPORTATION_VARIAVEL` removida de `gerar_rateio_custos.py`, essa conta volta a cair no fallback neutro "Other Variable" quando Variável. Revalidado nos 7 meses × 2 Ciclos: todos os checks por unidade continuam OK (mudança category-neutra).
+
+**Registrado na ontologia** (`ontology/fitted_units.json` → `classificacao_despesas.categorias_variavel_fixo_rateio_custos`): a exceção 4257000 com motivo de negócio completo; a exceção 4211000 marcada como "REVERTIDA, não usar sem revisitar" (mantida documentada, não apagada, pra não perder o histórico da tentativa).
+
+**Lição pro processo (vale registrar como aprendizado):** achar uma exceção que bate numericamente em UM mês/unidade não é evidência suficiente sozinha — precisa de pelo menos um segundo tipo de confirmação (estrutura do arquivo antigo, motivo de negócio, ou recorrência em vários meses/unidades) antes de virar regra permanente. A exceção 4257000 tinha isso; a 4211000 não tinha.
+
+**Commitado** (automaticamente, pelo backup de sessão longa).
+
+### PRÓXIMO PASSO
+1. Se a usuária quiser, posso repetir esse exercício de "extrair estrutura completa" pra TODAS as gestoriais (não só as que já causaram problema) — geraria uma memória de cálculo completa, comparando cada conta da Base Intermediária contra o lugar declarado no arquivo antigo, pra achar proativamente outras contradições antes que apareçam como erro.
+2. Retomar o Passo 6 (Mensalização) com a exceção 4211000 removida - o Handling (SJP/GO) continua batendo exato, mas a Transportation de IBI/TOTAL provavelmente volta a divergir um pouco (não critica, o TOTAL COST continua batendo, só a linha individual).
+
+---
+## Continuação 2026-08-26 (mesmo dia) — Passo 5: mais 2 contas forçadas (Handling/Transportation) — Passo 6 agora bate 100% exato (exceto linha fora de escopo)
+
+**Pedido da usuária:** "tenta encontrar o motivo pelo qual se divide" sobre a diferença Handling/Other Variable que apareceu no Passo 6 — investiguei a fundo, olhando conta por conta (não só "Aluguéis" isolado) nos 7 meses.
+
+**Achado (confirmado nos 7 meses, 3 unidades - não é coincidência de um mês só):**
+- Conta `4257000` "Aluguéis", quando Variável (AJ="Rents", que não existe como categoria Variável) → o arquivo real **sempre** classifica em **"Handling"**, nunca "Other Variable" (fallback do script).
+- Conta `4211000` "Transporte De Mats. Vários", quando Variável → o arquivo real **sempre** classifica em **"Transportation"**, MESMO nas linhas em que a própria Conta Geral (AJ) vem "Others" em vez de "Transport" (a mesma conta aparece com os dois valores de AJ dependendo do centro de custo/mês - o arquivo real classifica pelo NÚMERO DA CONTA, não pela AJ daquela linha específica).
+
+**Implementado:** `CONTAS_FORCADAS_HANDLING_VARIAVEL = {4257000}` e `CONTAS_FORCADAS_TRANSPORTATION_VARIAVEL = {4211000}` em `gerar_rateio_custos.py` (mesmo racional da exceção já existente pra conta 4255200/Depreciation). Revalidado: 7 meses × 2 Ciclos (Actual+Flash) = 14 combinações, todos os checks por unidade continuam ✓ (mudança category-neutra, não afeta nenhum total).
+
+**Resultado no Passo 6 (Mensalização):** revalidei linha a linha contra o arquivo real de Julho/2026 Flash - **agora bate 100% exato em TODAS as linhas de custo, nas 5 abas** (SJP/IBI/GO/RES/TOTAL). A única diferença que sobra é a linha 26 (Variabile/Pc), que depende de Pieces/Net Sales - fora de escopo, esperado.
+
+**Commitado.**
+
+### PRÓXIMO PASSO
+1. Ainda existe 1 aviso residual não resolvido: conta 4211000 "Transporte De Mats. Vários" quando **Fixo** (tipo='F') com AJ="Transport" (que também não existe como categoria Fixa) - só apareceu em Jan/Fev/2026 até agora, não confirmado com a usuária ainda, não corrigido.
+2. Testar o caso "sem Forecast" (Agosto/2026 de verdade) quando o Passo 5 de Agosto estiver pronto.
+3. Net Sales (Pieces) e MP26 - ainda não escopados em detalhe.
+
+---
+## Continuação 2026-08-26 (mesmo dia) — Passo 6 (Mensalização): PRIMEIRA VERSÃO FUNCIONANDO (caso normal, Flash), validada contra Julho real
+
+**Usuária confirmou entender o escopo (rateio flexionado por volume nos custos variáveis, direto nos fixos - conferido e correto) e mandou: "pode começar a automatizar em ambiente de teste, nao quero nada na rede ainda".**
+
+**Script criado:** `scripts/sap/fitted_units/fitted_units_despesas/gerar_mensalizacao.py`. Cobre só o **caso normal** (existe Forecast R<mes> pro mês sendo fechado) e só **Ciclo Flash** - o caso "sem Forecast" (usar Actual anterior + perfumaria do último Forecast, como vai ser preciso agora em Agosto/2026) está no código (`determinar_fonte`) mas **ainda não testado contra dado real** (não tem como testar sem rodar de verdade em Agosto).
+
+**O que o script faz:**
+1. Localiza o Forecast R<mês> (`Fcst\Fcst <ano>\R<mês> <ano>\MENS FITTED FORECAST <MÊS>.xls`).
+2. Copia pra pasta de saída (SEMPRE por parâmetro - nunca hardcoda a pasta oficial `Flash\<ano>\<mês>`) e renomeia trocando FORECAST→FLASH.
+3. Abre via win32com (arquivo `.xls` legado) e aplica a "perfumaria" nas 5 abas (SJP/IBI/GO/RES/TOTAL): E5/S5/C47 (só SJP, as outras puxam por fórmula), linha 47 (copia de linha 43) e S8:S44 (cola Q8:Q44 como valor) - repetido em cada aba.
+4. Lê o Passo 5 (`ler_e_classificar` + `calcular_dados_com_rateio`, direto do módulo `gerar_rateio_custos`, sem gerar o arquivo Excel do Passo 5) e cola os valores nas linhas de detalhe (19-23 Variável, 32-37 Fixo) da coluna do mês sendo fechado - NUNCA toca nas linhas 18/31/26 (fórmulas, recalculam sozinhas).
+5. Aba TOTAL: soma simples das 4 unidades ativas (SJP+IBI+GOI+RES), mesma lógica.
+6. Check: compara TOTAL COST (linha 39, já recalculado pelo Excel) contra o total que o Passo 5 devolveu.
+
+**Achado real corrigido durante o teste:** o Passo 5 guarda custo como NEGATIVO (mesma convenção do arquivo antigo `_Abertura custos...`), mas o arquivo de Mensalização guarda como POSITIVO (confirmado lendo o arquivo real - linha 39 mostra 1.561,08, não -1.561,08). Sem inverter o sinal, o Check batia (comparava negativo com negativo) mas o valor gravado na planilha saía errado. Corrigido em `_colar_valores_rateio` (inverte o sinal antes de colar).
+
+**Validação rigorosa (Julho/2026, Flash, caso normal) - comparação linha a linha contra o arquivo REAL na rede (só leitura, dois processos Excel separados pra não colidir nome de arquivo):**
+- **Fixed Cost: exato em TODAS as 6 linhas, nas 5 abas.**
+- **TOTAL COST (linha 39): exato nas 5 abas** (SJP 1.561,08 / IBI 3.566,15 / GO 1.633,52 / RES 0,00 / TOTAL 6.760,75).
+- Labour e Direct Materials (Variable Cost): exato.
+- **Handling/Transportation/Other Variable: diferentes do arquivo real, mas sempre se cancelando (soma da Variable Cost bate igual)** - é o MESMO problema já conhecido da conta "Aluguéis" marcada Variável (Passo 5 joga em "Other Variable", arquivo real histórico usa "Handling") - não é bug novo, é o mesmo already-known category-neutral quirk se propagando pra cá. Ainda não corrigido na fonte (Passo 5).
+- **Linha 26 (Variabile/Pc) diferente, mas ESPERADO** - depende de "Pieces" (linha 8, parte de Net Sales), que ainda não é tocado (fora de escopo por enquanto, confirmado pela usuária).
+
+**Testado só local** (`data/processed/fitted_units_despesas/mensalizacao_teste/`) - nada escrito na rede oficial. Leitura do Forecast R7 e comparação com o arquivo real de Julho foram só leitura (`ReadOnly=True`, `SaveChanges=False`).
+
+**Ainda não commitado** (script criado nesta sessão, muito longa - ver se cabe commitar antes de fechar).
+
+### PRÓXIMO PASSO
+1. Decidir com a usuária se corrige a conta "Aluguéis" (Handling vs Other Variable) na fonte (Passo 5) - resolveria automaticamente aqui também.
+2. Testar o caso "sem Forecast" (Agosto/2026 de verdade, quando o Passo 5 de Agosto estiver pronto) - ainda não validado contra dado real.
+3. Net Sales (linha 8/Pieces em diante) e MP26 (Flash de Janeiro) - explicitamente adiados pela usuária, ainda não escopados em detalhe.
+4. Abas TOTAL: confirmar com a usuária se a soma simples das 4 unidades está certa, ou se a aba TOTAL do arquivo real tem alguma lógica própria diferente (não testado explicitamente, só validado via check numérico que bateu).
+
+---
+## Continuação 2026-08-26 (mesmo dia) — Passo 6 (Mensalização): escopo aprofundado com leitura real dos arquivos — AINDA EM ANÁLISE, nada implementado
+
+**Continua o escopo iniciado mais cedo hoje (ver bloco "NOVO PROJETO: Mensalização" abaixo).** Nada foi alterado em nenhum arquivo real - só leitura (win32com, ReadOnly=True, sempre `wb.Close(SaveChanges=False)`).
+
+**Achado-chave, lendo de verdade `MENS FITTED FLASH JULHO.xls` e `MENS FITTED ACTUAL JULHO.xls` (aba SJP, real, rede):**
+- Colunas Jan até o mês anterior ao que está fechando: valores fixos (colados), não fórmula.
+- **Coluna do mês que está fechando agora (ex: Julho): recebe o valor novo do Passo 5 (Rateio de Custos).** Conferido: o valor de "Labour" que já estava na coluna de Julho (349,83) bate EXATAMENTE com o que o Passo 5 calcula pra SJP em Julho (Variable/Labour) — confirma que o processo manual real já usa a saída do Rateio de Custos nesse ponto exato.
+- **Colunas do mês seguinte em diante até Dezembro: já vêm como FÓRMULAS VIVAS, linkadas a arquivos externos do próprio Forecast** (ex: linha "Labour" = `='...\07_Jul_Forecast\[Labour Cost FITTED - R07 2026.xlsx]Sheet2'!C7/1000`) — **não são tocadas em nenhum momento**, só "vêm de brinde" ao copiar o Forecast como base.
+- Isso vale tanto pro arquivo Flash quanto pro Actual (o Actual de Julho também tem Ago-Dez linkados ao mesmo Forecast R7) — confirma que Actual e Flash do mesmo mês compartilham a mesma linhagem de template (ambos nasceram de uma cópia do Forecast).
+
+**Confirmado pela usuária (respostas diretas):**
+1. Só mexe na coluna do mês que está fechando - já considera o rateio (Passo 5).
+2. Linhas 18 (Variable Cost, `=SUM(linha19:linha24)`), 31 (Fixed Cost, `=SUM(linha32:linha37)`) e 26 (Variabile/Pc, `=IF(AND(linha18>0,linha8>0),linha18/linha8,0)`) são fórmulas e **devem continuar fórmula, nunca virar valor fixo**.
+3. **Decisão de implementação (dela, "veja o que é mais fácil"):** a forma mais simples é **nunca tocar nas linhas 18/31/26** - só colar os valores novos do Passo 5 nas linhas de DETALHE (19-23: Labour/Handling/Direct Materials/Transportation/Other Variable; 32-37: Labour/Depreciation/IFRS16/Rents/Condominio/Other Fixed) - como 18/31/26 são fórmulas que somam/dividem essas mesmas linhas, recalculam sozinhas sem precisar "consertar" nada depois.
+4. Check confirmado: comparar a linha **TOTAL COST** (linha 39, `=linha31+linha18`) contra o Total Costs por unidade que o Passo 5 já calcula (mesmo racional do check por unidade que já existe no Passo 5).
+
+**Abas confirmadas (sessão anterior, hoje):** só as 5 visíveis - SJP, IBI, GO, RES, TOTAL (arquivo real tem 11 abas no total, as outras 6 - Action Plan Ibirite, MDO, Rateio Fixo, Confronto, Sheet1, Proposta - ficam de fora).
+
+**Caso "sem Forecast" (ex: Agosto/2026 agora) - confirmado com exemplo real histórico:** usuária indicou `\\FSS024-01BR.group.pirelli.com\GFU_CUSTOS\00. YTD2025\FORECAST\2025\08_Flash_Ago\` (pasta antiga, ano passado) - achei dois arquivos: `MENS FITTED 2025 FLASH AGO com JUL EFETIVO.xls` (`S5="R7 JUL act"`) e `MENS FITTED 2025 FLASH AGO.xls` (`S5="R7"`). **Usuária confirmou: o arquivo "com JUL EFETIVO" é o FINAL** (ela acha que só o nome ficou "errado"/não-padrão, não é um problema de fundo) - racional confirmado: pega o Actual de Julho como base (números), atualiza com o comparativo do Fcst R7 (a "perfumaria"). Nome final do arquivo em produção: detalhe menor, decidir na hora de implementar.
+
+**Escopo excluído (confirmado pela usuária):**
+- Tudo abaixo do EBIT/ROS% (depende de Faturamento) - fora, mesma decisão já tomada antes pro Faturamento.
+- Net Sales - "ainda vamos fazer depois, agora quero focar nos custos".
+- MP26 - só ajustado no Flash de Janeiro, ainda não explicado (usuária vai detalhar depois).
+
+### PRÓXIMO PASSO
+Perguntei à usuária se quer continuar explicando mais alguma parte da mensalização, ou se já é suficiente pra eu começar a desenhar a automação (ainda NADA foi implementado - só leitura/reconhecimento até agora). Aguardando resposta.
+
+---
+## Continuação 2026-08-26 (mesmo dia) — NOVO PROJETO: "Mensalização" (Passo 6) — em análise/scoping, ainda não implementado
+
+**Pedido da usuária:** automatizar o "arquivo de mensalização" (hoje 100% manual) — Passo 6 do processo recorrente, depois do Rateio de Custos (Passo 5). Só conversa de escopo até agora, **nada implementado, nada alterado na rede** (só li arquivos existentes, via PowerShell/win32com read-only).
+
+**Onde vive (confirmado explorando a rede):** `\\FSS024-01BR.group.pirelli.com\EO_FITTED\BU FITTED\Forecast\`, com subpastas `Fcst` (Forecast por revisão: `Fcst 2026\R1 2026` ... hoje até `R7 2026`), `Flash` (por mês: `Flash\2026\07 - July`), `Actual` (por mês: `Actual\2026\07 - July`), mais `MP`, `Pre Flash`, `SP` (ainda não explorados).
+
+**Convenção de nome de arquivo (confirmada):** `MENS FITTED <CICLO> <MÊS EM PORTUGUÊS>.xls` (formato antigo `.xls`, não `.xlsx`) — ex: `MENS FITTED FORECAST JULHO.xls` (em `Fcst\Fcst 2026\R7 2026\`), `MENS FITTED FLASH JULHO.xls` (em `Flash\2026\07 - July\`), `MENS FITTED ACTUAL JULHO.xls` (em `Actual\2026\07 - July\`).
+
+**Regra da base pro Flash:**
+- Normal: copiar o Forecast (Rn) mais recente existente.
+- Exceção (mês sem Forecast ainda, ex: Agosto/2026 agora — só existe até R7/Julho): usar o **Actual do mês anterior** como base dos NÚMEROS, mas ainda assim usar o **último Forecast (R7)** como fonte das colunas de "cenário de comparação" (a "perfumaria": E5/S5/C47/linha 47/Q→S) — ou seja, combina 2 arquivos-fonte nesse caso (Actual pros números + último Forecast pro cenário de comparação). **Usuária indicou olhar o arquivo real "Flash Agosto de 2025" pra ver como foi feito da vez passada** — **procurei e NÃO ACHEI ainda** (Flash\2025\ só tem Out/Nov/Dez; Pre Flash está vazio; busca recursiva por "AGOSTO"+"FLASH" na árvore inteira do Forecast não achou nada). **PRECISO PERGUNTAR À USUÁRIA onde esse arquivo está** antes de continuar essa parte.
+- Número da revisão R1-R12 = mês do refresh (R1=Jan, R2=Fev, ..., R7=Jul, confirmado pela usuária) - não pula números, é 1:1 com o mês.
+
+**Abas que entram no processo (confirmado):** só as 5 abas VISÍVEIS — **SJP, IBI, GO/GOI, RES, TOTAL**. O arquivo real de Julho tem 11 abas no total (as 5 + `Action Plan Ibirite, MDO, Rateio Fixo, Confronto, Sheet1, Proposta`) — as outras 6 ficam de fora do processo (provavelmente ocultas/auxiliares, não confirmado explicitamente mas inferido da resposta "todas as abas que estão abertas").
+
+**Mecânica da "perfumaria" (edições cosméticas), confirmada olhando o arquivo real `MENS FITTED FLASH JULHO.xls` (só leitura):**
+- Só editar direto na aba **SJP** (as outras abas puxam o cenário dela por fórmula, propaga sozinho) - MAS os passos de linha 47 e Q→S precisam ser repetidos em cada uma das 5 abas (não propaga via fórmula).
+- `E5`: texto do Ciclo → "Flash" (confirmado no arquivo real: `FLASH`)
+- `S5`: número da revisão → "R7" (confirmado: `R7`)
+- `C47`: mesmo número de revisão → "R7" (confirmado: `R7`)
+- `E47:Q47` ← copia de `E43:Q43` (confirmado nas duas linhas do arquivo real, quase idênticas - 1 coluna diferente, provavelmente ajuste manual posterior, não investigado a fundo)
+- `S8:S44` ← cola como VALOR o que está em `Q8:Q44` (confirmado: valores diferentes entre as duas colunas no arquivo real, consistente com "colar como valor" e não fórmula viva)
+- Depois: renomear o arquivo (trocar o nome do Ciclo de origem pelo novo, ex: "FORECAST"→"FLASH", mês mantém).
+- **MP26**: só ajustado no Flash de Janeiro, usuária vai explicar separadamente mais pra frente ("de perfumaria é isso").
+
+### PRÓXIMO PASSO (bloqueado, aguardando a usuária)
+**Perguntar onde está o arquivo real "Flash Agosto de 2025"** (ela indicou pra eu olhar e entender o caso "sem Forecast", mas não achei no caminho esperado - `Flash\2025\` só tem Out/Nov/Dez). Depois disso, ela ainda vai continuar explicando "a atualização do arquivo" (a parte de atualizar os números de verdade, além dessa "perfumaria" inicial) - ainda não chegamos nessa parte.
+
+---
+## Continuação 2026-08-26 (mesmo dia) — Lembrete automático de rateio em Janeiro implementado; Resende confirmada pra Agosto
+
+**Usuária corrigiu um detalhe:** Resende recebe os PRIMEIROS custos reais em **Agosto** (não "mês que vem" como eu tinha entendido antes — Agosto é o mês corrente). Ou seja, a validação de RES com dado real só vai ser possível no fechamento de Agosto (ela confirmou isso também: "validar resende vai ser possivel apenas no fechamento de agosto").
+
+**Lembrete automático de Janeiro — IMPLEMENTADO e TESTADO.** Pedido combinado em 2026-08-25, feito agora: `_rateio_precisa_confirmacao_janeiro()` em `atualizar_ksb1_gui.py` checa se hoje é Janeiro E se ninguém salvou uma entrada com `vigente_desde` igual a `AAAA-01` pra esse ano em `ontology/rateio_gerencia.json`. Se sim, avisa de 2 formas: (1) popup ao abrir a janela do cockpit, (2) banner vermelho fixo na aba "⑤ Rateio de Custos". Não bloqueia nada - se ela não confirmar, o rateio anterior continua valendo normalmente (mesmo comportamento de sempre).
+
+**Testado com data simulada** (`datetime` trocado só na sessão de teste, técnica já usada antes): Janeiro/2027 sem entrada pro ano → avisa (popup + banner); Janeiro/2027 com entrada '2027-01' já salva → fica em silêncio. Arquivo real de config confirmado intocado (`git diff` vazio).
+
+**Commitado.**
+
+### PRÓXIMO PASSO
+Nenhuma pendência aberta no momento. Passo 5 está aprovado e com o lembrete de Janeiro implementado. Próxima validação relevante será orgânica: **o fechamento real de Agosto/2026** (primeiro mês com custo real de Resende, primeiro teste "ao vivo" de ponta a ponta do Passo 5 inteiro, incluindo o botão real do cockpit).
+
+---
+## Continuação 2026-08-26 (mesmo dia) — PASSO 5 APROVADO PELA USUÁRIA — Flash validado, conta 4255200 corrigida, milestone fechado
+
+**Usuária respondeu ponto a ponto às 6 pendências levantadas antes:**
+1. Testar Ciclo Flash (mesma lógica do Actual, confirmado por ela) — **FEITO**, ver abaixo.
+2. Resende sem custo real ainda, mas "terá a partir do próximo mês" — ciente, sem ação agora.
+3. Resíduo de R$4.070,00 em Maio/IBI — **"não precisa explicar"**, item encerrado sem mais investigação.
+4. "Como [a conta 4255200] está alocada nos meses anteriores?" — **investigado e corrigido**, ver abaixo.
+5. **"passo 5 esta aprovado"** — aprovação formal, registrada em `memory/DECISOES.md` (2026-08-26).
+6. Não precisa gerar os outros meses na rede — só Julho continua sendo o arquivo real gerado.
+7. Confirmado que o rateio de Agosto (com Resende, SJP 21%/IBI 49%/GOI 27%/RES 3%) já está alocado em `ontology/rateio_gerencia.json` desde 2026-08-25.
+
+**Ciclo Flash testado (Jan-Jul/2026):** mesma metodologia usada pro Actual. Todos os 7 meses: zero erro de fórmula em qualquer aba (Excel de verdade, `CalculateFull`), check por unidade ✓ em todos, Check final 0,00 em todos. Meses fechados (Jan-Jun) batem com os mesmos valores do Actual (esperado). Julho (na época ainda Flash/forecast) mostrou valores diferentes do Actual (SJP -1.561,08 vs -1.485,71) — **bateu exato com o arquivo antigo Flash de referência**, confirmando que a diferença é forecast genuíno, não bug.
+
+**Conta 4255200 "Recuperação PIS/COFINS Depreciação" — investigada e corrigida:** aparece nas 3 unidades (SJP, IBI, GOI), sempre classificada "Depreciation" no arquivo antigo, valor constante mês a mês, confirmado nos 7 meses (Jan-Jul). Adicionada como exceção pontual (`CONTAS_FORCADAS_DEPRECIATION` em `gerar_rateio_custos.py`) — força essa conta específica pra "Depreciation" mesmo a Base Intermediária trazendo AJ="Others". **Não é reintrodução do mapeamento próprio por conta** (banido em 2026-08-25) - é uma exceção única, bem documentada, com evidência forte. Category-neutra (não muda nenhum Total Costs). Revalidado depois da mudança: 7 meses Actual + 7 meses Flash, todos ainda com check ✓ e Check final 0,00.
+
+**Arquivo real de Julho atualizado na rede:** `Rateio de Custos Fitted Units July Actual 2026_v3.xlsx` (com a correção da conta 4255200; `_v2` já tinha a correção do bug de arredondamento; `_v1` é o original com o bug do Check 0,10 — nenhum foi apagado).
+
+**Commitado.**
+
+### PRÓXIMO PASSO
+Passo 5 aprovado — próximos passos naturais (não pedidos ainda pela usuária, aguardar):
+- Lembrete automático de Janeiro (rateio geralmente muda nessa época) — combinado em 2026-08-25, ainda não implementado.
+- Quando Resende tiver custo real (mês que vem, segundo ela), validar a lógica de RES com dado de verdade pela primeira vez.
+- Considerar mover o botão "Abertura de Custos por Unidade" pra usar o Ciclo selecionado no painel compartilhado (já faz isso - `ciclo_var.get()` - só confirmar que ela testa Flash pela GUI real em algum momento, já que só testei Flash por linha de comando/script até agora, não clicando o botão de verdade).
+
+---
+## Continuação 2026-08-26 (mesmo dia) — Bug real encontrado e corrigido: Check "(0,10)" em vez de "0,00" no primeiro arquivo real gerado pela usuária
+
+**A usuária clicou "Abertura de Custos por Unidade" de verdade pela primeira vez** (Julho/2026 Actual, arquivo real na rede) e reportou (com print) que o "Check (deve ser 0,00)" no rodapé mostrava **(0,10)**, não 0,00.
+
+**Causa raiz encontrada e confirmada:** cada célula de item (Variable/Fixed Cost, ~50 por arquivo) guardava o VALOR já arredondado a 1 casa decimal (`round(valor, 1)`) na escrita, não só a exibição — as fórmulas `=SUM(...)` do Excel somavam então valores já independentemente arredondados, acumulando deriva. Confirmado em Python: a matemática de verdade (sem arredondar) sempre bateu exato (diff = 0,000000); o problema era 100% um artefato de arredondamento em cadeia, não um erro de cálculo real.
+
+**Corrigido:** `_linha_item` e a linha extra "Não Classificado" (as duas fontes que alimentam a soma "Total Costs") agora escrevem o valor CHEIO na célula - só o `number_format` arredonda a EXIBIÇÃO pra 1 casa decimal (comportamento padrão do Excel: célula guarda o valor real, mostra arredondado). **Validado abrindo de verdade no Excel via win32com (`CalculateFull`)** pra Julho e Fevereiro/2026 Actual: Check = 0,00 nos dois agora.
+
+**Arquivo real da usuária corrigido:** gerado `Rateio de Custos Fitted Units July Actual 2026_v2.xlsx` na rede (`.../07_Jul_Actual/`), **sem apagar o `_v1` que ela já tinha aberto** (nome_com_versao, nunca sobrescreve). Ela precisa abrir o `_v2` pra ver o Check corrigido.
+
+**Commitado e enviado ao GitHub.**
+
+### PRÓXIMO PASSO
+Avisar a usuária que o `_v2.xlsx` está pronto na rede com o Check corrigido, e perguntar se ela quer que eu regenere (com a correção) os outros meses que ela já tinha visto/testado, ou só valida esse e segue.
+
+---
+## Continuação 2026-08-26 (mesmo dia) — Rateio de Custos: check por unidade + aba "Comentários" implementados; pedido de botão de rateio no cockpit
+
+**Contexto:** depois de investigar Jan/Mai/Jun (ver bloco abaixo) a usuária perguntou "você acha que o arquivo vai se comportar certo nos próximos meses?" — respondi que a lógica é consistente nos 7 meses testados (todo diff teve explicação de negócio ou foi confirmado por ela), mas que comparar contra arquivos antigos CONGELADOS tem limite (não prova nada sobre "ao vivo") — sugeri um teste em paralelo no fechamento real de Agosto em vez de continuar cavando meses antigos. Ela não respondeu diretamente essa sugestão ainda; em vez disso pediu 3 coisas novas:
+
+1. **Um "check" logo abaixo do Total de cada unidade, no quadro "sem rateio"** — IMPLEMENTADO e testado (Jan-Jul, todos ✓). Adicionei `raw_por_mini_fabrica` (soma bruta por Mini-Fábrica, sem passar pela classificação V/F) em `ler_e_classificar`, e `calcular_check_por_unidade` compara isso contra o total que realmente entrou no quadro pra cada unidade (SJP/IBI/GOI/RES/GER, considerando pra GER o resíduo de encerradas somado). Uma linha "Check (bate c/ Base Interm.)" aparece logo abaixo de "Total Costs" no quadro 1, com ✓ verde ou um aviso vermelho com o valor da diferença.
+2. **Aba nova "Comentários"** — IMPLEMENTADA: reúne o resultado do check por unidade (tabela), linhas "fora de escopo" (Mini-Fábrica/Centro de Custo não reconhecido - **antes eram descartadas em silêncio total, agora ficam registradas** via `fora_de_escopo`, novo retorno de `ler_e_classificar`), e as contas com Conta Geral (AJ) não reconhecida (`contas_nao_mapeadas`, já existia mas só ia pro log).
+3. **Botão no cockpit pra atualizar o rateio** — **IMPLEMENTADO e TESTADO**. Nova aba "⑤ Rateio de Custos" em `atualizar_ksb1_gui.py` (só com esse botão por enquanto - o botão de GERAR o arquivo ainda não foi ligado, Passo 5 continua sem aprovação final). Botão "Atualizar Rateio" abre um diálogo modal com um campo editável por unidade ativa (SJP/IBI/GOI/RES), pré-preenchido com o % vigente hoje, mais um campo "Vigente a partir de (AAAA-MM)". Salvar grava uma entrada nova em `ontology/rateio_gerencia.json` (ou atualiza uma existente com a mesma `vigente_desde`, sem duplicar); se a soma não fechar 100%, pergunta (Sim/Não) antes de salvar assim mesmo. Se ela não mexer em nada num Ciclo, o rateio anterior continua valendo (comportamento já garantido por `carregar_rateio_vigente`, não precisou de lógica nova).
+
+**Importante sobre o que o check PROVA e o que NÃO prova:** ele garante que nada se perde silenciosamente na classificação do PRÓPRIO script (testado: Jan-Jul, todos ✓, incluindo os meses com diff pequeno contra o arquivo antigo) — ou seja, os diffs pequenos de Jan/Mai/Jun **não vêm de uma falha de classificação interna do script** (isso já está descartado agora, com prova). O check não compara contra o arquivo antigo, então não fecha a dúvida da usuária sobre "vai bater no futuro" sozinho — só elimina uma categoria de causa possível.
+
+**Testado (Jan-Jul/2026, Actual), local, nada na rede:** todos os 7 meses rodaram sem erro, checks todos ✓, nenhuma linha fora de escopo apareceu em nenhum mês até agora.
+
+**Teste do botão de rateio:** automatizado (traversal da árvore de widgets Tk + clique simulado, mesma técnica já usada em testes anteriores do cockpit) contra uma CÓPIA local de `ontology/rateio_gerencia.json` (`gerar_rateio_custos.RATEIO_CONFIG_PATH` trocado só na sessão de teste, nunca o arquivo real) - abriu a aba, clicou "Atualizar Rateio", preencheu SJP 25%/IBI 45%/GOI 27%/RES 3%/vigência "2026-09", clicou "Salvar", conferiu que a entrada nova foi gravada certinha no JSON de teste e as duas entradas existentes (2026-01, 2026-08) não foram tocadas. **Arquivo real (`ontology/rateio_gerencia.json`) confirmado intocado** (`git diff` vazio) depois do teste.
+
+**Commitado nesta parte.**
+
+**Continuação: usuária pediu explicitamente o botão de GERAR o arquivo** ("abertura de custos por unidade, para rodar e gerar o arquivo com o rateio") depois de ver o arquivo de Julho e testar o cockpit ao vivo (gostou do resultado). **IMPLEMENTADO:** botão **"Abertura de Custos por Unidade"** (nome exato pedido por ela) adicionado como primeiro botão da aba "⑤ Rateio de Custos", antes de "Atualizar Rateio". Chama `gerar_arquivo_rateio_custos` com `pasta_saida = resolver_pasta_ciclo(REDE_BASE/ano/MESES_PASTA[mes], mes, ciclo)` — **mesmo padrão de saída dos Passos 1/3/4 (rede oficial, `nome_com_versao` nunca sobrescreve)**. Diferente do botão de atualizar %, este SALVA DE VERDADE na rede quando clicado pela usuária (é o próprio propósito do botão — gerar o arquivo oficial).
+
+**Testado de ponta a ponta** (automação de widgets Tk, mesma técnica de sempre): `atualizar_ksb1_gui.REDE_BASE` trocado só na sessão de teste pra uma pasta local (a leitura da Base Intermediária usa o `REDE_BASE` de `gerar_rateio_custos.py`, que é outro módulo/import separado e ficou intocado — continuou lendo a Base Intermediária REAL de Julho da rede, só leitura) — cliquei o botão, a operação rodou pela thread normal do cockpit (mesmo watchdog dos outros passos, sem oferecer forçar Excel porque só usa openpyxl), gerou o arquivo certinho em `.../2026/07 - Jul/07_Jul_Actual/Rateio de Custos Fitted Units July Actual 2026.xlsx` (estrutura de pasta idêntica à dos Passos 3/4) e mostrou o popup de conclusão. **Nada foi escrito na rede real neste teste** (saída redirecionada pro scratchpad da sessão).
+
+**Commitado.**
+
+### PRÓXIMO PASSO
+1. Cockpit relançado pra usuária testar o botão novo AO VIVO — **desta vez, se ela clicar "Abertura de Custos por Unidade" de verdade, o arquivo VAI ser salvo na rede oficial** (comportamento pretendido, mesmo padrão dos outros passos - `nome_com_versao` garante que nunca sobrescreve nada existente).
+2. Confirmar com a usuária que o rateio de Agosto/2026 já está correto (SJP 21% / IBI 49% / GOI 27% / RES 3%, `ontology/rateio_gerencia.json` entrada "2026-08") — já está assim desde 2026-08-25, é só confirmar que é o que ela mandou.
+3. Retomar a pergunta em aberto: continuar investigando o resíduo de Maio (R$4,07 mil) e decidir sobre a conta 4255200, OU aceitar o teste em paralelo no fechamento de Agosto como próximo passo de validação real.
+4. Aprovação final do Passo 5 ainda pendente formalmente, apesar da usuária já estar testando o cockpit ativamente — não presumir "aprovado" sem ela dizer isso explicitamente.
+
+---
+## Sessão 2026-08-26 — "Rateio de Custos" (Passo 5): testes de Fev/Mar/Abr/Mai/Jun — todos explicados, nenhum erro de script (nada salvo na rede)
+
+**Achado de Abril (GOI, R$ -601,69 mil) ESCLARECIDO pela usuária:** não é erro de sistema/script — foi um lançamento que ELA mesma precisou acrescentar manualmente ("eu que tive que acrescentar na mão"). Ou seja, o script novo está certo (pega o valor real, já lançado no SAP); o arquivo antigo congelado (12/05) é que não tinha esse ajuste manual. **Abril fechado, sem pendência.**
+
+**Testes adicionais pedidos pela usuária: Fevereiro e Março/Actual** — mesma metodologia (valores brutos não arredondados, comparados contra a série "Total Costs" por unidade do arquivo antigo de Julho, índice do mês certo).
+- **Março:** SJP, IBI e GOI bateram **exato** (diff 0,00 nos três).
+- **Fevereiro:** diffs pequenos — SJP -R$0,20 mil, IBI -R$0,46 mil, GOI -R$0,30 mil (total -R$0,96 mil). **100% explicado, não é erro:** fevereiro teve um resíduo de unidade encerrada (ITATIAIA, conta 4247200 "Despesas Sociais", R$ -0,96 mil) que a regra de negócio manda somar à Gerência antes do rateio (regra confirmada em 2026-08-25) — o arquivo antigo não tinha esse resíduo redistribuído dessa forma. -0,9588 × 21%/48%/31% = exatamente os 3 diffs observados. **Fevereiro fechado, sem pendência** (diferença é a regra de resíduo funcionando como desenhado, não um bug).
+
+**Investigação de Jan/Mai/Jun (pedido explícito da usuária: "não pode ter diferenças"):**
+
+**Achado sistemático, CONFIRMADO, mas neutro no total:** a conta `4255200` "Recuperação PIS/COFINS Depreciação" é um crédito fixo de **R$0,81 mil todo mês** (mesmo valor em Jan/Mai/Jun/Jul, conferido no arquivo antigo). Na Base Intermediária ela vem com Conta Geral (AJ) = "Others" → cai em "Other Fixed" pelo fallback do script (`_resolver_subcategoria`). No arquivo antigo, essa mesma conta sempre foi somada dentro de "Depreciation" (linha própria, seção "Depreciation" da aba por unidade). **Não muda o Total Costs** (só desloca valor entre "Depreciation" e "Other Fixed" dentro do Fixed Cost) — mas explica quase 100% do diff de Jan (-R$0,66 mil ≈ -0,81+0,16) e de Jun (-R$0,35 mil ≈ -0,81+0,46) nas categorias individuais. **PENDENTE DECISÃO DA USUÁRIA:** tratar 4255200 como exceção (forçar pra "Depreciation" mesmo a Base Intermediária dizendo "Others"), ou aceitar como está (o Total bate igual, só a categoria interna muda)?
+
+**Resíduo real ainda não explicado: Maio (R$4,07 mil em IBI).** Diferente de Jan/Jun, a conta 4255200 sozinha não explica o diff de Maio (que é category-neutro por definição — não move o total). Sobra ~R$4 mil de diferença real não rastreada até uma conta específica. Ordem de grandeza pequena (<0,15% do total de IBI) mas ainda não é zero. **PENDENTE:** perguntei à usuária se quer que eu continue investigando essa sobra ou se aceita esse nível de precisão.
+
+**Consolidado dos 7 meses testados até agora (Jan-Jul/2026, Actual):**
+| Mês | Resultado |
+|---|---|
+| Jan | diff pequeno (R$0,66 mil em IBI) — quase 100% explicado pela conta 4255200 (category-neutro) |
+| Fev | diff pequeno (R$0,96 mil), explicado por resíduo Itatiaia + regra de negócio |
+| Mar | exato |
+| Abr | diff explicado pela usuária (lançamento manual dela, não estava no arquivo antigo) |
+| Mai | **diff real não totalmente explicado (R$4,07 mil em IBI)** — pendente |
+| Jun | diff pequeno (R$0,35 mil em IBI) — quase 100% explicado pela conta 4255200 (category-neutro) |
+| Jul | exato (validado na sessão anterior, 2026-08-25) |
+
+Agosto/2026 ainda não fechou (usuária confirmou) — não testado, não testável ainda.
+
+**Nada salvo na rede** — só a pasta de teste local (`data/processed/fitted_units_despesas/rateio_custos_teste/`) e leitura dos arquivos antigos (copiados pro scratchpad da sessão, nunca alterados).
+
+### PRÓXIMO PASSO (pendente, aguardando a usuária)
+1. Decisão sobre a conta 4255200 (forçar exceção pra "Depreciation" ou manter como "Other Fixed").
+2. Se quer que eu continue investigando o resíduo de R$4,07 mil de Maio/IBI.
+3. Usuária disse "não pode ter diferenças" — depois de Jan/Fev/Mar/Abr/Mai/Jun/Jul testados, só Maio ainda tem resíduo genuinamente não rastreado. Definir se isso bloqueia a aprovação do Passo 5 ou se é aceitável.
+
+### Testes de Abril/Maio/Junho — histórico da investigação (mantido abaixo para contexto)
+
+**Retomada:** usuária corrigiu 2 pontos de entendimento sobre o desenho do dia anterior (2026-08-25) — atualizados nos comentários do script (`gerar_rateio_custos.py`, sem mudar comportamento):
+1. A coluna H ("Tp.Custo") **nunca** deve ser considerada pra variabilidade — não é só "menos confiável que AA/AJ", é pra nunca ler. Conferido: o código já nunca lia H (só citava em comentário) — só o texto foi corrigido, comportamento não mudou.
+2. A Gerência ser 100% Fixa não é uma regra arbitrária: **custo Variável é custo ligado à produção, e a Gerência não produz** — logo não deve existir NENHUM custo Variável nela por definição de negócio. Se aparecer um "V" na Gerência é anomalia de lançamento (comportamento do código já tratava isso — só o comentário/justificativa foi atualizado).
+3. Confirmado que o rateio já é feito por gestorial de origem (categoria a categoria, ex: Other Fixed rateia só dentro de Other Fixed) — já era assim, sem mudança.
+
+**Pedido da usuária:** testar Junho, Maio e Abril/2026 (Actual) contra o arquivo antigo `_Abertura custos...`, sem salvar nada na rede — só teste local. Feito: rodei os 3 meses com `--pasta-saida data/processed/fitted_units_despesas/rateio_custos_teste/` (pasta de teste local já existente, nada de rede tocado nem em escrita nem em leitura-com-alteração — os arquivos antigos de referência foram só copiados/lidos, nunca modificados).
+
+**Metodologia de validação:** usei a aba oculta por unidade do arquivo antigo mais recente disponível (`_Abertura custos Fitted Units July Actual 2026.xlsx`, aba por unidade ex: "São J. dos Pinhais") — a linha "Total Costs" ali é uma série mensal (Jan..Ago) com o valor **já com rateio embutido** (confirmado: bate exatamente com o "Rateio Gerência" que a sessão anterior já tinha validado pra Julho). Comparei índice do mês (Abr=índice 3, Mai=4, Jun=5) contra o total (Variable+Fixed, com rateio) calculado pelo nosso script, usando os valores brutos (não arredondados) — não os arquivos `.xlsx` gerados (que arredondam cada linha a 1 casa decimal, o que sozinho já gera até ~R$4 mil de deriva por soma quando há ~100 contas).
+
+**Resultado:**
+- **Junho/Actual:** SJP e GOI bateram exato (diff 0,00). IBI teve diff de R$ -0,35 mil (irrelevante, < 0,02% do total).
+- **Maio/Actual:** SJP e GOI bateram exato (diff 0,00). IBI teve diff de R$ -4,07 mil (pequeno, ~0,13% do total) — não investigado a fundo, ordem de grandeza bem menor que o achado de Abril abaixo.
+- **Abril/Actual:** SJP e IBI bateram exato (diff 0,00). **GOI teve diff de R$ -601,69 mil** (nosso script: -1.334,00 mil; arquivo antigo: -732,30 mil) — **achado real, não é rounding.**
+
+**Causa raiz identificada do achado de Abril/GOI:** uma única conta, `4236100` "Materiais Indiretos" (Fixo, Conta Geral="Others"→"Other Fixed"), mini-fábrica `0481` (Goiana), valor R$ -601,69 mil no mês de Abril — está presente na Base Intermediária (fonte usada pelo script novo) mas **não aparece em lugar nenhum na aba "Goiana" do arquivo antigo `_Abertura custos Fitted Units April Actual 2026_v2.xlsx`** (procurei por essa conta e pela descrição "Materiais Indiretos" na aba inteira, achei só 2 linhas residuais de R$ -0,26 mil e R$ -0,47 mil, nada perto de R$ 601,69 mil). Hipótese mais provável (não confirmada com a usuária ainda): o arquivo antigo de Abril foi salvo em 12/05/2026 (~12 dias após o fechamento) e a Base Intermediária usada no teste foi gerada bem mais recentemente (Passo 4, já em Agosto) — se essa conta sofreu algum lançamento tardio/reclassificação no SAP depois que o arquivo antigo de Abril foi congelado, o novo script capturaria isso e o antigo não. **Não é um erro do script** (a lógica bateu exato nas outras ~7 combinações unidade×mês testadas) — é uma divergência de dado-fonte que precisa da usuária confirmar (ela conhece a conta/contexto de Goiana em Abril).
+
+**Nada foi salvo na rede nesta sessão** — só leitura (cópia local dos arquivos antigos pra comparação, em scratchpad da sessão) e escrita na pasta de teste local já estabelecida.
+
+### Item resolvido (ver bloco consolidado no topo do arquivo)
+A pergunta acima foi respondida pela usuária no mesmo dia: **não é erro, foi lançamento manual dela**. Fev/Mar/Abr/Mai/Jun/Jul (6 meses) todos testados agora, todos batem ou têm diferença explicada. **Aprovação geral do Passo 5 continua pendente** (ver sessão 2026-08-25 abaixo) — próximo passo é perguntar à usuária se os 6 meses testados já são suficiente pra ela aprovar, ou se quer testar Jan/Ago também antes de decidir.
 
 ---
 ## Sessão 2026-08-25 — "Rateio de Custos" (Passo 5): FUNCIONANDO E VALIDADO — bate exatamente com o arquivo antigo de Julho/Actual, linha a linha
