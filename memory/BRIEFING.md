@@ -78,10 +78,15 @@ Confirmado em **todos os 7 arquivos Actual de 2026 já fechados** (Jan-Jul) — 
 **Nada foi escrito na rede** - toda a validação usou pasta de teste local, só LEITURA dos arquivos reais de Junho/Julho pra comparar. Rodado com sucesso via linha de comando (`--mes --ano --ciclo --pasta-saida`), ainda não integrado no cockpit (GUI) - próximo passo natural depois da usuária revisar/aprovar.
 
 **Pendências pra próxima sessão:**
-1. Mostrar o resultado pra usuária e pedir aprovação (mesmo padrão dos Passos 5/6 - ela precisa dizer "bateu, pode seguir" antes de ir pra produção).
-2. Perguntar sobre a assunção do Forecast vivo-vs-congelado acima.
-3. Decidir com ela: promover pra rede oficial + integrar no cockpit (novo Passo ⑦), ou testar mais meses primeiro (só Julho foi testado até agora).
+1. ~~Mostrar o resultado pra usuária~~ — feito: enviados os 2 arquivos gerados (Actual e Flash de Julho), ela abriu no Excel pra conferir os links.
+2. Perguntar sobre a assunção do Forecast vivo-vs-congelado acima (ainda não perguntado formalmente - ela seguiu direto pro cockpit).
+3. ~~Decidir promover pra rede/cockpit~~ — decidido: **não precisa "promover" nada retroativo** (Mai/Jun/Jul já existem na rede, feitos manualmente - só os meses gerados DAQUI PRA FRENTE usam o script). **Botão do cockpit já integrado** (ver abaixo).
 4. Ainda pendente, fora do escopo combinado: arquivo congelado (2ª rodada) e virada de ano (Dez->Jan).
+
+### Cockpit: novo Passo ⑦ "P&L" integrado
+`atualizar_ksb1_gui.py` ganhou a aba "⑦ P&L", botão único "Gerar Arquivo de P&L" - chama `gerar_pnl.gerar_arquivo_pnl(mes, ano, ciclo, pasta_saida)` com `pasta_saida` já apontando pra rede oficial (`resolver_pasta_ciclo(REDE_BASE/<ano>/<MM - Mês>, mes, ciclo)`, mesmo padrão dos outros passos - **não é pasta de teste**, é a rede de produção real). Compilado e testado o import isolado (`from gerar_pnl import gerar_arquivo_pnl` funciona a partir da pasta da GUI) - **ainda não clicado ao vivo pela usuária pela interface** (só testado via linha de comando até agora). Commitado e no GitHub.
+
+**Se a usuária for rodar de verdade (ex: Agosto/2026) pela primeira vez pelo botão:** lembrar que é a primeira vez que esse caminho de rede real vai ser escrito por este script - vale acompanhar o log da primeira rodada com atenção antes de confiar cegamente. A janela do cockpit, se já estava aberta antes desta mudança, precisa ser fechada e reaberta (Tkinter carregado em memória, sem hot-reload - mesmo aviso já dado outras vezes neste projeto).
 
 ---
 ## PRÓXIMA SESSÃO — desenho do Passo 7 (P&L) FECHADO, falta só decidir formato e implementar
