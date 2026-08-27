@@ -3,6 +3,25 @@
 > Manter apenas as últimas 2 sessões inline — sessões mais antigas vão para long_term/.
 
 ---
+## Continuação 2026-08-26 (mesmo dia) — Passo 6 (Mensalização): Ciclo Actual implementado e validado (7 meses)
+
+**Usuária explicou o fluxo do Actual:** só muda a FONTE — em vez de copiar o Forecast, copia o **Flash do mesmo mês, já fechado** ("eu vou fechar o actual julho, vou pegar o arquivo flash julho fechado dias antes"). A perfumaria (E5/S5/C47/linha47/S8:S44) não é refeita, já vem certa do Flash — só troca todo texto "Flash" por "Actual" nas 5 abas ("tudo o que estiver escrito flash, vira actual").
+
+**Implementado** em `gerar_mensalizacao.py`: `gerar_arquivo_mensalizacao` ganhou parâmetro `ciclo` ("Flash"/"Actual"). Pra Actual: base = `localizar_flash_do_mes` (novo), pula a perfumaria estrutural, só roda `_trocar_flash_por_actual` (Find/Replace do Excel, LookAt=xlWhole, só troca célula cujo conteúdo INTEIRO é "Flash").
+
+**Bug real achado e corrigido testando contra a rede:** os nomes dos arquivos `MENS FITTED <Ciclo> <Mês>.xls` **não são consistentes entre meses** — Jan-Jun usam inglês ("JANUARY", "FEBRUARY", "MARCH", até abreviado "APR"), só Julho usa português ("JULHO"). As funções `localizar_forecast_do_mes`/`localizar_actual_do_mes`/`localizar_flash_do_mes` foram reescritas pra buscar por PREFIXO (glob `MENS FITTED <Ciclo> *.xls`) em vez de montar o nome do mês.
+
+**Validado linha a linha contra os arquivos reais de Jan-Jul/2026 Actual (local, nada na rede):**
+- **Jan, Mar, Abr, Mai, Jun: bate 100% exato, zero diferença.**
+- **Fev:** mesma diferença já conhecida e aceita (resíduo Itatiaia, regra de negócio, R$0,96 mil no total) — não é bug novo.
+- **Jul:** o problema pontual da conta Rents/Goiana (R$0,73 mil, sinal invertido) **não se repetiu em nenhum outro mês** — usuária concordou que provavelmente foi erro de ajuste manual no arquivo real daquele mês específico ("acho que pode ter sido algo errado.. tudo o que faz manual pode ter erro"). Confirma que não é um padrão sistemático do script.
+
+**Commitado.**
+
+### PRÓXIMO PASSO
+Passo 6 está com Flash (caso normal) e Actual totalmente validados contra 7 meses reais. Ainda faltam: o caso "sem Forecast" do Flash (usado a partir de Agosto/2026 - ainda sem dado real pra testar), Net Sales (usuária confirmou que continua manual por enquanto), MP26 (Flash de Janeiro, ainda não explicado em detalhe). Nenhum arquivo foi gerado na rede oficial ainda - só a pasta de teste local.
+
+---
 ## Continuação 2026-08-26 (mesmo dia) — Erro meu corrigido (4211000) + nova ferramenta de auditoria completa criada e rodada: 78/78 contas confirmadas, zero divergência
 
 **Sequência dos fatos (importante pra não repetir o erro):**
