@@ -97,6 +97,29 @@ A usuária abriu os 2 arquivos que mandei (Actual e Flash de Julho) e confirmou 
 
 **Commitado e no GitHub.** Nada escrito na rede - toda validação em pasta de teste local, só leitura dos arquivos reais pra comparar.
 
+### Continuação (mesmo dia) — Passo 7 NÃO estava completo: falta o envio do e-mail pra Controladoria Central
+A usuária avisou que o Passo 7 também inclui montar (não enviar - ela revisa e aperta enviar) o e-mail "P&L Fitted Units - <Mês> <Ciclo>" pro time de Controladoria Central, com o arquivo congelado (`_...xlsx`) em anexo. Mandou 2 prints de e-mails modelo reais (Actual de 2025 e Flash de 2026) com destinatários/corpo/assinatura reais.
+
+**Decisões confirmadas com a usuária:**
+1. **Bianca Letícia de Souza (`bianca.souza.st@pirelli.com`, tag "(STAG)")** entra na cópia dos DOIS e-mails (Actual e Flash) daqui pra frente - no print do Flash (2026, mais recente) ela já aparece; no do Actual (2025) ainda não, então o modelo do Actual precisa ser atualizado.
+2. A frase de resultado do corpo (ex: "ganho de BRL 105K vs flash", "em linha vs R7") muda todo mês - decidido que EU calculo a diferença de EBIT automaticamente (lendo do próprio P&L gerado) e escrevo o número na frase; a EXPLICAÇÃO do motivo (ex: "refere-se a phasing, não é melhora efetiva") continua sendo escrita/ajustada por ela na revisão antes de enviar.
+3. **Botão do cockpit, nome exato pedido pela usuária:** "Enviar P&L para Controladoria Central via email".
+
+**Destinatários fixos, extraídos dos prints (usar exatamente esses nomes - Outlook resolve contra o diretório da Pirelli, não preciso adivinhar e-mail):**
+- **Actual** — Para: Machado Vitoria Ferreira, BR; Chiaretti Guilherme Augusto Amaral, BR; Correa Marcella Chiozzotto, BR. Cópia: Gama Fernanda Afonso Da, BR; Briquezi Thiago Pacheco, BR; **+ Bianca (nova)**.
+- **Flash** — Para: Chiaretti Guilherme Augusto Amaral, BR; Machado Vitoria Ferreira, BR; Correa Marcella Chiozzotto, BR; Briquezi Thiago Pacheco, BR. Cópia: Gama Fernanda Afonso Da, BR; Zangarini Daniel, BR; Moreira Rafaela Cristal De La Torre Francisco, BR; Souza Bianca Leticia De (STAG), BR (já estava).
+
+**Assunto:** `P&L Fitted Units - <Mês em inglês> <Ciclo>` (ex: "P&L Fitted Units - July Actual").
+
+**Corpo (modelo):**
+- Actual: "Segue anexo P&L do Actual <Mês> da Fitted Units e o resultado está com ganho de BRL 105K vs flash.\nO ganho refere-se a phasing, portanto não é melhora efetiva."
+- Flash: "Segue anexo P&L do flash <Mês> da Fitted Units.\nO resultado está em linha vs R7."
+- Assinatura fixa (nome, cargo, logo Pirelli, endereço) - vem do print, aparece igual nos dois.
+
+**Ainda NÃO implementado nesta sessão** (interrompido pelo alerta de sessão longa) - próximo passo imediato: achar a linha do EBIT no P&L real (pra calcular a diferença automaticamente), depois escrever a função de montar o e-mail via Outlook COM (`win32com.client.Dispatch("Outlook.Application")`, `MailItem.Display()` - NUNCA `.Send()`) e ligar o botão novo na aba "⑦ P&L" do cockpit.
+
+**Risco/cuidado a manter:** nunca chamar `.Send()` em lugar nenhum deste fluxo - é ação irreversível e a usuária foi explícita que quem envia é ela.
+
 ---
 ## PRÓXIMA SESSÃO — desenho do Passo 7 (P&L) FECHADO, falta só decidir formato e implementar
 **Retomar exatamente daqui, pedido explícito da usuária no fim da sessão 2026-08-27:** decidir junto com ela, no início da próxima sessão, se implementamos como **script standalone primeiro** (como os outros passos — recomendado, testa isolado antes de tocar rede) ou **já direto integrado no cockpit**. Pergunta já foi feita a ela nesta sessão mas ficou pra responder na próxima (ela precisou desligar).
