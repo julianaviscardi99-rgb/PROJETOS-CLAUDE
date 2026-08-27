@@ -3,6 +3,26 @@
 > Manter apenas as últimas 2 sessões inline — sessões mais antigas vão para long_term/.
 
 ---
+## Continuação 2026-08-26 (mesmo dia) — Passo 6 no cockpit: aba "⑥ Mensalização" com botão Custo habilitado + Faturamento desabilitado
+
+**Confirmado com a usuária:** nome de arquivo gerado pelo script segue sempre `MENS FITTED FLASH/ACTUAL <MÊS EM PORTUGUÊS>` (ex: "MENS FITTED FLASH AGOSTO") daqui pra frente — já é o que `_copiar_e_renomear` faz (usa `MESES_NOMES`, português), nenhuma mudança de código necessária, só confirmação.
+
+**Cockpit atualizado:** nova aba "⑥ Mensalização" em `atualizar_ksb1_gui.py`, com 2 botões:
+- **"Atualizar Custo"** — HABILITADO. Chama `gerar_arquivo_mensalizacao` (mes/ano/Ciclo do painel compartilhado), salva na pasta oficial de rede (`Forecast\Flash\<ano>\<MM> - <Mês em inglês>` ou `Forecast\Actual\...`, conforme o Ciclo).
+- **"Atualizar Faturamento"** — DESABILITADO (Net Sales ainda não foi automatizado). Novo mecanismo `botoes_sempre_desabilitados` garante que ele nunca é reativado por engano quando outra operação termina (`_liberar_janela` reativava TODOS os botões antes - corrigido).
+
+**Pedido extra da usuária:** ao terminar "Atualizar Custo" com sucesso, mostra um aviso separado lembrando de atualizar o Faturamento manualmente (até ele ser automatizado). Implementado.
+
+**`gerar_mensalizacao.py`:** trocado `DispatchEx` direto por `abrir_excel_isolado` (mesmo helper dos outros passos) - agora o watchdog de travamento do cockpit funciona nesse passo também.
+
+**Testado:** janela constrói corretamente, "Atualizar Faturamento" começa desabilitado e "Atualizar Custo" habilitado. Não testei ainda um clique real em "Atualizar Custo" pela GUI de ponta a ponta contra a rede (só testei via linha de comando antes, ver blocos anteriores - validado 7 meses Flash+Actual).
+
+**Commitado.**
+
+### PRÓXIMO PASSO
+Se a usuária quiser, testar o botão "Atualizar Custo" pela GUI real contra um mês/Ciclo que ainda não tenha arquivo na rede (ou aceitar versionamento automático se já tiver). Fora isso, Passo 6 segue sem pendência conhecida pro que já foi escopado (Custo) - Faturamento/Net Sales e MP26 continuam fora do escopo, por decisão da usuária.
+
+---
 ## Continuação 2026-08-26 (mesmo dia) — Passo 6 (Mensalização): Ciclo Actual implementado e validado (7 meses)
 
 **Usuária explicou o fluxo do Actual:** só muda a FONTE — em vez de copiar o Forecast, copia o **Flash do mesmo mês, já fechado** ("eu vou fechar o actual julho, vou pegar o arquivo flash julho fechado dias antes"). A perfumaria (E5/S5/C47/linha47/S8:S44) não é refeita, já vem certa do Flash — só troca todo texto "Flash" por "Actual" nas 5 abas ("tudo o que estiver escrito flash, vira actual").
