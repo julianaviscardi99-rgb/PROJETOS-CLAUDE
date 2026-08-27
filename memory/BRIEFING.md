@@ -3,6 +3,33 @@
 > Manter apenas as últimas 2 sessões inline — sessões mais antigas vão para long_term/.
 
 ---
+## Continuação 2026-08-26 (mesmo dia) — Erro meu corrigido (4211000) + nova ferramenta de auditoria completa criada e rodada: 78/78 contas confirmadas, zero divergência
+
+**Sequência dos fatos (importante pra não repetir o erro):**
+1. Sessão anterior (ver bloco acima "Usuária insegura..."): reverti a exceção da conta 4211000 achando que contradizia a estrutura do arquivo antigo (ela só aparecia listada em "Other Fixed").
+2. **Usuária questionou de volta:** "mas o transporte de materiais vários não fica em transportation?" — investiguei de novo com mais cuidado.
+3. **Achei meu próprio erro:** a conta 4211000 aparece com **descrição diferente dependendo do tipo** no arquivo antigo - "Fretes" (dentro de Transportation) quando Variável, "Transporte De Mats. Vários" (dentro de Other Fixed) quando Fixa. É A MESMA CONTA, só o rótulo muda - eu não tinha percebido isso na extração de estrutura anterior. Confirmado nas 3 unidades, 2 meses (Abril e Julho/2026).
+4. **Restaurei a exceção** com a causa raiz correta, documentada no código e na ontologia.
+
+**Usuária pediu um check mais completo e definitivo:** "faça um novo check... batendo gestorial e variabilidade com o arquivo abertura de custos... preciso que vc me confirme se está 100% igual".
+
+**Feito — nova ferramenta criada:** `scripts/sap/fitted_units/fitted_units_despesas/checar_classificacao_rateio.py` (auditoria sob demanda, NÃO faz parte do fluxo mensal recorrente). Extrai a estrutura COMPLETA do arquivo antigo `_Abertura custos...` (todas as 11 categorias/"vozes", com todas as contas gestoriais declaradas dentro de cada uma - não só as que já deram problema) e compara, conta por conta, contra o que a classificação atual (AA/AJ + as 2 exceções) produz, testando TODOS os valores de AJ realmente vistos em cada mês/ciclo.
+
+**Resultado, rodado contra os 7 meses × 2 Ciclos (14 combinações):**
+- **132 combinações (conta, tipo) na estrutura do arquivo antigo.**
+- **78 tinham dado real pra testar — as 78 batem 100%, ZERO divergência.**
+- 54 nunca tiveram nenhum valor em nenhum dos 14 meses/ciclos (contas de ajuste raramente usadas) - não são erro, só não há dado ainda pra confirmar; se algum dia tiverem valor, passam pelo fluxo normal (AA/AJ, sem exceção, a menos que sejam uma das 2 já mapeadas).
+
+**Lição registrada (já estava no BRIEFING, reforçada agora):** uma exceção só bater numericamente em 1 caso não é prova suficiente - mas TAMBÉM não descartar uma exceção só porque uma primeira leitura da estrutura pareceu contradizer - a mesma conta pode ter rótulos diferentes por tipo, como foi o caso aqui. Vale sempre conferir os DOIS (número da conta E descrição) antes de concluir.
+
+**Commitado.**
+
+### PRÓXIMO PASSO
+Nenhuma pendência aberta na classificação Variável/Fixo agora - as 2 exceções (4257000 Handling, 4211000 Transportation) estão confirmadas com evidência forte (numérica + estrutural +, no caso da 4257000, motivo de negócio). Retomar o Passo 6 (Mensalização) quando a usuária quiser - a exceção 4211000 restaurada deve fazer a Transportation de Ibirité voltar a bater 100% igual batia antes.
+
+---
+## Continuação 2026-08-26 (mesmo dia) — Usuária insegura com classificação; extração da estrutura COMPLETA do arquivo antigo achou contradição real — exceção da conta 4211000 REVERTIDA
+---
 ## Continuação 2026-08-26 (mesmo dia) — Usuária insegura com classificação; extração da estrutura COMPLETA do arquivo antigo achou contradição real — exceção da conta 4211000 REVERTIDA
 
 **Contexto:** usuária expressou medo explícito de classificação errada no futuro ("ainda estou insegura e com medo de um dia classificarmos errado"). Pediu pra eu abrir de novo a Base Intermediária + o arquivo antigo, e sugeriu uma ideia melhor do que eu vinha fazendo: **extrair a estrutura COMPLETA do arquivo antigo** (cada "voz"/categoria com todas as gestoriais que pertencem a ela, não só investigar conta por conta quando aparece um problema) — "isso é uma boa forma de gerar memória de cálculo para os itens e classificar com mais segurança".
