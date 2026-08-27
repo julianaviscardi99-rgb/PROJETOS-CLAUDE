@@ -126,7 +126,9 @@ A usuária avisou que o Passo 7 também inclui montar (não enviar - ela revisa 
 
 **Risco/cuidado a manter (todo o fluxo de e-mail):** nunca chamar `.Send()` em lugar nenhum - é ação irreversível e a usuária foi explícita que quem envia é ela.
 
-**Pendente pra confirmar com a usuária na próxima sessão:** ela ainda não confirmou se o rascunho de teste (Julho/Actual) abriu com os destinatários certos (nomes resolvidos pelo Outlook) e se o texto/assinatura ficaram bons visualmente - perguntar assim que ela voltar, antes de considerar este item fechado.
+**CONFIRMADO pela usuária, mesma sessão:** "ficou exatamente como eu queria" - o rascunho de teste (Julho/2026, Actual) abriu com destinatários resolvidos certo, corpo e assinatura como esperado. **Passo 7 (P&L) está fechado de ponta a ponta**: gerar arquivo (fórmula + congelado) e montar e-mail (nunca enviar), os dois com botão no cockpit, os dois validados contra dado real.
+
+**Itens que ficam de fora do escopo, por decisão explícita ou ainda não abordados:** virada de ano (Dezembro->Janeiro, bloco Jan-Dez precisa de reset maior, não detalhado); a assunção de qual versão do Forecast linkar quando existem viva e congelada juntas (ver nota acima, não chegou a ser perguntado formalmente, mas nunca deu problema nos testes).
 
 ---
 ## PRÓXIMA SESSÃO — desenho do Passo 7 (P&L) FECHADO, falta só decidir formato e implementar
