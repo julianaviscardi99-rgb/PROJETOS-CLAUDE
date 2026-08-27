@@ -151,10 +151,10 @@
         },
         {
           "conta": "4211000",
-          "descricao_conta": "Transporte De Mats. Vários",
-          "status": "EXCEÇÃO REVERTIDA em 2026-08-26 (mesmo dia que foi criada) - NÃO usar sem revisitar",
-          "regra_tentada": "Chegou a forçar 'Transportation' quando Variável, mas foi revertido no mesmo dia.",
-          "motivo_da_reversao": "A exceção tinha só UM ponto de evidência (bateu o total de Julho/Flash/Ibirité). Ao extrair a estrutura completa do arquivo antigo '_Abertura custos...' (todas as categorias e suas gestoriais, nas 3 unidades), essa conta aparece SEMPRE dentro de 'Other Fixed', NUNCA dentro de 'Transportation' (Variável) - contradiz a exceção. Diferente da 4257000 (que tem apoio duplo: numérico E estrutural), essa não tinha apoio estrutural. Removida por precaução até ter mais evidência ou confirmação de negócio da usuária."
+          "descricao_conta": "Transporte De Mats. Vários (quando Fixa) / Fretes (quando Variável)",
+          "regra": "Quando classificada como Variável, é forçada pra 'Transportation', mesmo nas linhas em que a coluna AJ traz 'Others' em vez de 'Transport'.",
+          "motivo_de_negocio": "É A MESMA CONTA (4211000) que muda de RÓTULO/DESCRIÇÃO no arquivo antigo dependendo do tipo: quando Fixa, aparece como 'Transporte De Mats. Vários' dentro de 'Other Fixed'; quando Variável, aparece como 'Fretes' dentro de 'Transportation'. A Base Intermediária (fonte do Passo 5) sempre usa a descrição 'Transporte De Mats. Vários' pros dois tipos, por isso não é óbvio à primeira vista.",
+          "historico": "Corrigida 2 vezes no mesmo dia (2026-08-26): criada com evidência só numérica (1 mês/unidade), revertida por engano ao ver 'Transporte De Mats. Vários' só dentro de Other Fixed na estrutura, restaurada de vez ao descobrir que 'Fretes' (dentro de Transportation) é a MESMA conta com outro rótulo - confirmado nas 3 unidades, em 2 meses (Abril e Julho/2026)."
         },
         {
           "conta": "4255200",
