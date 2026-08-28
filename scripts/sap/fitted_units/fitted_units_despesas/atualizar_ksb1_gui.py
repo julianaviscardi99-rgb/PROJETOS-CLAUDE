@@ -528,6 +528,22 @@ def main():
     _frames_pneu = _gerar_frames_pneu(diametro=ALTURA_BARRA_PROGRESSO - 2)
     _pneu = {"ativo": False, "x": 4.0, "direcao": 1, "indice_frame": 0}
 
+    # Mesmo pneu (com calota) do indicador de "processando" acima, girando -
+    # usado como icone antes do numero da aba, mas so' na aba SELECIONADA/
+    # amarela (pedido da usuaria, 2026-08-28: aparece so' quando selecionado,
+    # e fica girando continuamente enquanto essa aba estiver selecionada).
+    _frames_pneu_aba = _gerar_frames_pneu(diametro=40, n_frames=12)
+    _pneu_aba = {"indice_frame": 0, "aba_atual": 0}
+
+    def _animar_pneu_aba():
+        _pneu_aba["indice_frame"] = (_pneu_aba["indice_frame"] + 1) % len(_frames_pneu_aba)
+        item = labels_aba.get(_pneu_aba["aba_atual"])
+        if item is not None:
+            item[1].config(image=_frames_pneu_aba[_pneu_aba["indice_frame"]])
+        root.after(80, _animar_pneu_aba)
+
+    root.after(80, _animar_pneu_aba)
+
     def _animar_pneu():
         canvas_progresso.delete("pneu")
         if _pneu["ativo"]:
@@ -686,11 +702,14 @@ def main():
     aviso_rateio_janeiro = _rateio_precisa_confirmacao_janeiro()
 
     def selecionar_aba(indice):
-        for i, lbl in labels_aba.items():
-            if i == indice:
-                lbl.config(bg=AMARELO_CLARO, fg="black")
-            else:
-                lbl.config(bg=GRAFITE, fg="#e9e9eb")
+        _pneu_aba["aba_atual"] = indice
+        for i, (frame, icone_lbl, texto_lbl) in labels_aba.items():
+            cor_bg = AMARELO_CLARO if i == indice else GRAFITE
+            cor_fg = "black" if i == indice else "#e9e9eb"
+            imagem = _frames_pneu_aba[_pneu_aba["indice_frame"]] if i == indice else ""
+            icone_lbl.config(image=imagem, bg=cor_bg)
+            frame.config(bg=cor_bg)
+            texto_lbl.config(bg=cor_bg, fg=cor_fg)
         paginas[indice].tkraise()
 
     def fazer_aba(passo, indice):
@@ -698,13 +717,26 @@ def main():
         aba.grid(row=0, column=0, sticky="nsew")
         paginas[indice] = aba
 
-        lbl = tk.Label(
-            barra_abas, text=passo["aba"], bg=GRAFITE, fg="#e9e9eb",
-            font=("Segoe UI", 10, "bold"), padx=18, pady=10, cursor="hand2",
+        # Icone e texto em widgets separados (em vez de um so' Label com
+        # compound="left") - o Tk classic reaproveita o "padx" do Label como
+        # espaco TANTO na borda quanto entre imagem/texto, o que deixava o
+        # pneu longe do numero mesmo com padx baixo (2026-08-28, achado da
+        # usuaria). Com widgets separados da' pra controlar cada gap sozinho.
+        tab_frame = tk.Frame(barra_abas, bg=GRAFITE, cursor="hand2")
+        tab_frame.pack(side=tk.LEFT, padx=(0, 2))
+
+        icone_lbl = tk.Label(tab_frame, bg=GRAFITE, borderwidth=0, cursor="hand2")
+        icone_lbl.pack(side=tk.LEFT, padx=(14, 0), pady=10)
+
+        texto_lbl = tk.Label(
+            tab_frame, text=passo["aba"], bg=GRAFITE, fg="#e9e9eb",
+            font=("Segoe UI", 10, "bold"), cursor="hand2",
         )
-        lbl.pack(side=tk.LEFT, padx=(0, 2))
-        lbl.bind("<Button-1>", lambda e, i=indice: selecionar_aba(i))
-        labels_aba[indice] = lbl
+        texto_lbl.pack(side=tk.LEFT, padx=(4, 14), pady=10)
+
+        for widget in (tab_frame, icone_lbl, texto_lbl):
+            widget.bind("<Button-1>", lambda e, i=indice: selecionar_aba(i))
+        labels_aba[indice] = (tab_frame, icone_lbl, texto_lbl)
 
         ttk.Label(aba, text=passo["titulo"], style="Titulo.TLabel").pack(anchor="w")
         ttk.Label(aba, text=passo["descricao"], style="Descricao.TLabel", justify="left").pack(
