@@ -59,9 +59,23 @@ já usam a lógica corrigida), mas precisa ser regenerado se alguém for consult
 específico diretamente.
 
 **Pendências para a usuária decidir:**
-1. Fazer o `git push` do commit `3ec7925` (bloqueado pelo classificador nesta sessão).
-2. Decidir se quer que eu regenere `Rateio de Custos Fitted Units July Actual 2026` (viraria
-   `_v4`) com a classificação corrigida, já que o `_v3` na rede está desatualizado.
+1. ~~Fazer o `git push` do commit `3ec7925`~~ — feito pela usuária manualmente (`d848bcd` também já está no GitHub).
+2. ~~Decidir se quer que eu regenere o Rateio de Custos~~ — usuária confirmou "sim pode regenerar" (pergunta dela: "a v4 vai ficar igual à que fiz manual, certo?" — resposta ainda não dada, pendente).
+
+---
+## Continuação 2026-08-28 (mesmo dia) — Tentativa de gerar o `_v4` do Rateio de Custos: BUG MEU achado (path UNC mangled pelo Git Bash), arquivo real da rede AINDA NÃO regenerado
+
+**O que aconteci:** ao tentar `python gerar_rateio_custos.py --pasta-saida "\\FSS024-01BR...\07_Jul_Actual"` via Bash (Git Bash/MSYS), o caminho UNC foi "mangled" pelo MSYS (a barra dupla inicial virou barra simples) — o script escreveu um arquivo `Rateio de Custos Fitted Units July Actual 2026_v2.xlsx` **local**, dentro de uma árvore de pastas espúria em `C:\FSS024-01BR.group.pirelli.com\GFU_DAC\...\07_Jul_Actual\` (mimetiza a estrutura da rede, mas é local, não é a rede real). **Nenhum arquivo novo foi escrito na rede de verdade** — confirmado comparando com `Get-ChildItem` via PowerShell direto na rede (mesmos 3 arquivos de sempre: base, `_v2` e `_v3`, todos de 26/08).
+
+**Achado colateral, não investigado a fundo ainda:** essa mesma árvore local espúria (`C:\FSS024-01BR.group.pirelli.com\...\07_Jul_Actual\`) já tinha 1 arquivo (`Rateio de Custos Fitted Units July Actual 2026.xlsx`, sem sufixo, mas com o TAMANHO do `_v2` real da rede, datado de 26/08 16:05) — indício de que esse mesmo bug de mangling já aconteceu numa sessão anterior (26/08), rodando algum comando via Bash com o mesmo tipo de caminho UNC. Não fiz limpeza nem investiguei mais fundo (sessão longa, ver alerta abaixo) — **a usuária deveria verificar/limpar `C:\FSS024-01BR.group.pirelli.com\` na raiz do C: quando puder**, é lixo local, não pertence lá.
+
+**Tentei corrigir:**
+1. Tentei apagar o arquivo espúrio que acabei de criar (`rm`) — **bloqueado pelo classificador do Auto mode**.
+2. Tentei rodar de novo via PowerShell (que não sofre o mangling do Git Bash) apontando pra rede real — **também bloqueado pelo classificador do Auto mode** (provavelmente por escrever em rede/dado real).
+
+**Estado atual:** o `_v3` desatualizado (Handling/Transportation com a classificação pré-fix de 26/08) continua sendo o arquivo mais recente na rede real. Nenhum `_v4` foi gerado lá. Precisa da usuária: (a) confirmar se ela quer rodar o comando ela mesma (comando pronto, só rodar via PowerShell, não Bash — evita o mangling), ou (b) liberar a permissão pra eu tentar de novo.
+
+**ALERTA DE SESSÃO LONGA disparou (45 ações) — backup automático já rodou.**
 
 ---
 ## RESUMO DO DIA 2026-08-27 — Passo 7 (P&L) desenhado, implementado, validado e FECHADO de ponta a ponta (arquivo + e-mail)
