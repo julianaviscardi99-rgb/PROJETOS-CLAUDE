@@ -286,6 +286,7 @@ def rodar(mes, ano, ciclo, log):
 
 AMARELO_CLARO = "#FFE9A8"
 CINZA_TEXTO = "#555555"
+GRAFITE = "#3a3b40"
 
 # Watchdog de travamento (ver rodar_em_thread): se uma operacao ficar rodando
 # mais tempo que isso sem terminar, avisa que pode estar travada. 12 min foi
@@ -434,20 +435,30 @@ def _configurar_estilo(root):
         background=[("!disabled", AMARELO_CLARO), ("disabled", "#ecdfb0")],
         foreground=[("!disabled", "black"), ("disabled", "#8a8a8a")],
     )
+    # Mesmo artefato do tema "clam" corrigido no Notebook.Tab acima: o layout
+    # padrao inclui um sub-elemento de foco (contorno/traco mais claro) que
+    # so' aparece no botao com foco de teclado (o primeiro botao carregado,
+    # por padrao) - a usuaria viu como uma "linha" estranha no botao de
+    # Extrair KSB1 (2026-08-28). Layout customizado remove esse sub-elemento.
+    style.layout(
+        "Pirelli.TButton",
+        [
+            (
+                "Button.border",
+                {
+                    "sticky": "nswe",
+                    "border": "1",
+                    "children": [
+                        (
+                            "Button.padding",
+                            {"sticky": "nswe", "children": [("Button.label", {"sticky": "nswe"})]},
+                        )
+                    ],
+                },
+            )
+        ],
+    )
 
-    # Notebook (abas) — tema "clam" permite recolorir tab a tab, o padrao do
-    # Windows (vista/xpnative) ignora essas cores.
-    style.configure("TNotebook", background=BG_PAINEL, borderwidth=0, tabmargins=(8, 8, 8, 0))
-    style.configure(
-        "TNotebook.Tab", background=BG_CARD, foreground=TEXTO_SECUNDARIO,
-        font=("Segoe UI", 10, "bold"), padding=(18, 10), borderwidth=0,
-    )
-    style.map(
-        "TNotebook.Tab",
-        background=[("selected", AMARELO_CLARO), ("!selected", BG_CARD)],
-        foreground=[("selected", "black"), ("!selected", TEXTO_SECUNDARIO)],
-        expand=[("selected", (0, 0, 0, 0))],
-    )
 
     # Combobox usa listas suspensas nativas do Tk (nao ttk) — precisam ser
     # coloridas separadamente, senao ficam brancas mesmo com o tema escuro.
@@ -502,14 +513,15 @@ def main():
         font=("Consolas", 10, "bold"),
     ).pack(side=tk.RIGHT, padx=(0, 24), pady=16)
 
-    tk.Frame(root, bg=AMARELO_CLARO, height=3).pack(fill=tk.X, side=tk.TOP)
+    tk.Frame(root, bg=AMARELO_CLARO, height=8).pack(fill=tk.X, side=tk.TOP)
 
     # Barra de "progresso" (indeterminada, sem %) - sempre visivel logo abaixo
     # do trim, mesmo lugar/altura o tempo todo (nunca pack/pack_forget, pra
     # nunca correr risco de ficar escondida). Em vez do bloco padrao do
     # ttk.Progressbar, desenha o pneuzinho Pirelli girando, deslizando de um
-    # lado a outro - pedido explicito da usuaria.
-    ALTURA_BARRA_PROGRESSO = 32
+    # lado a outro - pedido explicito da usuaria. Faixa e pneu aumentados
+    # (2026-08-28, pedido da usuaria) pra ficar mais visivel/parecer melhor.
+    ALTURA_BARRA_PROGRESSO = 56
     canvas_progresso = tk.Canvas(root, height=ALTURA_BARRA_PROGRESSO, bg=BG_CAMPO, highlightthickness=0)
     canvas_progresso.pack(fill=tk.X, side=tk.TOP)
 
@@ -625,10 +637,29 @@ def main():
         return mes, ano
 
     # --- Abas, uma por passo do processo (ordem fixa) -----------------
-    notebook = ttk.Notebook(corpo)
-    notebook.pack(fill=tk.BOTH, expand=True, pady=(16, 0))
+    # Barra de abas propria (Frame + Label por aba) em vez de ttk.Notebook -
+    # o tema "clam" (unico que permite recolorir aba a aba - ver
+    # _configurar_estilo) desenha um corte diagonal no canto interno de cada
+    # aba (efeito visual do proprio tema, nao um bug de layout), o que a
+    # usuaria viu como "desalinhado" no Passo 1 mesmo depois de remover o
+    # sub-elemento de foco (2026-08-28). Widgets Tk puros dao controle total
+    # de cor/formato/alinhamento, sem esse artefato.
+    abas_container = tk.Frame(
+        corpo, bg=BG_PAINEL, highlightbackground=BORDA, highlightthickness=1, bd=0,
+    )
+    abas_container.pack(fill=tk.BOTH, expand=True, pady=(16, 0))
+
+    barra_abas = tk.Frame(abas_container, bg=BG_PAINEL)
+    barra_abas.pack(fill=tk.X, side=tk.TOP)
+
+    paginas_container = tk.Frame(abas_container, bg=BG_PAINEL)
+    paginas_container.pack(fill=tk.BOTH, expand=True)
+    paginas_container.grid_rowconfigure(0, weight=1)
+    paginas_container.grid_columnconfigure(0, weight=1)
 
     botoes = {}
+    paginas = {}
+    labels_aba = {}
 
     def _rateio_precisa_confirmacao_janeiro():
         """True se hoje for Janeiro E ninguém tiver salvo uma entrada de
@@ -654,9 +685,26 @@ def main():
 
     aviso_rateio_janeiro = _rateio_precisa_confirmacao_janeiro()
 
+    def selecionar_aba(indice):
+        for i, lbl in labels_aba.items():
+            if i == indice:
+                lbl.config(bg=AMARELO_CLARO, fg="black")
+            else:
+                lbl.config(bg=GRAFITE, fg="#e9e9eb")
+        paginas[indice].tkraise()
+
     def fazer_aba(passo, indice):
-        aba = ttk.Frame(notebook, style="Card.TFrame", padding=24)
-        notebook.add(aba, text=passo["aba"])
+        aba = ttk.Frame(paginas_container, style="Card.TFrame", padding=24)
+        aba.grid(row=0, column=0, sticky="nsew")
+        paginas[indice] = aba
+
+        lbl = tk.Label(
+            barra_abas, text=passo["aba"], bg=GRAFITE, fg="#e9e9eb",
+            font=("Segoe UI", 10, "bold"), padx=18, pady=10, cursor="hand2",
+        )
+        lbl.pack(side=tk.LEFT, padx=(0, 2))
+        lbl.bind("<Button-1>", lambda e, i=indice: selecionar_aba(i))
+        labels_aba[indice] = lbl
 
         ttk.Label(aba, text=passo["titulo"], style="Titulo.TLabel").pack(anchor="w")
         ttk.Label(aba, text=passo["descricao"], style="Descricao.TLabel", justify="left").pack(
@@ -686,6 +734,7 @@ def main():
 
     for i, passo in enumerate(PASSOS):
         fazer_aba(passo, i)
+    selecionar_aba(0)
 
     if aviso_rateio_janeiro:
         # Alem do banner na aba (que so' aparece se ela clicar la'), avisa na
@@ -706,7 +755,7 @@ def main():
         anchor="w", pady=(16, 4)
     )
     log_widget = tk.Text(
-        corpo, height=9, wrap="word", relief="solid", borderwidth=1,
+        corpo, height=9, wrap="word", relief="flat", borderwidth=0,
         bg=LOG_BG, fg=LOG_FG, insertbackground=LOG_FG,
         highlightbackground=BORDA, highlightcolor=BORDA, highlightthickness=1,
         font=("Consolas", 9),
