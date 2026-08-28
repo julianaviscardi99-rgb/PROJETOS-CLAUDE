@@ -693,4 +693,16 @@ Mecanismo validado via COM: `wb.LinkSources(1)` lista os links; `wb.ChangeLink(n
 
 **Achado relacionado, também confirmado:** o link de Mensalização usa `EO_CONSUMER\BU FITTED\...` em Maio/Junho mas `EO_FITTED\BU FITTED\...` em Julho (os dois compartilhamentos existem de fato). **Usuária confirmou: `EO_FITTED` é o correto/atual** — `EO_CONSUMER` não deve ser usado daqui pra frente.
 
+---
+
+## 2026-08-28 — Sem tabela de controle de acesso ao cockpit (estagiário)
+
+**Contexto:** o estagiário da usuária tentou abrir o cockpit e o launcher (`atualizar_ksb1_launcher.vbs`) falhou porque tinha o caminho absoluto da máquina da Juliana hardcoded (`C:\Users\silveju001\...`) — corrigido pra calcular o caminho a partir de onde o próprio `.vbs` está salvo (commit `93605c0`), funciona em qualquer máquina desde que a pasta do projeto seja copiada inteira.
+
+**Decisão:** não implementar uma tabela/allowlist de usuários autorizados a rodar o cockpit.
+
+**Motivo:** o estagiário já tem acesso próprio às pastas de rede da Pirelli (SAP, financeiro) que os scripts leem/escrevem — essa é a barreira de segurança real. Só ele vai usar o cockpit além da Juliana; uma tabela de controle seria só um guardrail de cortesia sem valor de segurança de fato (não impede alguém de editar o script), e ela preferiu não adicionar essa camada.
+
+**Como aplicar:** não construir controle de acesso local no cockpit a menos que a usuária peça explicitamente de novo (ex: se mais pessoas passarem a ter cópias do projeto).
+
 **Decisão da usuária:** mesma política do bug do PY — **não corrigir retroativamente** Mai/Jun/Jul (já fechados/enviados). A automação do Passo 7 (`gerar_pnl.py`, ainda a implementar) sempre monta o caminho de destino do `ChangeLink` com o nível "MM - Mês" incluído (nunca replica o caminho curto) e sempre usa `EO_FITTED` pro link de Mensalização.
