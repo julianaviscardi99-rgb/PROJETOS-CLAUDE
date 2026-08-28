@@ -3,6 +3,163 @@
 > Manter apenas as últimas 2 sessões inline — sessões mais antigas vão para long_term/.
 
 ---
+## RESUMO DO DIA 2026-08-28 — Cockpit de fechamento liberado pra estagiária, MP2027 (Management Plan 2027) iniciado do zero, "Análise de Resultado Fitted" (cockpit novo) esboçado
+
+**Sessão muito longa (6 alertas de 45 ações, todos com backup/push automático) — resumo
+consolidado por tema. Detalhe passo a passo de cada achado está nas seções "Continuação
+2026-08-28" logo abaixo (serão movidas pra `long_term/` na próxima transição automática).**
+
+### 1. Cockpit de fechamento — 2 fixes + liberado pra estagiária usar
+- Texto do Passo 5 corrigido (não estava mais "em validação", já tinha sido aprovado
+  26/08) e saudação do e-mail do Passo 7 ficou dinâmica por horário (Bom dia/Boa
+  tarde/Boa noite). Commitado (`b1394c1`).
+- **Estagiário/estagiária ganhou acesso ao cockpit.** 2 bugs reais achados e corrigidos
+  no caminho: (1) `atualizar_ksb1_launcher.vbs` tinha caminho absoluto hardcoded do PC da
+  Juliana — corrigido pra se localizar sozinho (`93605c0`); (2) mesmo corrigido, o atalho
+  de rede (`Fechamento Custo Fitted Units.lnk`, já existia de antes) ainda apontava pro
+  caminho local antigo — resolvido copiando `scripts/` + `ontology/` + `requirements.txt`
+  pra uma pasta nova na rede (`00.Extração Base KSB1\_Cockpit_KSB1\`) e repontando o
+  atalho pra lá. **Fica DESSINCRONIZADA do GitHub** — mudanças futuras nesses scripts
+  precisam ser re-copiadas (`robocopy /MIR`) pra lá se for pra valer também no atalho.
+  Além disso, 2 `.bat` (`1_instalar_python.bat` via winget, `2_instalar_bibliotecas.bat`
+  via `python -m pip`) foram criados e testados via `cmd.exe` real pra instalar
+  Python/dependências sem ajuda — 2 bugs reais achados e corrigidos: acento (`ç`) na
+  pasta de rede quebrando o `.bat` (resolvido com caminho relativo a partir de `%~dp0`,
+  em vez de tentar acertar `chcp`, que só piorou), e `pip` sozinho não existir no PATH
+  (trocado pra `python -m pip`). **Confirmado funcionando** pela estagiária ao vivo.
+- **Decisão registrada:** sem tabela de controle de acesso ao cockpit — só ela vai usar,
+  e já tem acesso próprio às pastas de rede da Pirelli (ver `DECISOES.md`).
+
+### 2. NOVO PROJETO "MP2027" (Management Plan 2027) — 3 arquivos entregues, aprovados
+Objetivo: levantar despesa (Forecast e Efetivo) da Fitted Units pra começar a discutir o
+budget do ano que vem com os gerentes. 3 scripts em `scripts/sap/fitted_units/mp2027/`:
+1. `gerar_lista_fornecedores.py` — lista de fornecedores + valor mensal, a partir do
+   `Detalhe_Despesas_Fitted Units_Forecast July.xlsx` (aba `DataBase_Detail`, 107 colunas,
+   6 blocos de "R07 JAN..DEZ" repetidos sem nome claro — **decodificado por fórmula**:
+   bloco1=Valor Mensal, bloco4=%Reajuste, bloco6=Valor Final Previsão oficial). Agrupa por
+   Código Fornecedor (não nome, que vem bagunçado). Achou e excluiu 2 falsos-fornecedores
+   ("-" e "Baixa de Materiais", lançamento contábil).
+2. `gerar_efetivo_por_unidade.py` — efetivo Jan-Jul por CM/Gestorial/Fornecedor. Fonte
+   final (trocada a pedido da usuária): `KSB1 <Mês> Actual <Ano>.xlsx`, aba `BASE_KSB1`
+   — **é cumulativa** (Jan até o mês do arquivo) e já vem com Gestorial/CM **resolvidos
+   por fórmula** (colunas 19/21), não precisa de mapeamento próprio.
+3. `gerar_despesas_por_item.py` — **usuária confirmou "ficou bom"**. CM | Descrição
+   Gestorial | Variabilidade | Fornecedor | Item de Compra (="Texto do pedido") | Jan-Jul
+   | Total, uma aba por unidade ativa, só despesa (filtro `DG/MO`=DG, exclui Mão de Obra).
+   **Achado real relevante:** 94% das linhas do IBI eram lançamento automático tipo
+   PIS/COFINS **sem fornecedor de verdade** (não é frete, como a usuária suspeitou
+   inicialmente) — movido pra aba "Fora do escopo" em vez de poluir o ranking.
+
+Outputs na rede: `\\FSS024-01BR.group.pirelli.com\GFU_DAC\Management Plan\MP2027\`.
+
+### 3. Redesenho do `Detalhe_Despesas_Fitted Units` (arquivo "amador" segundo a usuária)
+`scripts/sap/fitted_units/mp2027/gerar_proposta_layout_despesas.py` — protótipo de
+layout novo: Classificação (colunas A-X, intactas) + bloco FORECAST (Valor Mensal / %
+Reajuste / Valor Final Previsão × 12 meses) + bloco EFETIVO (Actual) + Diferença, com
+visual profissional (Tabela do Excel nativa, seções mescladas coloridas, paleta
+validada). Numeros de teste vieram do R7 (Forecast Julho) — "não estou me importando
+com os números agora", só layout.
+
+**Frente em aberto, ADIADA por pedido da usuária ("vamos deixar pra próxima")** — ela vai
+trabalhar sozinha na classificação de memória/casamento antes da próxima sessão:
+- Chave de casamento Forecast × Efetivo testada empiricamente: **(Centro de Custo,
+  Classe de Custo)** só bate 6% (18/291) — **NÃO usar**. **(Centro de Custo, Gestorial)**
+  bate 69% (114/166) — usado na v2 do protótipo, mas ainda fraco.
+- **Ideia da usuária, validada como abordagem padrão de controladoria no setor
+  automotivo (Goodyear, Vuteq e afins) — matriz de classificação de gasto por
+  Gestorial:** "Contrato/recorrente" → casa por (Gestorial + Fornecedor), 1:1, alta
+  confiança (ex: MVC Transporte, frete). "Transacional/diverso" (manutenção, MRO) →
+  fornecedor não é estável, casa só por Gestorial (agregado, "cesta"), compara total
+  contra plano, não linha a linha. "Rateio/alocação" (mão de obra, PIS/COFINS) → já fica
+  de fora hoje.
+- **Próximo passo combinado:** classificar as ~166 combinações de Gestorial em
+  Contrato/Transacional/Rateio junto com a usuária (mesmo processo colaborativo já usado
+  pro Variável/Fixo do Rateio de Custos) e guardar em `ontology/` — **usuária vai
+  trabalhar nisso por conta própria antes da próxima sessão** ("vou começar a trabalhar
+  na memória e casamento destes itens").
+
+### 4. Cockpit NOVO "Análise de Resultado Fitted" — v1 esboçada, PAUSADA a pedido da usuária
+**Decisão importante:** cockpit **separado** do de fechamento — "não quero que as pessoas
+vejam" (a estagiária agora tem acesso ao de fechamento). Também descartamos web
+hospedado (mesmo com login/senha) porque o dado sairia da rede da Pirelli pra
+infraestrutura externa — contra a regra do `CLAUDE.md`. Decisão final: **HTML local**
+(sem servidor, sem publicar em lugar nenhum) — não precisa de Python pra ABRIR, só pra
+gerar/atualizar (só a usuária mexe nisso).
+
+Escopo v1 escolhido pela usuária: só **Tendência de EBIT/Resultado** (adiado: custo por
+categoria, top fornecedores, budget vs efetivo). Visual: "novo, mais dashboard" (não o
+mesmo estilo do cockpit de fechamento).
+
+Script: `scripts/sap/fitted_units/analise_resultado_fitted/gerar_dashboard.py`. Acha
+sozinho o P&L Actual congelado do mês mais recente fechado (varre Dez→Jan) — aba "Resumo
+Resultado Ano" (linha 44=EBIT, linha 12=Net Sales, linha 5=tag Actual/Forecast, já cobre
+o ano inteiro). Gráfico de barras divergente (azul=positivo/vermelho=negativo, paleta
+validada via `dataviz` skill — todos os checks de acessibilidade passaram), Actual sólido
+/ Forecast tracejado+opaco, tooltip, 3 KPIs (EBIT acumulado, EBIT último mês, ROS% médio),
+tabela de dados embaixo. **Gerado e aberto pra revisão, usuária pediu pra "guardar por
+enquanto"** — não foi aprovado nem salvo na rede ainda, só local:
+`data/processed/analise_resultado_fitted/analise_resultado_fitted.html`.
+
+**Pendências pra retomar (ordem que a usuária indicou):**
+1. Ela vai trabalhar na classificação Gestorial (Contrato/Transacional/Rateio) por conta
+   própria antes da próxima sessão — não presumir que já está pronta, perguntar.
+2. Depois disso, retomar o layout do `Detalhe_Despesas` com casamento Forecast×Efetivo
+   melhor (usando a classificação nova).
+3. Retomar "Análise de Resultado Fitted" — perguntar se aprovou o visual da v1, se quer
+   ajustar, e onde salvar a versão "de verdade" (rede ou só local).
+
+---
+## Continuação 2026-08-28 (mesma sessão, mais recente ainda) — MP2027: 3 arquivos entregues (fornecedores/item/despesas), agora redesenhando o "Detalhe_Despesas" (arquivo mestre bagunçado)
+
+**Entregues e aprovados nesta sessão (pasta de rede `MP2027`):**
+1. `MP2027_Lista_Fornecedores_base_Forecast_Jul26.xlsx` — lista de fornecedores (Forecast Jul).
+2. `MP2027_Efetivo_por_Unidade_Jan_Jul26.xlsx` — efetivo Jan-Jul por CM/Gestorial/Fornecedor,
+   fonte final = `KSB1 July Actual 2026.xlsx` (BASE_KSB1, oficial/cumulativo).
+3. `MP2027_Despesas_por_Fornecedor_Item_Jan_Jul26.xlsx` — **usuária confirmou "ficou bom"**.
+   CM | Descrição Gestorial | Variabilidade | Fornecedor | Item de Compra (="Texto do
+   pedido") | Jan-Jul | Total, uma aba por unidade ativa (SJP/IBI/GOI/RES/GER), só despesa
+   (filtro DG/MO=DG, exclui Mão de Obra), e **sem os lançamentos sem fornecedor** (achado
+   real: 94% das linhas do IBI eram lançamento automático tipo PIS/COFINS sem fornecedor de
+   verdade — não é frete como a usuária suspeitou a princípio; movido pra aba "Fora do
+   escopo"). Script: `scripts/sap/fitted_units/mp2027/gerar_despesas_por_item.py`.
+
+**NOVA FRENTE, em andamento — repaginar o arquivo `Detalhe_Despesas_Fitted Units_Forecast`
+(107 colunas hoje, 6 blocos de "R07 JAN..DEZ" repetidos sem nome, "amador" segundo a
+usuária):** decodifiquei os 6 blocos pela FÓRMULA (não achismo, arquivo aberto com
+`data_only=False`):
+- bloco1 (col Y/24, estático) = **Valor Mensal** (base)
+- bloco4 (col BQ/68, estático, decimal tipo 0.0038) = **% Reajuste**
+- bloco6 (col CQ/94, estático, NÃO deriva por fórmula dos outros blocos nesta linha) =
+  **Valor Final Previsão** (bate com o total oficial "Resumo Custos", validado em rodada
+  anterior desta mesma sessão)
+- blocos 2 (quantidade), 3 (=bloco1×bloco2) e 5 (=bloco1×bloco4+bloco3) são passos
+  intermediários de cálculo, não usados fora dessa aba — ficam de fora do redesenho.
+
+**Decisões da usuária pro redesenho (confirmadas nesta sessão):**
+- Colunas A-X (24 colunas de classificação: CM, CC, Gestorial, Fornecedor etc.) **ficam
+  exatamente como estão**, não mexer.
+- Layout novo por mês: Valor Mensal → % Reajuste → Valor Final Previsão (só isso, os 3
+  blocos intermediários somem).
+- Primeiro só o LAYOUT importa, não os números ("não estou me importando com os números
+  agora") — protótipo usando os dados do R7 (Forecast Julho) como estão, sem recalcular nada.
+- Script criado: `scripts/sap/fitted_units/mp2027/gerar_proposta_layout_despesas.py` →
+  gerou `MP2027_PROPOSTA_Layout_Detalhe_Despesas.xlsx` (primeira versão, já aberta pra ela
+  ver — cores por bloco: azul=Valor Mensal, cinza=%Reajuste, verde=Valor Final Previsão).
+- **Pedido novo, ainda não implementado:** (1) visual mais profissional (a v1 ficou "amadora"
+  segundo ela — precisa cabeçalho/bordas/fonte melhores, não só cor de fundo); (2) adicionar
+  bloco de **Actual (efetivo)** — usuária escolheu (via pergunta direta): **bloco separado no
+  final** (não intercalado mês a mês), ou seja: primeiro todo o Forecast (12 meses × 3
+  métricas), depois todo o Actual, depois a diferença total. **Fonte do Actual ainda não
+  decidida/implementada** — a ideia de longo prazo da usuária é essa coluna se atualizar
+  sozinha a partir do fechamento oficial mensal (`KSB1 <Mês> Actual <Ano>.xlsx`, aba
+  BASE_KSB1, mesmo arquivo/lógica já usado nos 3 arquivos entregues acima) — ainda não
+  escopado como vai casar cada linha do Detalhe_Despesas (fornecedor+item, muito granular)
+  com o Actual (que não tem exatamente as mesmas chaves) - **decisão de matching ainda em
+  aberto, não presumir nada, perguntar antes de implementar**.
+
+**ALERTA DE SESSÃO LONGA disparou de novo (45 ações) — backup automático já rodou.**
+
+---
 ## Continuação 2026-08-28 (mesma sessão, mais recente) — MP2027: fonte de efetivo trocada pra arquivo oficial + onboarding da estagiária (2 .bat corrigidos após bugs reais)
 
 **MP2027 - correção de fonte:** a usuária pediu pra trocar a fonte de "efetivo" do
