@@ -3,6 +3,91 @@
 > Manter apenas as últimas 2 sessões inline — sessões mais antigas vão para long_term/.
 
 ---
+## Sessão 2026-08-28 (continuação) — Redesign visual do cockpit (abas/botões/pneu), commitado e no GitHub
+
+**Retomada:** sessão anterior tinha fechado com o rateio `_v4` gerado na rede e a pasta local
+espúria `C:\FSS024-01BR.group.pirelli.com\` pendente de limpeza (usuária confirmou que estava
+vazia — abri no Explorer pra ela apagar manualmente, `Remove-Item` foi bloqueado por proteção
+de path do sistema).
+
+**Pedido da usuária:** ajustes visuais no cockpit (`atualizar_ksb1_gui.py`), a partir de um
+print mostrando a barra de abas (①…⑦):
+1. "Quadrinho do Passo 1 não está alinhado" — na real era um artefato do próprio tema `clam`
+   do ttk (corte diagonal de canto + contorno de foco de teclado só na aba com foco inicial),
+   não um bug de layout.
+2. Abas pretas por padrão, amarelas quando selecionada/clicada.
+3. Pneu (indicador de "processando") e a faixa amarela abaixo do cabeçalho, maiores.
+4. Depois: clarear o preto pra um cinza grafite; clarear mais um pouco depois.
+5. Depois: faltou a borda clara ao redor do bloco abas+conteúdo (existia antes, sumiu na troca
+   de widget).
+6. Depois: a borda do quadro de LOG estava mais escura que a do bloco de abas (era o `relief=
+   "solid"` do `tk.Text`, brigando com a cor clara do `highlightbackground`).
+7. Depois: uma linha mais clara aparecendo dentro do botão amarelo "Extrair KSB1..." — mesmo
+   artefato de foco de teclado do tema `clam`, agora no botão em vez da aba.
+8. Por fim: pneu com roda (mesmo desenho do indicador de processando, "aquele de cima"),
+   parado, pequeno, à esquerda do número de cada aba (não só a selecionada — pedido é pra
+   todas as 7 abas).
+
+**Decisão técnica principal:** troquei o `ttk.Notebook` por uma barra de abas própria (Frame +
+Label, uma por passo, com `.bind("<Button-1>", ...)` pra selecionar e `tkraise()` nas páginas
+empilhadas num `grid` compartilhado) — o tema `clam` é o único que permite recolorir aba a aba
+(os temas nativos do Windows ignoram a cor), mas vem com artefatos visuais (corte de canto,
+contorno de foco) que não dá pra tirar só com `style.map`/`style.layout` de forma limpa. Widgets
+Tk puros deram controle total de cor/alinhamento. O mesmo artefato de foco apareceu depois no
+botão "Pirelli.TButton" — corrigido com um `style.layout` customizado removendo o sub-elemento
+`Button.focus` (mesma técnica usada antes pro `Notebook.Tab`, antes de ele ser abandonado de vez
+pela barra própria).
+
+**Pergunta feita à usuária (ela decidiu):** número do passo desenhado dentro do pneu (só na aba
+selecionada/amarela) — usuária pediu pra deixar pra depois, decidir depois de ver o resto pronto.
+Depois disso ela pediu uma versão mais simples: pneu fixo (não muda de cor/estado) à esquerda do
+texto de cada aba, sempre visível, reaproveitando o mesmo desenho do pneu do indicador de
+"processando" (`_gerar_frames_pneu`, agora usado com `n_frames=1` pra pegar um frame parado como
+ícone). Implementado, ainda sem confirmação visual final da usuária (aguardando ela conferir a
+última rodada, com o pneu no lugar).
+
+**Primeiro commit e push** (`362de6b`, aprovado pela usuária: "gostei, pode comitar").
+
+**Continuação do redesign visual, depois do `362de6b`:** pneu passou a GIRAR continuamente na
+aba selecionada (em vez de ficar parado), e some nas outras — reaproveita `_gerar_frames_pneu`
+(mesma função do indicador de "processando"), agora com 12 frames rodando via `root.after`
+independente. Ícone e texto viraram widgets separados (Frame + 2 Labels) em vez de 1 Label só
+com `compound="left"` — achado: o Tk classic reaproveita o `padx` do Label como espaço tanto na
+borda quanto entre ícone/texto, por isso não dava pra aproximar os dois só reduzindo o padx.
+Ajustes finos a pedido da usuária: pneu maior (18→28→40px), velocidade do giro um pouco mais
+lenta (60ms→80ms por frame), gap ícone-texto bem menor (14px de margem interna + 4px entre os
+dois). **Commitado e no GitHub** (`555ad63`).
+
+**Nova funcionalidade, não visual — regra de Cc do e-mail do P&L (Passo 7), pedido explícito da
+usuária:** resolve pendência registrada em 2026-08-27 ("outro usuário enviando o e-mail no lugar
+dela"). Regra: se for ELA quem envia, o Cc fixo de sempre (`DESTINATARIOS_EMAIL_PNL`) não muda;
+se for OUTRA pessoa quem envia, ela (Juliana) entra no Cc, mantendo o resto da lista fixa; em
+qualquer caso, quem estiver enviando nunca fica em cópia pra si mesmo (removido da lista se
+aparecer lá). Implementado em `montar_lista_copia()` (`gerar_pnl.py`), usando
+`Outlook.Session.CurrentUser` + `CreateRecipient(nome).Resolve()` pra comparar por **e-mail
+resolvido via GAL** (não por texto do nome — mais robusto a variação de formato). Identidade da
+usuária calibrada ao vivo contra o Outlook real dela (diagnóstico rodado nesta sessão): nome GAL
+`Silveira Juliana Viscardi, BR`, e-mail `juliana.silveira@pirelli.com` — guardados como
+constantes (`NOME_JULIANA_CC`/`EMAIL_JULIANA`) no topo de `gerar_pnl.py`. **Validado**: (a)
+contra o Outlook real (Cc inalterado, já que é ela quem está logada agora), (b) 3 cenários
+simulados com um Outlook falso (outra pessoa enviando estando/não estando na lista fixa; a
+usuária enviando com o próprio nome por engano na lista) — todos batendo. **Commitado e no
+GitHub** (`aa68c9b`).
+
+**ALERTA DE SESSÃO LONGA disparou (45 ações) — backup automático já rodou.** Usuária pode fechar
+esta janela e abrir uma nova pra continuar; contexto já está salvo aqui.
+
+**Pendências pra próxima sessão (ou continuação desta):**
+1. Limpar (manualmente, pela usuária) a pasta local espúria `C:\FSS024-01BR.group.pirelli.com\`
+   (vazia, confirmado) — segue pendente, sem urgência.
+2. Retomar o restante da lista de pedidos da usuária de 2026-08-27 (ver seção "PRÓXIMA SESSÃO
+   (2026-08-28)" logo abaixo neste arquivo): revisar Passos ①-⑦ um a um, avaliar botão único
+   rodando tudo — só o item "cenário de outro usuário enviando o e-mail" foi resolvido nesta
+   sessão (ver regra de Cc acima); os outros dois ainda não foram retomados.
+3. Scripts de teste desta sessão (diagnóstico do Outlook, testes da regra de Cc, demo do pneu)
+   ficaram só no scratchpad da sessão (fora do repositório) — não precisam de limpeza no projeto.
+
+---
 ## Sessão 2026-08-28 — Teste de fechamento (Passos 2-7) contra Julho/2026 Actual: 1 bug real achado e corrigido, 1 arquivo desatualizado na rede achado
 
 **Pedido da usuária:** início do dia, testar o fechamento seguindo os 7 passos contra
