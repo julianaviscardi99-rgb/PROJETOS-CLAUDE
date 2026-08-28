@@ -96,7 +96,7 @@ def decidir_fonte_e_ler_linhas(mes: int, ano: int, ciclo: str, log=print):
     linhas_sem = linhas_completas(arquivo_sem)
 
     total_gest = sum(v for _, v, _ in linhas_gest)
-    linhas_sem_filtradas = [(c, v, l) for c, v, l in linhas_sem if not eh_conta_ignorada(c)]
+    linhas_sem_filtradas = [(c, v, l) for c, v, l in linhas_sem if not eh_conta_ignorada(c, mes, ano)]
     total_sem_filtrado = sum(v for _, v, _ in linhas_sem_filtradas)
 
     if abs(total_gest - total_sem_filtrado) < 0.01:
