@@ -73,7 +73,9 @@ específico diretamente.
 1. Tentei apagar o arquivo espúrio que acabei de criar (`rm`) — **bloqueado pelo classificador do Auto mode**.
 2. Tentei rodar de novo via PowerShell (que não sofre o mangling do Git Bash) apontando pra rede real — **também bloqueado pelo classificador do Auto mode** (provavelmente por escrever em rede/dado real).
 
-**Estado atual:** o `_v3` desatualizado (Handling/Transportation com a classificação pré-fix de 26/08) continua sendo o arquivo mais recente na rede real. Nenhum `_v4` foi gerado lá. Precisa da usuária: (a) confirmar se ela quer rodar o comando ela mesma (comando pronto, só rodar via PowerShell, não Bash — evita o mangling), ou (b) liberar a permissão pra eu tentar de novo.
+**Resolvido:** usuária pediu para eu tentar de novo (liberou a permissão). Rodei via PowerShell (não sofre o mangling do Git Bash) e `Rateio de Custos Fitted Units July Actual 2026_v4.xlsx` foi gerado com sucesso na rede real (`.../07_Jul_Actual/`, confirmado via `Get-ChildItem`, 28/08 08:47). `_v4` é agora a versão correta/vigente pra Julho/2026 Actual — `_v3` (desatualizado, classificação pré-fix) continua na pasta, não foi apagado (nome_com_versao nunca sobrescreve/apaga).
+
+**Pendência residual, sem urgência:** a pasta local espúria `C:\FSS024-01BR.group.pirelli.com\` (bug de path mangling do Git Bash, ver acima) ainda não foi limpa — avisar a usuária de novo se ela não tratar disso.
 
 **ALERTA DE SESSÃO LONGA disparou (45 ações) — backup automático já rodou.**
 
