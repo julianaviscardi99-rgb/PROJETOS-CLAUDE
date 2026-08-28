@@ -3,6 +3,67 @@
 > Manter apenas as últimas 2 sessões inline — sessões mais antigas vão para long_term/.
 
 ---
+## Sessão 2026-08-28 — Teste de fechamento (Passos 2-7) contra Julho/2026 Actual: 1 bug real achado e corrigido, 1 arquivo desatualizado na rede achado
+
+**Pedido da usuária:** início do dia, testar o fechamento seguindo os 7 passos contra
+Julho/2026 Actual, confirmar se os números voltam, achar inconsistências, e checar
+especificamente se a vigência da conta N410400000 (só ignorada no Check de Agrupamentos a
+partir de Agosto/2026) está correta pra Julho (mês anterior à vigência).
+
+**Passo 2 (Check de Agrupamentos) — OK, N410400000 correta:** rodado direto (lógica de
+produção reaproveitada) contra os arquivos brutos legados de Julho Actual (ver achado
+operacional abaixo). N410400000 corretamente NÃO ignorada em Julho, aparece com R$ 17.526,13,
+vinculada ao Gestoriais, zero diferença (R$ 6.767.317,49 = R$ 6.767.317,49). Detalhe completo
+em `memory/learnings/2026-08-28_check_julho_actual_n410400000.md`.
+
+**Achado operacional (não é erro de dado):** o botão "Gerar Check de Agrupamentos" do cockpit
+não funcionaria hoje pra Julho/2026 Actual — os arquivos brutos desse mês estão em
+`.../07 - Jul/07_Jul_Actual/Bases SAP/` (formato pré-automação), não no local/nome que a
+automação (`localizar_extracao_ksb1`) procura. Esperado (Julho fechou antes do Passo 1
+automatizado existir), mas relevante se ela tentar reprocessar um mês antigo pelo botão.
+
+**BUG REAL encontrado e corrigido — Passo 3 estava quebrado desde 26/08:**
+`gerar_ksb1_mensal.py` (`decidir_fonte_e_ler_linhas`) chamava `eh_conta_ignorada(c)` com 1
+argumento, mas a função passou a exigir `(conta, mes, ano)` desde a mudança de vigência da
+N410400000 (26/08) — quebrava com `TypeError` incondicionalmente, pra qualquer mês/Ciclo.
+Ninguém tinha rodado o Passo 3 de ponta a ponta desde então. Corrigido (linha 99) e
+revalidado contra Julho/2026 Actual real: mesmo padrão de diferença já documentado (16
+combinações, 100% unidades encerradas/Sorocaba, R$ 112.275,58) — zero mudança de valor.
+Detalhe em `memory/errors/2026-08-28_passo3_eh_conta_ignorada_signature.md`. **Commitado
+localmente (`3ec7925`), mas o `git push` foi bloqueado pelo classificador do Auto mode** —
+push pendente, avisar a usuária.
+
+**Arquivo desatualizado achado na rede (ainda não corrigido, aguardando decisão da
+usuária):** `Rateio de Custos Fitted Units July Actual 2026_v3.xlsx` (rede, gerado 26/08 às
+18:02) foi gerado ANTES das correções de classificação Handling/Transportation (contas
+4257000/4211000) que ela aprovou horas depois, no mesmo dia (commits das 20:31-21:28). Rodando
+o Passo 5 hoje com o código atual, o total bate (Total Costs idêntico), mas a distribuição
+entre subcategorias (Handling/Transportation/Other Variable) mudou — o `_v3` na rede não
+reflete mais a classificação final aprovada. Nenhuma versão `_v4` foi gerada depois do fix.
+Não mexi no arquivo da rede — perguntar à usuária se quer que eu gere a versão corrigida.
+
+**Passo 6 (Mensalização) revalidado contra Julho/2026 Actual real:** bate exato em todas as
+linhas, EXCETO a mesma diferença pontual já conhecida e aceita (Goiana/Rents, R$ 0,73 mil,
+sinal invertido — já documentada em 2026-08-26, não é bug do script). Confirma que a correção
+de classificação do Passo 5 já estava refletida no arquivo real de Mensalização (gerado depois
+dos fixes), e que nada novo quebrou.
+
+**Passo 7 (P&L) revalidado contra Julho/2026 Actual real:** zero diferença em toda a aba
+"Resumo Resultado Mês" (incluindo EBIT linha 44: D=432,53 / E=327,55, bate exato com o e-mail
+real "105K vs flash").
+
+**Conclusão do teste de fechamento:** os números voltam. Um bug real de regressão foi achado
+e corrigido (Passo 3), sem impacto em nenhum valor já fechado. Um arquivo de rede desatualizado
+foi achado (Rateio de Custos Julho/Actual `_v3`), sem impacto no P&L final (Mensalização e P&L
+já usam a lógica corrigida), mas precisa ser regenerado se alguém for consultar esse arquivo
+específico diretamente.
+
+**Pendências para a usuária decidir:**
+1. Fazer o `git push` do commit `3ec7925` (bloqueado pelo classificador nesta sessão).
+2. Decidir se quer que eu regenere `Rateio de Custos Fitted Units July Actual 2026` (viraria
+   `_v4`) com a classificação corrigida, já que o `_v3` na rede está desatualizado.
+
+---
 ## RESUMO DO DIA 2026-08-27 — Passo 7 (P&L) desenhado, implementado, validado e FECHADO de ponta a ponta (arquivo + e-mail)
 
 **Detalhe completo de todo o dia (todas as etapas, achados e decisões, sub-sessão por sub-sessão) arquivado em `memory/long_term/2026-08-27_195904_briefing_snapshot.md`.** Resumo do que ficou pronto:
