@@ -359,7 +359,7 @@ PASSOS = [
         "aba": "⑤  Rateio de Custos",
         "titulo": "Passo 5 · Rateio de Custos",
         "descricao": (
-            "Ainda em validação com a usuária. 'Abertura de Custos por Unidade' lê a "
+            "'Abertura de Custos por Unidade' lê a "
             "Base Intermediária do mês/Ciclo (Passo 4 já rodado) e gera o arquivo de "
             "Rateio de Custos, com o check por unidade e a aba 'Comentários'. "
             "'Atualizar Rateio' abre um quadro editável com o % vigente pra cada "

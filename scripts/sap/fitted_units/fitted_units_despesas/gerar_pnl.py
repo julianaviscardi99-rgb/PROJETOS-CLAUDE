@@ -52,6 +52,7 @@ Racional confirmado (ver DECISOES.md 2026-08-27 pra detalhe completo):
 """
 import shutil
 import sys
+from datetime import datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "_shared"))
@@ -608,6 +609,17 @@ def montar_corpo_email(mes: int, ciclo: str, diferenca: float, rotulo: str) -> s
     )
 
 
+def saudacao_por_horario() -> str:
+    """Bom dia (00h-11h59), boa tarde (12h-18h59) ou boa noite (19h-23h59),
+    conforme o horário local no momento em que o e-mail é montado."""
+    hora = datetime.now().hour
+    if hora < 12:
+        return "Bom dia"
+    if hora < 19:
+        return "Boa tarde"
+    return "Boa noite"
+
+
 def montar_email_pnl(mes: int, ano: int, ciclo: str, log=print) -> str:
     """Monta (NUNCA envia - .Display(), nunca .Send()) o e-mail de envio do
     P&L pra Controladoria Central, com o arquivo congelado em anexo e a
@@ -629,7 +641,7 @@ def montar_email_pnl(mes: int, ano: int, ciclo: str, log=print) -> str:
     mail.CC = "; ".join(copia)
     mail.Subject = f"P&L Fitted Units - {MESES_INGLES[mes]} {ciclo}"
     assinatura_atual = mail.HTMLBody
-    mail.HTMLBody = f"<p>Boa tarde,</p><p>{corpo_html}</p>" + assinatura_atual
+    mail.HTMLBody = f"<p>{saudacao_por_horario()},</p><p>{corpo_html}</p>" + assinatura_atual
     mail.Attachments.Add(str(caminho_congelado))
     mail.Display()
 
