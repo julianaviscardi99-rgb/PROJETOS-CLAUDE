@@ -3,6 +3,85 @@
 > Manter apenas as últimas 2 sessões inline — sessões mais antigas vão para long_term/.
 
 ---
+## Continuação 2026-08-28 (mesma sessão, depois do resumo abaixo) — classificação Gestorial x Efetivo, casamento manual iniciado com a usuária
+
+**Retomada do item 3 do resumo abaixo** (redesenho do Detalhe_Despesas / casamento
+Forecast×Efetivo), mais cedo do que o esperado — a usuária já trouxe uma planilha própria
+(coluna "Infos Claude") anotando regra por linha (CC/Gestorial/Nova Classe de Custo):
+excluir, "carga da contabilidade" (sem fornecedor real), só numa unidade específica,
+confirmar fornecedor, "lançar cada um na sua unidade" (não ratear). **Validei
+empiricamente antes de aceitar a proposta dela de casar por Gestorial+Fornecedor:**
+- Só Gestorial: 97% bate (31/32) entre Forecast e Actual (BASE_KSB1) — excelente, é a
+  classificação resolvida, sobrevive a "conta planejada ≠ conta lançada".
+- Gestorial + Fornecedor OBRIGATÓRIO: cai pra 43% (61/142) — fornecedor também muda entre
+  planejado e lançado, exigir os dois juntos piora. **Recomendação dada e aceita:** casar
+  por Gestorial (+ Centro de Custo pra achar a linha certa), usar Fornecedor como
+  confirmação/confiança, não como requisito.
+
+**Processo combinado com a usuária:** ir Gestorial a Gestorial (fáceis primeiro, os
+difíceis por último), eu reporto o que achei/casou, ela vai confirmando/corrigindo.
+**Primeira rodada de achados (comparando Forecast vs Actual de JUNHO/2026 especificamente,
+não Jan-Jul nem forecast anual - pedido dela: "esquece forecast" depois do primeiro
+achado):**
+- **Transporte De Mats. Vários (4211000), MVC, Ibirité (CC 8296):** achei a linha exata no
+  Forecast (1 linha só, limpo). Mas os VALORES batem muito mal (Forecast Jan-Jul R$2,33M
+  vs Actual R$688,6k — Forecast 3,4x maior) — **não investigado ainda o motivo, sinalizado
+  pra usuária.** Achado colateral: MVC também aparece sob Gestorial 4257000 "Aluguéis"
+  (operação de empilhadeira, não só frete) — perguntei se é esperado, sem resposta ainda.
+  Actual de Junho isolado: R$65.212,98 (CC 8296).
+- **Água e Esgoto (4205350):** Forecast bate exatamente com a nota dela (CC 8294/Ibirité,
+  fornecedor = Companhia de Saneamento de MG = Copasa, confirmado). **Mas Actual de Junho
+  = ZERO** — não investigado o motivo (não lançado ainda? conta diferente?).
+- **Bolsa Estagiários (4243100):** bate perfeito com a nota dela — CC 8299 (Gerência) tem
+  valor no Actual (R$1.880,14, sem fornecedor, como ela previu), CC 8303 (Goiana) tem ZERO
+  no Actual — confirma a recomendação dela de excluir Goiana.
+  - **Comunicações (4230100):** confirma 100% as anotações dela — só TIM aparece no Actual
+  de Junho (3 CCs, R$627+270+142); Sopho/Locação Central, Telemar e Realocação
+  Informática (marcados "SEM CUSTO EXCLUIR" por ela) realmente não aparecem no Actual.
+- **Depreciação IFRS16 (4255002):** bate com a ideia de "carga da contabilidade" — Actual
+  de Junho tem valor em várias CCs, todas sem fornecedor (inclusive residual em Sorocaba/
+  8269, unidade encerrada). CC 8294 (Ibirité) chamou atenção por ser bem maior que as
+  outras (R$99.696,20) — não investigado o motivo ainda.
+- **Gás p/ Empilhadeira (4222100):** Forecast tem SJP (8290) e Goiana (8303), nota dela diz
+  "lançar cada um na sua unidade" (não ratear). Actual de Junho só tem SJP (R$18.109,63) —
+  Goiana zerada esse mês, não investigado se é normal (sazonal) ou gap.
+
+**ATUALIZAÇÃO — TODOS OS 32 GESTORIAIS FORAM CLASSIFICADOS** (concluído ainda nesta sessão,
+mais rápido do que o esperado — só tinham 32 Gestoriais distintos no total, não ~166 como a
+primeira estimativa por combinação CC+Gestorial sugeria). Ontologia completa em
+`ontology/classificacao_gestorial_mp2027.json`: cada Gestorial tem `tipo` (contrato /
+pooled_sem_fornecedor / transacional_diverso / excluir) + observação com a regra confirmada
+pela usuária. Achados/decisões notáveis registrados lá:
+- MVC/Transporte (4211000): valores Forecast x Actual NÃO batem (Forecast 3,4x maior,
+  R$2,33M vs R$688,6k Jan-Jul) — **ainda não investigado o motivo**, é o único item
+  realmente pendente de explicação.
+- Água e Esgoto (4205350): Actual de Junho zerado — **também não investigado**.
+- Energia Elétrica: Ibirité tem 2 linhas que NUNCA podem ser somadas juntas (galpão CNH
+  pequeno + resto da planta); SJP pode simplificar nome pra "COPEL"; Goiana (via Fiat) é
+  intermitente, não é gap.
+- Vigilância: Ibirité tem 2 pontos distintos (Graber=vigilância, Top Service=portaria) que
+  precisam ficar em linhas separadas; Goiana usa reclassificação interna sem fornecedor
+  (esperado); Sorocaba é resíduo, ignorar.
+- HW Aluguel: HP Financial Services não é mais usado, só Engemon IT vale hoje.
+- Alimentação: linha "Vale Alimentação" (Sapore, CC 8289/SJP) no Forecast = FLASH
+  TECNOLOGIA no Actual (Sapore administra local, Flash processa o vale).
+- Veículos e Combustíveis: achado um par de lançamentos que se cancela (reclassificação,
+  efeito líquido zero) em Junho.
+
+**Pendências reais pra continuar:**
+1. Investigar o gap grande do MVC/Transporte (Forecast 3,4x Actual) e o "Água e Esgoto"
+   zerado em Junho — únicos 2 itens sem explicação ainda.
+2. **Próximo passo natural:** com a classificação completa, dá pra escrever o script que
+   automatiza o casamento Forecast×Efetivo de verdade (usando o `tipo` de cada Gestorial pra
+   decidir a lógica) — ainda não escrito, só a classificação/ontologia está pronta.
+3. **NÃO esquecer os itens 3 e 4 do resumo do dia abaixo** (dashboard "Análise de Resultado
+   Fitted" pausado, layout novo do Detalhe_Despesas) — mesma frente, ordem de ataque mudou
+   (classificação primeiro, ao vivo, em vez de sozinha como ela tinha dito antes).
+
+**ALERTA DE SESSÃO LONGA disparou de novo (mais uma, 45 ações) — backup automático já
+rodou.**
+
+---
 ## RESUMO DO DIA 2026-08-28 — Cockpit de fechamento liberado pra estagiária, MP2027 (Management Plan 2027) iniciado do zero, "Análise de Resultado Fitted" (cockpit novo) esboçado
 
 **Sessão muito longa (6 alertas de 45 ações, todos com backup/push automático) — resumo

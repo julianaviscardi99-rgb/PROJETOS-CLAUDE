@@ -1,0 +1,198 @@
+{
+  "descricao": "Classificação por Gestorial de como casar Forecast (Detalhe_Despesas) com Efetivo (base KSB1/BASE_KSB1), construída linha a linha com a Juliana a partir de 2026-08-28, pro projeto MP2027 (Management Plan 2027) e pro redesenho do arquivo Detalhe_Despesas.",
+  "racional_geral": {
+    "chave_de_casamento": "Gestorial sozinho bate 97% entre Forecast e Actual (é a classificação resolvida, sobrevive a 'conta planejada != conta lançada'). Gestorial + Fornecedor obrigatório cai pra 43% (fornecedor também muda entre planejado e lançado) - Fornecedor deve ser usado como confirmação/confiança, nunca como requisito de casamento.",
+    "tipos": {
+      "contrato": "Fornecedor estável e conhecido, casa 1:1 por (Centro de Custo + Gestorial + Fornecedor). Ex: MVC (frete), TIM (comunicações), Copasa (água).",
+      "pooled_sem_fornecedor": "Sem fornecedor em nenhum dos dois lados (Forecast e Actual) - soma por unidade (CM), sem tentar achar fornecedor. Ex: Seguros, Recuperação PIS/COFINS.",
+      "transacional_diverso": "Muitos fornecedores pequenos no Actual, Forecast não especifica fornecedor - soma tudo da unidade e aloca por unidade, não tenta casar por fornecedor. Ex: Equipamentos de Segurança e Uniformes.",
+      "excluir": "Linha sem custo real ou que não deve entrar na análise (ex: unidade que não existe, lançamento indevido)."
+    }
+  },
+  "gestoriais": {
+    "4211000": {
+      "descricao": "Transporte De Mats. Vários",
+      "tipo": "contrato",
+      "fornecedor_principal": "MVC TRANSPORTE E LOGISTICA S.A.",
+      "observacao": "PENDENTE investigar: valores não batem (Forecast Jan-Jul R$2,33M vs Actual R$688,6k, Forecast 3,4x maior) - motivo ainda não confirmado com a usuária."
+    },
+    "4257000": {
+      "descricao": "Aluguéis",
+      "tipo": "contrato",
+      "observacao": "MVC também aparece aqui (operação de empilhadeira/operador, não só frete) - confirmado que é esperado."
+    },
+    "4205350": {
+      "descricao": "Água e Esgoto",
+      "tipo": "contrato",
+      "fornecedor_principal": "COMPANHIA DE SANEAMENTO DE MINAS GERAIS (Copasa)",
+      "restricao_unidade": "Só Ibirité (CC 8294)",
+      "observacao": "PENDENTE: Actual de Junho deu ZERO - não investigado (não lançado ainda? conta diferente?)."
+    },
+    "4243100": {
+      "descricao": "Bolsa Estagiários",
+      "tipo": "pooled_sem_fornecedor",
+      "restricao_unidade": "Só Gerência (CC 8299) - Goiana (CC 8303) EXCLUIR, não tem estagiários lá (confirmado pela usuária).",
+      "observacao": "Confirmado batendo: Gerência com valor real em Junho (R$1.880,14), Goiana zerada."
+    },
+    "4230100": {
+      "descricao": "Comunicações",
+      "tipo": "contrato",
+      "fornecedor_principal": "TIM CELULAR S.A.",
+      "excluir_fornecedores": ["SOPHO BUSINESS COMMUNICATIONS (Locação Central Telefônica)", "TELECOMUNICAÇÕES DO RIO DE JANEIRO (Telemar Norte)", "Realocação Informática (sem fornecedor no Forecast)"],
+      "observacao": "Confirmado 100% - só TIM aparece no Actual, os excluídos não têm custo real lançado."
+    },
+    "4255002": {
+      "descricao": "Depreciação IFRS16",
+      "tipo": "pooled_sem_fornecedor",
+      "observacao": "'Carga da contabilidade' (lançamento contábil, nunca tem fornecedor). Ibirité (CC 8294) bem maior que as outras unidades (R$99.696 em Junho) - CONFIRMADO CORRETO pela usuária, é referente a aluguel (Amortização Fitted Ibirité)."
+    },
+    "4222100": {
+      "descricao": "Gás p/ Empilhadeira",
+      "tipo": "contrato",
+      "fornecedor_principal": "LIQUIGÁS DISTRIBUIDORA S.A",
+      "regra_especial": "Lançar cada unidade separadamente, NUNCA ratear/pooling entre unidades (pedido explícito da usuária).",
+      "observacao": "Goiana (CC 8303) zerada em Junho - CONFIRMADO: esqueceram de lançar (gap real da unidade, não é problema do levantamento)."
+    },
+    "4236300": {
+      "descricao": "Materiais Diretos - F. Units",
+      "tipo": "transacional_diverso",
+      "observacao": "É baixa de estoque de materiais de consumo (não é fornecedor de verdade, 'Baixa de Materiais' no Forecast é lançamento contábil). CONFIRMADO pela usuária: somar por unidade, não tentar achar fornecedor."
+    },
+    "4254000": {
+      "descricao": "Seguros",
+      "tipo": "pooled_sem_fornecedor",
+      "observacao": "CONFIRMADO pela usuária: racional certo, sem fornecedor nos dois lados, apólice corporativa."
+    },
+    "4260000": {
+      "descricao": "Equiptos.Segur.e Uniformes",
+      "tipo": "transacional_diverso",
+      "observacao": "CONFIRMADO pela usuária: somar tudo da unidade e alocar por unidade (não casar por fornecedor - muitos fornecedores pequenos: Bunzl, Inca, Nortel, Pro Safety etc). Valores negativos que aparecem = reclassificação de custo (não é estorno/erro)."
+    },
+    "4255200": {
+      "descricao": "Recuperação PIS/COFINS Depreciação",
+      "tipo": "pooled_sem_fornecedor",
+      "observacao": "CONFIRMADO pela usuária: faz sentido, é crédito (valor negativo esperado), sem fornecedor nos dois lados."
+    },
+    "4243000": {
+      "descricao": "Treinamento",
+      "tipo": "pooled_sem_fornecedor",
+      "observacao": "CONFIRMADO pela usuária: Junho realmente não teve treinamento (zero é correto, não é gap)."
+    },
+    "4230000": {
+      "descricao": "Mats. Escritório/Xerox",
+      "tipo": "transacional_diverso",
+      "fornecedor_principal": "SUPRICORP SUPRIMENTOS (dominante, mas não exclusivo)",
+      "regra_especial": "CONFIRMADO pela usuária: separar 'Sulfite' (papel) como categoria própria, e o resto agrupado em 'Diversos' - os dois somados por unidade (não por fornecedor específico)."
+    },
+    "4205250": {
+      "descricao": "Energia Elétrica",
+      "tipo": "contrato",
+      "fornecedores_por_unidade": {
+        "IBI (CC 8296)": "CEMIG DISTRIBUIÇÃO S/A - DUAS linhas que NUNCA devem ser somadas juntas: uma pequena (~R$100, 'PGTO ENERGIA ELETRICA GALPÃO CNH') e uma grande (resto da planta, 'Débito Automático Conta CEMIG'/'Crédito PIS/COFINS'). Alocar cada linha do Forecast na sua própria linha de Actual pelo Detalhe/Texto do pedido, não só pelo CC.",
+        "SJP (CC 8289/8290)": "COPEL. Nome no Forecast é 'CIA PARANAENSE DE ENERGIA COPEL', no Actual é 'COPEL DISTRIBUICAO S.A' - CONFIRMADO pela usuária: pode trocar o nome no Forecast pra 'COPEL' direto, é a mesma empresa, sem problema.",
+        "GOI (CC 8303)": "FIAT AUTOMOVEIS S/A (repasse - Goiana fica dentro da planta da Jeep/Fiat, energia é repassada). CONFIRMADO pela usuária: não posta todo mês (Junho não teve, mas outros meses sim) - NÃO é gap, é normal/intermitente."
+      },
+      "observacao": "Créditos de PIS/COFINS aparecem como '(sem fornecedor)' negativo no Actual - bate com a linha própria de crédito que o Forecast já separa."
+    },
+    "4237000": {
+      "descricao": "Vigilância",
+      "tipo": "contrato",
+      "fornecedores_por_unidade": {
+        "IBI (CC 8294/8296)": "DOIS pontos distintos, NUNCA agregar num só: GRABER SISTEMAS DE SEGURANCA (vigilância/segurança patrimonial) e TOP SERVICE SERVICOS E SISTEMAS (portaria/recepção) - alocar cada linha do Forecast na linha de Actual certa pelo Detalhe (Vigilância vs Portaria), não só pelo CC.",
+        "GOI (CC 8300)": "Fornecedor esperado é SERVTRANS (pelo Forecast), mas o Actual não carrega fornecedor - confirmado (2026-08-28): a linha real é uma RECLASSIFICAÇÃO DE CUSTO interna ('Reclass_Serviço de Vigilancia', sem fornecedor/código/parceiro), não uma fatura original. Aceitar sem fornecedor nesse caso, é esperado.",
+        "SOR (CC 8269)": "Residual de unidade encerrada (Sorocaba) - CONFIRMADO pela usuária: ignorar, já passou, não faz parte da análise."
+      }
+    },
+    "4202000": {
+      "descricao": "Materiais de Limpeza",
+      "tipo": "transacional_diverso",
+      "observacao": "CONFIRMADO pela usuária: manter como diverso (vários fornecedores pequenos - VCH, Alsco, Supricorp - soma por unidade, sem tentar casar fornecedor específico)."
+    },
+    "4258000": {
+      "descricao": "Informática: Desp.c/Hardware",
+      "tipo": "transacional_diverso",
+      "observacao": "CONFIRMADO pela usuária: manter como diverso. Forecast previa Dimas de Melo Pimenta, mas Actual trouxe fornecedor diferente (Viude & Lucio) - fornecedor não é estável aqui, não vale tentar casar por nome."
+    },
+    "4258010": {
+      "descricao": "Informática: Desp.c/Software",
+      "tipo": "transacional_diverso",
+      "observacao": "CONFIRMADO pela usuária: manter como diverso (Actual não carrega fornecedor, mesmo o Forecast tendo 2 fornecedores nomeados)."
+    },
+    "4202100": {
+      "descricao": "Limpeza Por Terceiros",
+      "tipo": "contrato",
+      "fornecedor_principal": "TOP SERVICE SERVICOS E SISTEMAS (dominante, R$40.990,98 em Junho)",
+      "observacao": "Resto (Servtrans, MM Rocha, Alsco, Centro Pesquisa Água/Ar, VC Fernandes) e o bloco '(sem fornecedor)' (R$28.019,26) tratados como cauda diversa dentro do mesmo Gestorial."
+    },
+    "4232000": {
+      "descricao": "Viagens, Cond. e Refeições",
+      "tipo": "transacional_diverso",
+      "observacao": "Forecast quase todo sem fornecedor; Actual dominado por '(sem fornecedor)' (R$54.638,35) + VOLL S.A. (fornecedor novo, não previsto)."
+    },
+    "4203050": {
+      "descricao": "Manutenção Materiais",
+      "tipo": "transacional_diverso",
+      "observacao": "Cauda longa clássica de manutenção - SEW-Eurodrive, Lider Tintas, OBR Equipamentos, Festo Brasil, Ruminas etc, nenhum dominante."
+    },
+    "4248000": {
+      "descricao": "Mão de Obra Temporária",
+      "tipo": "contrato",
+      "observacao": "CONFIRMADO pela usuária: Junho veio zerado no Actual porque é SAZONAL (não é gap) - fornecedores esperados: Rede Nacional de Aprendizagem, Umana Brasil, Centro de Integração Empresa-Escola, Inspetoria Salesiana."
+    },
+    "4236100": {
+      "descricao": "Materiais Indiretos",
+      "tipo": "transacional_diverso",
+      "observacao": "Forecast tem 'Baixa de Materiais' (não é fornecedor real, mesmo padrão já visto) + sem fornecedor. Actual é cauda diversa pequena (Laratec, Eletro Comercial Reymaster, Ibiriflex, Nortel, Notus)."
+    },
+    "4258002": {
+      "descricao": "HW Aluguel",
+      "tipo": "contrato",
+      "fornecedor_principal": "ENGEMON IT TECNOLOGIA E SERVICOS (único fornecedor ativo)",
+      "observacao": "CONFIRMADO pela usuária: HP FINANCIAL SERVICES estava no Forecast mas NÃO ESTÁ MAIS SENDO USADO - não esperar mais custo dele, só Engemon é o fornecedor válido atualmente."
+    },
+    "4238000": {
+      "descricao": "Tributos",
+      "tipo": "transacional_diverso",
+      "observacao": "Taxas/tributos a diferentes órgãos públicos (Prefeituras, Instituto Água e Terra, Secretaria da Fazenda) - varia naturalmente, não tem fornecedor único. Prefeitura Municipal de Goiana é o único que bate exatamente Forecast x Actual."
+    },
+    "4246000": {
+      "descricao": "Transporte de Funcionários",
+      "tipo": "contrato",
+      "fornecedores_principais": ["NDI TURISMO LOCACOES E FRETAMENTOS", "VLV LOCACAO DE VEICULOS", "PK SERVICE LTDA", "UBER DO BRASIL"],
+      "observacao": "Múltiplos fornecedores estáveis, todos aparecem nos dois lados (Forecast e Actual) - tratar como 'contrato múltiplo', casar por (Gestorial+Fornecedor) quando o nome bater."
+    },
+    "4222000": {
+      "descricao": "Veículos e Combustíveis",
+      "tipo": "contrato",
+      "fornecedor_principal": "ARVAL BRASIL LTDA.",
+      "observacao": "Achado: par de lançamentos que se cancelam em Junho (ARVAL +R$8.305,60 e '(sem fornecedor)' -R$8.305,60, mesmo valor) - parece reclassificação interna, efeito líquido zero."
+    },
+    "4203055": {
+      "descricao": "Manutenção Terceiros",
+      "tipo": "transacional_diverso",
+      "observacao": "Cauda longa de manutenção (Hofmann Maschinen, GL Soluções, Somov Rental, AP Extintores, Ar de Minas) + grande bloco sem fornecedor (R$93.226,97 em Junho)."
+    },
+    "4244000": {
+      "descricao": "Alimentação",
+      "tipo": "transacional_diverso",
+      "fornecedores_recorrentes": ["SAPORE S.A", "CESTA BASICA BRASIL"],
+      "observacao": "CONFIRMADO pela usuária: a linha 'Vale Alimentação' sob fornecedor SAPORE no Forecast (CC 8289/SJP, Nova Classe de Custo N14213S002) corresponde ao FLASH TECNOLOGIA E INSTITUIÇÃO DE PAGAMENTO no Actual (maior valor do mês, R$41.040) - Sapore administra a refeição no local, mas o vale em si é processado via Flash. Resto do Gestorial é cauda diversa (Elis Regina, Gleyson, Padaria Top Pão etc)."
+    },
+    "4247200": {
+      "descricao": "Despesas Sociais",
+      "tipo": "transacional_diverso",
+      "observacao": "Baixa materialidade (valores pequenos, R$50-1.050 em Junho), fornecedores individuais/pessoa física variados. Pooled sem tentar casar fornecedor específico."
+    },
+    "4236020": {
+      "descricao": "Prestados - Serviços",
+      "tipo": "transacional_diverso",
+      "observacao": "Cauda longa e materialidade alta (Hofmann Maschinen R$114.626,35, Servtrans R$54.917,74). CONFIRMADO pela usuária: Hofmann entra como manutenção (Maschinen-und Anlagenbau = engenharia de máquinas/plantas industriais), fica dentro do pool diverso, não é fornecedor de contrato fixo."
+    },
+    "4263000": {
+      "descricao": "Outras Despesas",
+      "tipo": "transacional_diverso",
+      "observacao": "Quase tudo cai em '(sem fornecedor)' (R$735.669,78 de R$747 mil no mês, ~98%) - catch-all genérico, pooled por unidade sem tentar fornecedor."
+    }
+  },
+  "status": "TODOS os 32 Gestoriais distintos do Detalhe_Despesas classificados (18 na primeira rodada + 14 nesta) - concluído 2026-08-28."
+}
