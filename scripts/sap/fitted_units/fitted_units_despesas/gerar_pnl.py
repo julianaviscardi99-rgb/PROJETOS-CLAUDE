@@ -491,6 +491,72 @@ DESTINATARIOS_EMAIL_PNL = {
 }
 
 
+# Identidade da usuaria, calibrada contra o Outlook real dela (2026-08-28,
+# diagnostico rodado ao vivo: Session.CurrentUser -> Name/PrimarySmtpAddress).
+# Usada pra decidir o Cc do e-mail do P&L quando outra pessoa roda o Passo 7
+# no lugar dela (regra da usuaria, 2026-08-28):
+#   - Se quem esta enviando FOR a Juliana -> Cc fica so' a lista fixa de sempre.
+#   - Se quem esta enviando NAO for a Juliana -> ela entra no Cc, mantendo
+#     o resto da lista fixa.
+#   - Em qualquer caso, quem estiver enviando nunca fica em copia pra si
+#     mesmo (removida da lista se aparecer la', pra nao Cc'ar o proprio
+#     remetente).
+EMAIL_JULIANA = "juliana.silveira@pirelli.com"
+NOME_JULIANA_CC = "Silveira Juliana Viscardi, BR"
+
+
+def _remetente_atual(outlook, log=print) -> tuple[str, str]:
+    """Devolve (nome, email) de quem esta logada no Outlook que vai rodar
+    esta automacao - nao necessariamente a Juliana (cobertura de ferias/
+    ausencia). Email vazio ("") se nao conseguir resolver (Cc segue sem
+    remover o remetente automaticamente, mas continua funcionando)."""
+    current_user = outlook.Session.CurrentUser
+    nome = current_user.Name
+    email = ""
+    try:
+        entry = current_user.AddressEntry
+        if entry.Type == "EX":
+            email = entry.GetExchangeUser().PrimarySmtpAddress
+        else:
+            email = entry.Address
+    except Exception as e:
+        log(f"AVISO: não consegui resolver o e-mail de quem está enviando ({e}).")
+    return nome, email.lower()
+
+
+def _resolver_email_por_nome(outlook, nome: str, log=print) -> str:
+    """Resolve um nome no formato do diretório da Pirelli (ex: 'Sobrenome
+    Nome, BR') pro e-mail correspondente, via GAL do Outlook. Devolve ""
+    se não conseguir resolver."""
+    try:
+        recipient = outlook.Session.CreateRecipient(nome)
+        recipient.Resolve()
+        if not recipient.Resolved:
+            return ""
+        entry = recipient.AddressEntry
+        if entry.Type == "EX":
+            return entry.GetExchangeUser().PrimarySmtpAddress.lower()
+        return entry.Address.lower()
+    except Exception as e:
+        log(f"AVISO: não consegui resolver o e-mail de '{nome}' ({e}).")
+        return ""
+
+
+def montar_lista_copia(outlook, copia_fixa: list[str], log=print) -> list[str]:
+    """Aplica a regra de Cc da usuária (ver comentário acima de EMAIL_JULIANA)
+    em cima da lista fixa de distribuição, resolvendo nomes pra e-mail via
+    GAL do Outlook pra comparar com quem está enviando de verdade."""
+    _, email_remetente = _remetente_atual(outlook, log)
+
+    copia = [
+        nome for nome in copia_fixa
+        if not email_remetente or _resolver_email_por_nome(outlook, nome, log) != email_remetente
+    ]
+    if email_remetente != EMAIL_JULIANA and NOME_JULIANA_CC not in copia:
+        copia.append(NOME_JULIANA_CC)
+    return copia
+
+
 def localizar_pnl_congelado(mes: int, ano: int, ciclo: str) -> Path:
     pasta = resolver_pasta_ciclo(REDE_BASE / str(ano) / MESES_PASTA[mes], mes, ciclo)
     base = Path(nome_arquivo_pnl(mes, ano, ciclo))
@@ -556,10 +622,11 @@ def montar_email_pnl(mes: int, ano: int, ciclo: str, log=print) -> str:
     destinatarios = DESTINATARIOS_EMAIL_PNL[ciclo]
 
     outlook = win32com.client.Dispatch("Outlook.Application")
+    copia = montar_lista_copia(outlook, destinatarios["copia"], log)
     mail = outlook.CreateItem(0)  # olMailItem
     mail.GetInspector  # força o Outlook a carregar a assinatura padrão no HTMLBody
     mail.To = "; ".join(destinatarios["para"])
-    mail.CC = "; ".join(destinatarios["copia"])
+    mail.CC = "; ".join(copia)
     mail.Subject = f"P&L Fitted Units - {MESES_INGLES[mes]} {ciclo}"
     assinatura_atual = mail.HTMLBody
     mail.HTMLBody = f"<p>Boa tarde,</p><p>{corpo_html}</p>" + assinatura_atual
