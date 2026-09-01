@@ -706,3 +706,17 @@ Mecanismo validado via COM: `wb.LinkSources(1)` lista os links; `wb.ChangeLink(n
 **Como aplicar:** não construir controle de acesso local no cockpit a menos que a usuária peça explicitamente de novo (ex: se mais pessoas passarem a ter cópias do projeto).
 
 **Decisão da usuária:** mesma política do bug do PY — **não corrigir retroativamente** Mai/Jun/Jul (já fechados/enviados). A automação do Passo 7 (`gerar_pnl.py`, ainda a implementar) sempre monta o caminho de destino do `ChangeLink` com o nível "MM - Mês" incluído (nunca replica o caminho curto) e sempre usa `EO_FITTED` pro link de Mensalização.
+
+---
+
+## 2026-09-01 — Ordem de clique confusa entre Passo 3 (Provisões) e Passo 4 (Base Intermediária): só reforçado o texto, não reestruturado
+
+**Contexto:** a usuária notou que, no Ciclo Flash, a ordem real de clique não segue a numeração das abas — o botão "Atualizar Pivot KSB1" (aba ④) roda ANTES do Passo 3 (Provisões), e só depois disso é que "Finalização da Base Intermediária" (também aba ④) pode rodar, porque reaproveita o arquivo que o Passo 3 criou. Perguntou se não seria melhor inverter a ordem das abas 3 e 4.
+
+**Opções levantadas:** (1) não mexer, (2) só reforçar o texto de aviso nas duas abas, (3) quebrar a aba ④ em duas abas separadas (uma pro "Atualizar Pivot KSB1", outra pra "Finalização"), com Provisões no meio — o que exigiria renumerar Rateio/Mensalização/P&L também.
+
+**Decisão da usuária:** opção 2 — só reforçar o texto. Simplesmente inverter as abas 3↔4 não resolveria (o entrelaçamento continuaria, só que ao contrário), e quebrar em 8 abas era mudança grande demais pra esse problema.
+
+**Aplicado em `atualizar_ksb1_gui.py`:** descrição da aba ③ (Provisões) e da aba ④ (Base Intermediária) agora abrem com um parágrafo "ORDEM DE CLIQUE NO FLASH" explicando a sequência real (① Atualizar Pivot KSB1 → ② Lançar Provisões → ③ Finalização da Base Intermediária) e avisando que rodar fora de ordem no Flash dá erro ou sobrescreve provisões já lançadas. No Actual, sem essa quebra — os dois botões da aba ④ rodam direto.
+
+**Pendente:** rede não foi re-sincronizada (`robocopy /MIR` da cópia de rede pro estagiário) — fazer se/quando outras mudanças também estiverem prontas, pra não gerar vários syncs pequenos.

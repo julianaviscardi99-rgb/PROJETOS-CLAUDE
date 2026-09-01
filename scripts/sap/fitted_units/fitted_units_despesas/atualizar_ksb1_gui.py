@@ -330,37 +330,39 @@ PASSOS = [
         "botoes": ["Gerar Check de Agrupamentos"],
     },
     {
-        "aba": "③  Provisões",
-        "titulo": "Passo 3 · Provisões",
+        "aba": "③  Base Intermediária",
+        "titulo": "Passo 3 · Base Intermediária",
         "descricao": (
-            "Só pro Ciclo Flash: cria a Base Intermediária Flash do mês (a partir do Actual "
-            "do mês anterior) e preenche as linhas coloridas com as provisões/reclassificações "
-            "do 'Fast Provisão' mais recente da pasta de rede. 'Lançar Provisões' cria o "
-            "arquivo pela primeira vez; 'Atualizar Provisões' relê o Fast Provisão (ex: depois "
-            "de uma correção) e atualiza um arquivo já criado. O Fast Provisão precisa estar "
-            "fechado e salvo antes de rodar qualquer um dos dois."
+            "4 botões, sempre nesta ordem (o número no nome do botão é a ordem de clique):\n\n"
+            "① 'Atualizar Pivot KSB1' — atualiza o KSB1 acumulado do ano (BASE_KSB1 + Pivot "
+            "Tables nativas) com as linhas do mês e prepara os valores pra colar na Base "
+            "Intermediária. Usa o Ciclo selecionado (Actual/Flash) pra escolher a extração "
+            "certa do Passo 1 e também no nome do arquivo final.\n\n"
+            "② 'Lançar Provisões' / 'Atualizar Provisões' — SÓ pro Ciclo Flash (pule no "
+            "Actual). Cria a Base Intermediária Flash do mês (a partir do Actual do mês "
+            "anterior) e preenche as linhas coloridas com as provisões/reclassificações do "
+            "'Fast Provisão' mais recente da pasta de rede. 'Lançar' cria o arquivo pela "
+            "primeira vez; 'Atualizar' relê o Fast Provisão (ex: depois de uma correção) e "
+            "atualiza um arquivo já criado. O Fast Provisão precisa estar fechado e salvo "
+            "antes de rodar qualquer um dos dois.\n\n"
+            "③ 'Finalização da Base Intermediária' — lê o Pivot_Inter. do BASE_KSB1 (já "
+            "atualizado no botão ①) e reconstrói a área de dados da Intermediária. No Flash, "
+            "reaproveita o arquivo que o botão ② já criou/atualizou — rodar antes do ② dá "
+            "erro (arquivo não encontrado) ou sobrescreve as provisões já lançadas."
         ),
-        "botoes": ["Lançar Provisões", "Atualizar Provisões"],
+        "botoes": [
+            "①  Atualizar Pivot KSB1",
+            "②  Lançar Provisões",
+            "②  Atualizar Provisões",
+            "③  Finalização da Base Intermediária",
+        ],
     },
     {
-        "aba": "④  Base Intermediária",
-        "titulo": "Passo 4 · Atualizar KSB1 Pivot",
-        "descricao": (
-            "Atualiza o KSB1 acumulado do ano (BASE_KSB1 + Pivot Tables nativas) com "
-            "as linhas do mês e prepara os valores pra colar na Base Intermediária. "
-            "Usa o Ciclo selecionado (Actual/Flash) pra escolher a extração certa do "
-            "Passo 1 e também no nome do arquivo final. Depois de atualizar o Pivot, use "
-            "'Finalização da Base Intermediária' pra colar os valores na Intermediária "
-            "(no Flash, rode o Passo 3 — Lançar Provisões — antes)."
-        ),
-        "botoes": ["Atualizar Pivot KSB1", "Finalização da Base Intermediária"],
-    },
-    {
-        "aba": "⑤  Rateio de Custos",
-        "titulo": "Passo 5 · Rateio de Custos",
+        "aba": "④  Rateio de Custos",
+        "titulo": "Passo 4 · Rateio de Custos",
         "descricao": (
             "'Abertura de Custos por Unidade' lê a "
-            "Base Intermediária do mês/Ciclo (Passo 4 já rodado) e gera o arquivo de "
+            "Base Intermediária do mês/Ciclo (Passo 3 já rodado) e gera o arquivo de "
             "Rateio de Custos, com o check por unidade e a aba 'Comentários'. "
             "'Atualizar Rateio' abre um quadro editável com o % vigente pra cada "
             "unidade — se você não mudar num Ciclo, o rateio anterior continua valendo."
@@ -368,20 +370,20 @@ PASSOS = [
         "botoes": ["Abertura de Custos por Unidade", "Atualizar Rateio"],
     },
     {
-        "aba": "⑥  Mensalização",
-        "titulo": "Passo 6 · Mensalização",
+        "aba": "⑤  Mensalização",
+        "titulo": "Passo 5 · Mensalização",
         "descricao": (
             "Gera o arquivo de Mensalização - copia a base certa (Forecast do mês, ou "
             "o Flash já fechado quando o Ciclo for Actual), aplica os ajustes de cenário "
-            "quando necessário, e cola os valores do Passo 5 (Rateio de Custos) na "
+            "quando necessário, e cola os valores do Passo 4 (Rateio de Custos) na "
             "coluna do mês sendo fechado. 'Atualizar Faturamento' ainda não foi "
             "automatizado (Net Sales continua manual por enquanto)."
         ),
         "botoes": ["Atualizar Faturamento", "Atualizar Custo"],
     },
     {
-        "aba": "⑦  P&L",
-        "titulo": "Passo 7 · P&L",
+        "aba": "⑥  P&L",
+        "titulo": "Passo 6 · P&L",
         "descricao": (
             "Gera o arquivo de P&L do mês/Ciclo selecionado - copia o P&L do mesmo Ciclo "
             "do mês anterior (Actual ou Flash já fechados precisam existir) e troca os "
@@ -743,7 +745,7 @@ def main():
             anchor="w", pady=(8, 20)
         )
 
-        if indice == 4 and aviso_rateio_janeiro:
+        if indice == 3 and aviso_rateio_janeiro:
             tk.Label(
                 aba,
                 text=(
@@ -777,7 +779,7 @@ def main():
             lambda: messagebox.showwarning(
                 "Rateio da Gerência — confirmar pra este ano",
                 "É Janeiro e ninguém confirmou (ou atualizou) o % de rateio da Gerência "
-                "pra este ano ainda.\n\nVá na aba '⑤ Rateio de Custos' → 'Atualizar Rateio' "
+                "pra este ano ainda.\n\nVá na aba '④ Rateio de Custos' → 'Atualizar Rateio' "
                 "pra confirmar (mesmo que os percentuais não mudem).",
             ),
         )
@@ -833,7 +835,7 @@ def main():
 
     # Botoes que ficam desabilitados por padrao (funcionalidade ainda nao
     # automatizada) e NUNCA devem ser reativados pelo "liberar janela" no
-    # fim de uma operacao - "Atualizar Faturamento" (Passo 6), pedido
+    # fim de uma operacao - "Atualizar Faturamento" (Passo 5), pedido
     # explicito da usuaria, 2026-08-26 (Net Sales continua manual).
     botoes_sempre_desabilitados = set()
 
@@ -1341,7 +1343,7 @@ def main():
             # o Custo terminar.
             messagebox.showwarning(
                 "Atualize o Faturamento manualmente",
-                "O Custo do Passo 6 foi atualizado. A parte de Faturamento (Net Sales) "
+                "O Custo do Passo 5 foi atualizado. A parte de Faturamento (Net Sales) "
                 "ainda não foi automatizada — não esqueça de atualizar essa parte "
                 "manualmente no arquivo antes de considerar a Mensalização completa.",
             )
@@ -1401,21 +1403,21 @@ def main():
 
     botoes[0][0].config(command=ao_clicar_extrair)
     botoes[1][0].config(command=ao_clicar_check)
-    botoes[2][0].config(command=ao_clicar_lancar_provisoes)
-    botoes[2][1].config(command=ao_clicar_atualizar_provisoes)
-    botoes[3][0].config(command=ao_clicar_pivot)
-    botoes[3][1].config(command=ao_clicar_finalizar_intermediaria)
-    botoes[4][0].config(command=ao_clicar_rateio_custos)
-    botoes[4][1].config(command=ao_clicar_atualizar_rateio)
-    botoes[5][1].config(command=ao_clicar_atualizar_custo_mensalizacao)
-    botoes[6][0].config(command=ao_clicar_gerar_pnl)
-    botoes[6][1].config(command=ao_clicar_enviar_email_pnl)
+    botoes[2][0].config(command=ao_clicar_pivot)
+    botoes[2][1].config(command=ao_clicar_lancar_provisoes)
+    botoes[2][2].config(command=ao_clicar_atualizar_provisoes)
+    botoes[2][3].config(command=ao_clicar_finalizar_intermediaria)
+    botoes[3][0].config(command=ao_clicar_rateio_custos)
+    botoes[3][1].config(command=ao_clicar_atualizar_rateio)
+    botoes[4][1].config(command=ao_clicar_atualizar_custo_mensalizacao)
+    botoes[5][0].config(command=ao_clicar_gerar_pnl)
+    botoes[5][1].config(command=ao_clicar_enviar_email_pnl)
 
-    # "Atualizar Faturamento" (Passo 6) ainda nao foi automatizado - fica
+    # "Atualizar Faturamento" (Passo 5) ainda nao foi automatizado - fica
     # desabilitado, e o helper _todos_botoes ja sabe manter ele assim mesmo
     # depois de outras operacoes terminarem (ver botoes_sempre_desabilitados).
-    botoes_sempre_desabilitados.add(botoes[5][0])
-    botoes[5][0].config(state="disabled")
+    botoes_sempre_desabilitados.add(botoes[4][0])
+    botoes[4][0].config(state="disabled")
 
     root.mainloop()
 
