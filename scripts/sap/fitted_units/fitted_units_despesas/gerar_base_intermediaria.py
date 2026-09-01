@@ -454,6 +454,44 @@ def _celulas_com_erro(valores, n_cols_rotulo):
     return erros
 
 
+def _corrigir_celulas_com_erro(ws, primeira_sem_cor, linhas_para_colar, log, tentativas=5, espera_s=2):
+    """Reconfere a área recém-colada na Intermediária e, pra qualquer célula
+    que ainda veio como erro (#N/A) mesmo colando linha por linha (a
+    mitigação já em uso contra o bug de marshalling do pywin32/COM — reduz a
+    corrupção, mas não zera por completo), reescreve SÓ a célula ruim (não a
+    linha inteira, pra não reintroduzir o mesmo risco em escala maior) e
+    reconfere de novo. Repete até `tentativas` vezes antes de desistir.
+    Devolve a lista de células (linha_absoluta, coluna) que continuam
+    erradas ao final — vazia se tudo foi corrigido. Achado ao vivo em
+    2026-09-01: a checagem antiga abortava direto na primeira vez, sem
+    tentar se auto-corrigir, exigindo que a usuária rodasse tudo de novo à
+    mão."""
+    n_linhas = len(linhas_para_colar)
+    n_cols = len(linhas_para_colar[0])
+    faixa = ws.Range(ws.Cells(primeira_sem_cor, 1), ws.Cells(primeira_sem_cor + n_linhas - 1, n_cols))
+    for tentativa in range(tentativas):
+        conferencia = faixa.Value
+        ruins = [
+            (i, j) for i, linha in enumerate(conferencia)
+            for j, v in enumerate(linha) if isinstance(v, int) and v < 0
+        ]
+        if not ruins:
+            return []
+        log(
+            f"  {len(ruins)} célula(s) ainda gravada(s) como erro depois da colagem — "
+            f"reescrevendo individualmente (tentativa {tentativa + 1}/{tentativas})..."
+        )
+        for i, j in ruins:
+            ws.Cells(primeira_sem_cor + i, j + 1).Value = linhas_para_colar[i][j]
+        time.sleep(espera_s)
+
+    conferencia = faixa.Value
+    return [
+        (primeira_sem_cor + i, j + 1) for i, linha in enumerate(conferencia)
+        for j, v in enumerate(linha) if isinstance(v, int) and v < 0
+    ]
+
+
 def ler_pivot_inter(caminho_base_ksb1: Path, excel, log, tentativas=4, espera_s=5):
     log(f"Lendo Pivot_Inter. de {caminho_base_ksb1.name}...")
     wb = com_retry(
@@ -616,7 +654,11 @@ def preencher_provisoes_flash(wb, mes: int, ano: int, log):
     propósito só como "molde" de fórmula, confirmado pela usuária). Se as
     provisões não couberem nas linhas amarelas já existentes, insere linhas
     amarelas novas automaticamente (ver inserir_linhas_amarelas_novas) —
-    nunca toca no conteúdo das linhas verdes/roxas."""
+    nunca toca no conteúdo das linhas verdes/roxas. As linhas amarelas
+    dentro da capacidade que sobrarem sem provisão este mês são limpas por
+    completo no final (A até AJ, incluindo Y:AJ) — senão a fórmula herdada
+    de Y:AJ fica pendurada e sempre resolve em #N/A (achado ao vivo em
+    2026-09-01)."""
     caminho_provisao = localizar_fast_provisao(mes, ano)
     log(f"Lendo provisões de {caminho_provisao.name}...")
 
@@ -636,8 +678,6 @@ def preencher_provisoes_flash(wb, mes: int, ano: int, log):
         wb_prov.Close(SaveChanges=False)
 
     log(f"  {len(provisoes)} provisão(ões)/reclassificação(ões) encontrada(s).")
-    if not provisoes:
-        return
 
     ws = wb.Worksheets("Intermediária")
 
@@ -924,16 +964,16 @@ def atualizar_base_intermediaria(
             ws.Range(ws.Cells(r, 1), ws.Cells(r, N_COLS_LABEL + n_meses)).Value = [linha]
 
         log("Verificando se alguma célula foi gravada como erro (#N/A) durante a colagem...")
-        conferencia = ws.Range(
-            ws.Cells(primeira_sem_cor, 1), ws.Cells(last_row_final, N_COLS_LABEL + n_meses)
-        ).Value
-        celulas_com_erro = sum(
-            1 for linha in conferencia for v in linha if isinstance(v, int) and v < 0
-        )
+        celulas_com_erro = _corrigir_celulas_com_erro(ws, primeira_sem_cor, linhas_para_colar, log)
         if celulas_com_erro:
+            linhas_afetadas = sorted({r for r, _ in celulas_com_erro})
+            trecho = linhas_afetadas[:15]
+            reticencias = "..." if len(linhas_afetadas) > 15 else ""
             raise RuntimeError(
-                f"{celulas_com_erro} célula(s) gravada(s) como erro (#N/A) mesmo colando linha por linha — "
-                "abortando sem salvar. Rode de novo; se persistir, é um problema novo, não o bug conhecido."
+                f"{len(celulas_com_erro)} célula(s) continuam gravadas como erro (#N/A) mesmo depois de "
+                "colar linha por linha e reescrever célula a célula várias vezes — abortando sem salvar. "
+                "Não é mais o bug de marshalling conhecido (esse já é corrigido automaticamente agora); "
+                f"é um problema novo. Linhas afetadas na Intermediária: {trecho}{reticencias}"
             )
 
         log("Arrastando a fórmula da coluna U (Total Ano)...")

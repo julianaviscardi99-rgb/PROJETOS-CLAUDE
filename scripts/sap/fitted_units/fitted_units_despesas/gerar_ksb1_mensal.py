@@ -59,6 +59,17 @@ N_COLS_BRUTO = 18  # colunas A-R do BASE_KSB1, 1:1 com o extrato bruto da KSB1
 COL_CONTA = 4
 COL_VALOR = 17
 
+# Coluna AH ("Centro de Montagem(2)"): resolve a MF (coluna Z) na tabela
+# de-para da base de contas externa (Base_Contas_Contabeis_Fitted_22.xlsx,
+# aba Centros, colunas K:L). A formula herdada do arquivo do mes anterior
+# vinha com o range TRAVADO em $K$2:$L$9 - quando uma unidade nova e'
+# cadastrada abaixo da linha 9 da tabela, ela fica FORA do range e toda
+# linha dela resolve em #N/A, contaminando o Pivot_Inter. e, na sequencia,
+# a Base Intermediaria (caso real: Resende / MF 0483, cadastrada na linha
+# K10, quebrou o fechamento de Agosto/2026 - 2026-09-01).
+COL_CENTRO_MONTAGEM_2 = 34  # AH
+ULTIMA_LINHA_DEPARA_MF = 100
+
 XL_UP = -4162
 XL_FILL_DEFAULT = 0
 XL_CALCULATION_MANUAL = -4135
@@ -160,6 +171,26 @@ def remover_flag_somente_leitura_recomendada(caminho: Path, log=print):
     log(f"Removida a flag 'Somente leitura recomendada' da cópia de teste ({n_removidas} ocorrência(s)).")
 
 
+def normalizar_formula_centro_montagem(ws, last_row: int, log) -> bool:
+    """Amplia o range travado do de-para de MF na fórmula da coluna AH
+    ('Centro de Montagem(2)') — ver comentário de COL_CENTRO_MONTAGEM_2.
+    Reescreve a coluna inteira com UMA atribuição (o Excel ajusta sozinho a
+    referência relativa de cada linha), então é barato mesmo com dezenas de
+    milhares de linhas. Devolve True se mudou alguma coisa."""
+    formula = ws.Cells(2, COL_CENTRO_MONTAGEM_2).Formula
+    nova = re.sub(r"(\$K\$2:\$L\$)\d+", rf"\g<1>{ULTIMA_LINHA_DEPARA_MF}", formula)
+    if nova == formula:
+        return False
+    ws.Range(
+        ws.Cells(2, COL_CENTRO_MONTAGEM_2), ws.Cells(last_row, COL_CENTRO_MONTAGEM_2)
+    ).Formula = nova
+    log(
+        f"Fórmula da coluna AH (Centro de Montagem) ampliada até a linha {ULTIMA_LINHA_DEPARA_MF} "
+        "do de-para de MF — unidade nova cadastrada no fim da tabela não vira mais #N/A."
+    )
+    return True
+
+
 def colar_linhas_e_atualizar_pivots(caminho_copia: Path, linhas_novas: list, log=print, pid_callback=None):
     excel = abrir_excel_isolado(log, pid_callback)
     try:
@@ -231,6 +262,8 @@ def colar_linhas_e_atualizar_pivots(caminho_copia: Path, linhas_novas: list, log
         origem_formula = ws.Range(ws.Cells(last_row, 19), ws.Cells(last_row, 35))
         destino_formula = ws.Range(ws.Cells(last_row, 19), ws.Cells(last_row + n, 35))
         com_retry(origem_formula.AutoFill, destino_formula, XL_FILL_DEFAULT, log=log)
+
+        com_retry(normalizar_formula_centro_montagem, ws, last_row + n, log, log=log)
 
         log("Recalculando a planilha inteira...")
         com_retry(excel.CalculateFullRebuild, log=log)
