@@ -71,6 +71,8 @@ import json
 import re
 import shutil
 import sys
+
+import pywintypes
 from pathlib import Path
 
 from openpyxl import Workbook
@@ -80,6 +82,7 @@ from ksb1_core import (  # noqa: E402
     MESES_PASTA,
     REDE_BASE,
     abrir_excel_isolado,
+    com_retry,
     encontrar_arquivo_mais_recente,
     nome_com_versao,
     resolver_pasta_ciclo,
@@ -437,20 +440,22 @@ def localizar_base_intermediaria_mes_anterior(mes: int, ano: int) -> Path:
 
 def ler_pivot_inter(caminho_base_ksb1: Path, excel, log):
     log(f"Lendo Pivot_Inter. de {caminho_base_ksb1.name}...")
-    wb = excel.Workbooks.Open(str(caminho_base_ksb1), ReadOnly=True, UpdateLinks=0)
+    wb = com_retry(
+        excel.Workbooks.Open, str(caminho_base_ksb1), ReadOnly=True, UpdateLinks=0, log=log
+    )
     try:
         # Sem isso, algumas celulas do Pivot_Inter podem ser gravadas como
         # "#N/A" no arquivo final (o calculo assincrono ligado ao link externo
         # da base de contas nao tinha terminado antes do Save) - achado
         # testando ao vivo em 2026-08-21.
-        excel.CalculateFullRebuild()
-        excel.CalculateUntilAsyncQueriesDone()
+        com_retry(excel.CalculateFullRebuild, log=log)
+        com_retry(excel.CalculateUntilAsyncQueriesDone, log=log)
         ws = wb.Worksheets("Pivot_Inter.")
         last_row = ws.Cells(ws.Rows.Count, 1).End(XL_UP).Row
         last_col = ws.Cells(4, ws.Columns.Count).End(XL_TO_LEFT).Column
         valores = ws.Range(ws.Cells(4, 1), ws.Cells(last_row, last_col)).Value
     finally:
-        wb.Close(SaveChanges=False)
+        com_retry(wb.Close, SaveChanges=False, log=log)
 
     cabecalho = list(valores[0])
     n_meses = 0
@@ -671,7 +676,9 @@ def lancar_provisoes(
 
     excel = abrir_excel_isolado(log, pid_callback)
     try:
-        wb = excel.Workbooks.Open(str(caminho_saida), UpdateLinks=0, ReadOnly=False)
+        wb = com_retry(
+            excel.Workbooks.Open, str(caminho_saida), UpdateLinks=0, ReadOnly=False, log=log
+        )
         if wb.ReadOnly:
             raise RuntimeError(
                 "A cópia abriu em modo somente leitura — provavelmente já está aberta por outro processo."
@@ -697,7 +704,9 @@ def atualizar_provisoes(mes: int, ano: int, pasta_saida: Path, log=print, pid_ca
 
     excel = abrir_excel_isolado(log, pid_callback)
     try:
-        wb = excel.Workbooks.Open(str(caminho_saida), UpdateLinks=0, ReadOnly=False)
+        wb = com_retry(
+            excel.Workbooks.Open, str(caminho_saida), UpdateLinks=0, ReadOnly=False, log=log
+        )
         if wb.ReadOnly:
             raise RuntimeError(
                 "O arquivo abriu em modo somente leitura — provavelmente já está aberto por outro processo."
@@ -779,7 +788,9 @@ def atualizar_base_intermediaria(
     try:
         cabecalho_pivot, linhas_pivot, n_meses = ler_pivot_inter(caminho_base_ksb1, excel, log)
 
-        wb = excel.Workbooks.Open(str(caminho_saida), UpdateLinks=0, ReadOnly=False)
+        wb = com_retry(
+            excel.Workbooks.Open, str(caminho_saida), UpdateLinks=0, ReadOnly=False, log=log
+        )
         if wb.ReadOnly:
             raise RuntimeError(
                 "A cópia abriu em modo somente leitura — provavelmente já está aberta por outro processo."
@@ -800,8 +811,8 @@ def atualizar_base_intermediaria(
         # do ler_pivot_inter acima) derruba com "Unable to set the
         # Calculation property of the Application class" (achado ao vivo,
         # 2026-09-01, gerando erro real no Passo 3 pra usuaria).
-        excel.Calculation = XL_CALCULATION_MANUAL
-        excel.ScreenUpdating = False
+        com_retry(setattr, excel, "Calculation", XL_CALCULATION_MANUAL, log=log)
+        com_retry(setattr, excel, "ScreenUpdating", False, log=log)
 
         primeira_sem_cor = encontrar_primeira_linha_sem_cor(ws)
         last_row_antiga = ws.Cells(ws.Rows.Count, 1).End(XL_UP).Row
@@ -827,7 +838,10 @@ def atualizar_base_intermediaria(
             )
 
         log("Apagando a área de dados antiga...")
-        ws.Range(ws.Cells(primeira_sem_cor, 1), ws.Cells(last_row_limpar, COL_FORMULA_FIM)).ClearContents()
+        com_retry(
+            ws.Range(ws.Cells(primeira_sem_cor, 1), ws.Cells(last_row_limpar, COL_FORMULA_FIM)).ClearContents,
+            log=log,
+        )
 
         log(f"Colando {n_linhas_novas} linha(s) do Pivot_Inter. (todas, unidades encerradas incluídas por enquanto)...")
         # Colar linha por linha, NUNCA o bloco inteiro de uma vez: escrever um
@@ -856,33 +870,37 @@ def atualizar_base_intermediaria(
 
         log("Arrastando a fórmula da coluna U (Total Ano)...")
         ws.Cells(primeira_sem_cor, COL_TOTAL_ANO).Formula = formula_total_ano
-        ws.Cells(primeira_sem_cor, COL_TOTAL_ANO).AutoFill(
+        com_retry(
+            ws.Cells(primeira_sem_cor, COL_TOTAL_ANO).AutoFill,
             ws.Range(ws.Cells(primeira_sem_cor, COL_TOTAL_ANO), ws.Cells(last_row_final, COL_TOTAL_ANO)),
             XL_FILL_DEFAULT,
+            log=log,
         )
 
         log("Arrastando as fórmulas das colunas Y:AJ...")
         for i, c in enumerate(range(COL_FORMULA_INICIO, COL_FORMULA_FIM + 1)):
             ws.Cells(primeira_sem_cor, c).Formula = formulas_extra[i]
-        ws.Range(
-            ws.Cells(primeira_sem_cor, COL_FORMULA_INICIO), ws.Cells(primeira_sem_cor, COL_FORMULA_FIM)
-        ).AutoFill(
+        com_retry(
+            ws.Range(
+                ws.Cells(primeira_sem_cor, COL_FORMULA_INICIO), ws.Cells(primeira_sem_cor, COL_FORMULA_FIM)
+            ).AutoFill,
             ws.Range(
                 ws.Cells(primeira_sem_cor, COL_FORMULA_INICIO), ws.Cells(last_row_final, COL_FORMULA_FIM)
             ),
             XL_FILL_DEFAULT,
+            log=log,
         )
 
         log("Recalculando a planilha inteira...")
-        excel.CalculateFullRebuild()
-        excel.CalculateUntilAsyncQueriesDone()
+        com_retry(excel.CalculateFullRebuild, log=log)
+        com_retry(excel.CalculateUntilAsyncQueriesDone, log=log)
 
         # Restaura o modo padrao (automatico) - a colagem/AutoFill lentos ja
         # terminaram e o recalculo completo acima ja garantiu os valores
         # certos; o resto da funcao (leitura de unidades encerradas,
         # comparacao Flash/Forecast) segue em modo automatico, como sempre.
-        excel.Calculation = XL_CALCULATION_AUTOMATIC
-        excel.ScreenUpdating = True
+        com_retry(setattr, excel, "Calculation", XL_CALCULATION_AUTOMATIC, log=log)
+        com_retry(setattr, excel, "ScreenUpdating", True, log=log)
 
         log("Identificando linhas de unidades encerradas pra separar o histórico e zerar o valor oficial...")
         cabecalho_historico = cabecalho_pivot[:COL_HISTORICO_FIM]
@@ -904,8 +922,8 @@ def atualizar_base_intermediaria(
         log(f"  {len(linhas_historico)} linha(s) de unidade encerrada com valor — zeradas na oficial, separadas pro histórico.")
 
         log("Atualizando as Pivot Tables da aba 'Pivot'...")
-        wb.RefreshAll()
-        excel.CalculateUntilAsyncQueriesDone()
+        com_retry(wb.RefreshAll, log=log)
+        com_retry(excel.CalculateUntilAsyncQueriesDone, log=log)
 
         aviso_comparacao = None
         if ciclo == "Actual":
@@ -914,16 +932,23 @@ def atualizar_base_intermediaria(
             aviso_comparacao = atualizar_comparacao_forecast(excel, wb, mes, ano, log)
 
         log("Recalculando de novo (Total Ano das linhas zeradas)...")
-        excel.CalculateFullRebuild()
-        excel.CalculateUntilAsyncQueriesDone()
+        com_retry(excel.CalculateFullRebuild, log=log)
+        com_retry(excel.CalculateUntilAsyncQueriesDone, log=log)
 
         log("Salvando...")
-        wb.Save()
+        com_retry(wb.Save, log=log)
         if not wb.Saved:
             raise RuntimeError("wb.Save() retornou mas wb.Saved ainda é False — o arquivo pode não ter sido gravado.")
-        wb.Close(SaveChanges=False)
+        com_retry(wb.Close, SaveChanges=False, log=log)
     finally:
-        excel.Quit()
+        # Retentativa tambem no Quit - se o Excel "ocupado" derrubar essa
+        # chamada, ela e' engolida sem retentar, deixa o processo orfao
+        # rodando pra sempre (achado ao vivo, 2026-09-01: sobrou um
+        # EXCEL.EXE ocioso depois de uma rodada bem-sucedida).
+        try:
+            com_retry(excel.Quit, log=log)
+        except pywintypes.com_error:
+            log("AVISO: não consegui confirmar o encerramento do Excel (pode ter ficado um processo órfão).")
 
     caminho_historico = gerar_historico_unidades_encerradas(
         mes, ano, ciclo, cabecalho_historico, linhas_historico, pasta_saida, log

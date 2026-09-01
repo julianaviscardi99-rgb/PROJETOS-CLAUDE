@@ -8,6 +8,7 @@ Fitted Recuperacao (extracao de periodo arbitrario) — movido pra ca em
 import time
 from pathlib import Path
 
+import pywintypes
 import win32com.client
 import win32con
 import win32gui
@@ -231,6 +232,31 @@ def encontrar_arquivo_mais_recente(pasta: Path, nome_base: str) -> Path | None:
     if not candidatos:
         return None
     return max(candidatos, key=lambda p: p.stat().st_mtime)
+
+
+RPC_E_SERVERCALL_RETRYLATER = -2147417846  # "The message filter indicated that the
+# application is busy" - erro real, intermitente, achado ao vivo em 2026-09-01 no botao
+# "Finalizacao da Base Intermediaria": o COM as vezes rejeita uma chamada (ex: mexer numa
+# propriedade/metodo logo apos um CalculateFullRebuild/RefreshAll pesado) porque o Excel
+# ainda esta "assentando" internamente, mesmo com CalculateUntilAsyncQueriesDone() ja tendo
+# retornado. Nao tem relacao com os dados/arquivo - so' um hiccup do Windows/COM.
+
+
+def com_retry(func, *args, tentativas=6, espera_s=1.5, log=print, **kwargs):
+    """Roda uma chamada COM (Excel) com retentativa se o Windows recusar por
+    'aplicacao ocupada' (RPC_E_SERVERCALL_RETRYLATER). Usar pra operacoes
+    pesadas/pontuais (CalculateFullRebuild, RefreshAll, Save, Workbooks.Open,
+    trocar Calculation/ScreenUpdating) - NAO pra dentro de loops de milhares
+    de chamadas pequenas (custo da retentativa nao compensa la')."""
+    for tentativa in range(tentativas):
+        try:
+            return func(*args, **kwargs)
+        except pywintypes.com_error as e:
+            if e.args[0] == RPC_E_SERVERCALL_RETRYLATER and tentativa < tentativas - 1:
+                log(f"  (Excel ocupado, tentando de novo em {espera_s}s...)")
+                time.sleep(espera_s)
+                continue
+            raise
 
 
 def abrir_excel_isolado(log=print, pid_callback=None):

@@ -30,6 +30,7 @@ import sys
 import zipfile
 from pathlib import Path
 
+import pywintypes
 from openpyxl import load_workbook
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "_shared"))
@@ -38,6 +39,7 @@ from ksb1_core import (  # noqa: E402
     MESES_PASTA,
     REDE_BASE,
     abrir_excel_isolado,
+    com_retry,
     encontrar_arquivo_mais_recente,
     localizar_extracao_ksb1,
     nome_com_versao,
@@ -165,8 +167,10 @@ def colar_linhas_e_atualizar_pivots(caminho_copia: Path, linhas_novas: list, log
         # "Somente leitura recomendada" (fileSharing readOnlyRecommended="1")
         # - sem isso, com DisplayAlerts=False, o Excel abre o arquivo em modo
         # leitura silenciosamente e o Save() vira um no-op sem erro nenhum.
-        wb = excel.Workbooks.Open(
-            str(caminho_copia), UpdateLinks=0, ReadOnly=False, IgnoreReadOnlyRecommended=True
+        wb = com_retry(
+            excel.Workbooks.Open,
+            str(caminho_copia), UpdateLinks=0, ReadOnly=False, IgnoreReadOnlyRecommended=True,
+            log=log,
         )
         if wb.ReadOnly:
             raise RuntimeError(
@@ -189,8 +193,8 @@ def colar_linhas_e_atualizar_pivots(caminho_copia: Path, linhas_novas: list, log
         # vez so' (CalculateFullRebuild, abaixo) em vez de milhares de vezes.
         # Restaurado pra automatico antes de salvar, pra nao mudar o modo de
         # calculo padrao do arquivo pra quem abrir depois.
-        excel.Calculation = XL_CALCULATION_MANUAL
-        excel.ScreenUpdating = False
+        com_retry(setattr, excel, "Calculation", XL_CALCULATION_MANUAL, log=log)
+        com_retry(setattr, excel, "ScreenUpdating", False, log=log)
 
         # Colar linha por linha, NUNCA o bloco inteiro de uma vez: escrever um
         # array grande via Range.Value em uma unica chamada COM pode corromper
@@ -226,30 +230,37 @@ def colar_linhas_e_atualizar_pivots(caminho_copia: Path, linhas_novas: list, log
         log("Arrastando fórmulas das colunas S:AI para as linhas novas (AutoFill)...")
         origem_formula = ws.Range(ws.Cells(last_row, 19), ws.Cells(last_row, 35))
         destino_formula = ws.Range(ws.Cells(last_row, 19), ws.Cells(last_row + n, 35))
-        origem_formula.AutoFill(destino_formula, XL_FILL_DEFAULT)
+        com_retry(origem_formula.AutoFill, destino_formula, XL_FILL_DEFAULT, log=log)
 
         log("Recalculando a planilha inteira...")
-        excel.CalculateFullRebuild()
+        com_retry(excel.CalculateFullRebuild, log=log)
 
         # Restaura o modo padrao (automatico) antes de salvar/mexer nas
         # Pivots - o CalculateFullRebuild acima ja forcou o recalculo
         # completo uma vez, entao nao perde nada; so' evita salvar o arquivo
         # com o app deixado em modo manual.
-        excel.Calculation = XL_CALCULATION_AUTOMATIC
-        excel.ScreenUpdating = True
+        com_retry(setattr, excel, "Calculation", XL_CALCULATION_AUTOMATIC, log=log)
+        com_retry(setattr, excel, "ScreenUpdating", True, log=log)
 
         log("Atualizando as Pivot Tables (Pivot_Inter., Pivot_Detalhes)...")
-        wb.RefreshAll()
-        excel.CalculateUntilAsyncQueriesDone()
+        com_retry(wb.RefreshAll, log=log)
+        com_retry(excel.CalculateUntilAsyncQueriesDone, log=log)
 
         log("Salvando...")
-        wb.Save()
+        com_retry(wb.Save, log=log)
         if not wb.Saved:
             raise RuntimeError("wb.Save() retornou mas wb.Saved ainda é False — o arquivo pode não ter sido gravado.")
-        wb.Close(SaveChanges=False)
+        com_retry(wb.Close, SaveChanges=False, log=log)
         log("Concluído.")
     finally:
-        excel.Quit()
+        # Retentativa tambem no Quit - se o Excel "ocupado" derrubar essa
+        # chamada, ela e' engolida sem retentar, deixa o processo orfao
+        # rodando pra sempre (achado ao vivo, 2026-09-01: sobrou um
+        # EXCEL.EXE ocioso depois de uma rodada bem-sucedida deste script).
+        try:
+            com_retry(excel.Quit, log=log)
+        except pywintypes.com_error:
+            log("AVISO: não consegui confirmar o encerramento do Excel (pode ter ficado um processo órfão).")
 
 
 def gerar_ksb1_mensal(
