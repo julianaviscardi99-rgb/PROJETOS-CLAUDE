@@ -160,6 +160,8 @@ XL_UP = -4162
 XL_TO_LEFT = -4159
 XL_FILL_DEFAULT = 0
 XL_NONE = -4142
+XL_CALCULATION_MANUAL = -4135
+XL_CALCULATION_AUTOMATIC = -4105
 
 
 def _normalizar_centro(v) -> str:
@@ -775,6 +777,18 @@ def atualizar_base_intermediaria(
 
     excel = abrir_excel_isolado(log, pid_callback)
     try:
+        # Calculo manual durante a leitura do Pivot_Inter. + colagem linha a
+        # linha + AutoFill abaixo: com calculo automatico (padrao do Excel),
+        # cada uma das centenas/milhares de escritas dispara recalculo do
+        # arquivo inteiro - motivo real da operacao levar 10+ minutos num mes
+        # com muitas linhas (mesmo achado de gerar_ksb1_mensal.py, 2026-09-01).
+        # Nao afeta a protecao contra o bug de corrupcao #N/A (que e' sobre a
+        # GRANULARIDADE da escrita, nao o modo de calculo) - o recalculo
+        # completo abaixo (CalculateFullRebuild) continua garantindo o valor
+        # certo antes de qualquer leitura de celula.
+        excel.Calculation = XL_CALCULATION_MANUAL
+        excel.ScreenUpdating = False
+
         cabecalho_pivot, linhas_pivot, n_meses = ler_pivot_inter(caminho_base_ksb1, excel, log)
 
         wb = excel.Workbooks.Open(str(caminho_saida), UpdateLinks=0, ReadOnly=False)
@@ -857,6 +871,13 @@ def atualizar_base_intermediaria(
         log("Recalculando a planilha inteira...")
         excel.CalculateFullRebuild()
         excel.CalculateUntilAsyncQueriesDone()
+
+        # Restaura o modo padrao (automatico) - a colagem/AutoFill lentos ja
+        # terminaram e o recalculo completo acima ja garantiu os valores
+        # certos; o resto da funcao (leitura de unidades encerradas,
+        # comparacao Flash/Forecast) segue em modo automatico, como sempre.
+        excel.Calculation = XL_CALCULATION_AUTOMATIC
+        excel.ScreenUpdating = True
 
         log("Identificando linhas de unidades encerradas pra separar o histórico e zerar o valor oficial...")
         cabecalho_historico = cabecalho_pivot[:COL_HISTORICO_FIM]

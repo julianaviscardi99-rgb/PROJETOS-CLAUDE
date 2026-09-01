@@ -59,6 +59,8 @@ COL_VALOR = 17
 
 XL_UP = -4162
 XL_FILL_DEFAULT = 0
+XL_CALCULATION_MANUAL = -4135
+XL_CALCULATION_AUTOMATIC = -4105
 
 
 def _abrev(mes: int) -> str:
@@ -176,6 +178,20 @@ def colar_linhas_e_atualizar_pivots(caminho_copia: Path, linhas_novas: list, log
         n = len(linhas_novas)
         log(f"BASE_KSB1: última linha existente = {last_row}. Colando {n} linha(s) nova(s) (linhas {last_row + 1}-{last_row + n})...")
 
+        # Calculo manual durante a colagem/AutoFill: com calculo automatico
+        # (padrao do Excel), CADA uma das milhares de escritas linha-a-linha
+        # abaixo dispara recalculo do arquivo inteiro (formulas + Pivot) -
+        # e' o principal motivo da operacao levar 10+ minutos num mes com
+        # muitas linhas (achado real, 2026-09-01, usuaria reportou "mais de
+        # 12 minutos"). Nao afeta a protecao contra o bug de corrupcao
+        # #N/A (que e' sobre GRANULARIDADE da escrita, nao sobre o modo de
+        # calculo) - o recalculo completo continua acontecendo, so' que UMA
+        # vez so' (CalculateFullRebuild, abaixo) em vez de milhares de vezes.
+        # Restaurado pra automatico antes de salvar, pra nao mudar o modo de
+        # calculo padrao do arquivo pra quem abrir depois.
+        excel.Calculation = XL_CALCULATION_MANUAL
+        excel.ScreenUpdating = False
+
         # Colar linha por linha, NUNCA o bloco inteiro de uma vez: escrever um
         # array grande via Range.Value em uma unica chamada COM pode corromper
         # aleatoriamente algumas celulas em erro #N/A (bug de marshalling do
@@ -214,6 +230,13 @@ def colar_linhas_e_atualizar_pivots(caminho_copia: Path, linhas_novas: list, log
 
         log("Recalculando a planilha inteira...")
         excel.CalculateFullRebuild()
+
+        # Restaura o modo padrao (automatico) antes de salvar/mexer nas
+        # Pivots - o CalculateFullRebuild acima ja forcou o recalculo
+        # completo uma vez, entao nao perde nada; so' evita salvar o arquivo
+        # com o app deixado em modo manual.
+        excel.Calculation = XL_CALCULATION_AUTOMATIC
+        excel.ScreenUpdating = True
 
         log("Atualizando as Pivot Tables (Pivot_Inter., Pivot_Detalhes)...")
         wb.RefreshAll()
