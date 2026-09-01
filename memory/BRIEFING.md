@@ -3,7 +3,7 @@
 > Manter apenas as últimas 2 sessões inline — sessões mais antigas vão para long_term/.
 
 ---
-## EM ANDAMENTO 2026-09-01 (continuação, sessão longa, NOVA JANELA — retomar aqui) — Fechamento de Agosto/2026 Flash ao vivo: 5 bugs reais achados e corrigidos no botão "③ Finalização da Base Intermediária", NENHUMA tentativa confirmada de ponta a ponta ainda
+## EM ANDAMENTO 2026-09-01 (sessão longa, várias janelas) — Fechamento de Agosto/2026 Flash ao vivo: 8 bugs reais achados e corrigidos (Passos ③ Finalização e ④ Rateio de Custos). "③ Finalização" CONFIRMADO funcionando; "④ Rateio" corrigido e testado, ainda não rodado pela usuária pelo cockpit
 
 **IMPORTANTE PRA PRÓXIMA SESSÃO — primeira coisa a perguntar:** a usuária está no meio do
 fechamento de Agosto/2026 Flash, tentando repetidamente "③ Finalização da Base
@@ -174,24 +174,59 @@ linha fora de escopo. Rateio vigente desde 2026-08 já inclui RES 3%.
 - Sinal conferido (custo positivo na Base Intermediária, invertido pelo script): igual em
   Julho, comportamento normal, não é bug.
 
-**Estado ao terminar esta janela:** 8 correções aplicadas e compiladas
-(`gerar_base_intermediaria.py`, `ksb1_core.py`), mas **nenhuma delas foi confirmada
-funcionando de ponta a ponta ainda**. Scripts de diagnóstico usados ficaram no scratchpad
-da sessão anterior (não persistem — não procurar neles na próxima janela).
+**RESUMO CONSOLIDADO DA SESSÃO (8 causas raiz reais, todas corrigidas e compiladas):**
+1. "① Atualizar Pivot KSB1" lento (12+min) — cálculo automático recalculando o arquivo
+   inteiro a cada linha colada → cálculo manual durante a colagem.
+2. `excel.Calculation` setado antes de abrir workbook → COM rejeitava — movido pra depois do
+   `Workbooks.Open`.
+3. `-2147417846` (RPC "Excel ocupado") intermitente → `com_retry` (já existia) faltando em
+   2 chamadas de `CalculateFullRebuild`.
+4. Mesmo erro `-2147417846`, mas TODA vez (não intermitente) → 2 chamadas de
+   `CalculateFullRebuild` sem `com_retry`, logo depois do `RefreshAll` pesado.
+5. "40 células como erro #N/A" (2 causas): (5a) Pivot_Inter. lido antes do link externo
+   assentar → retry com espera em `ler_pivot_inter`; (5b) linhas amarelas sobrando sem
+   provisão deixavam fórmula Y:AJ pendurada → `limpar_provisoes`/`preencher_provisoes_flash`
+   passaram a limpar A-AJ por completo.
+6. Mesmo texto de erro, 3ª causa: corrupção residual do bug de marshalling do COM na
+   colagem principal (linha a linha reduz mas não zera) → retry célula a célula
+   (`_corrigir_celulas_com_erro`), até 5 tentativas antes de abortar.
+7. **CAUSA RAIZ DE VERDADE do "40 células"** (hipótese da usuária, não minha): não era COM,
+   eram #N/A REAIS — Resende (MF 0483) fora do range travado (`$K$2:$L$9`) da fórmula de
+   de-para de MF → `normalizar_formula_centro_montagem` amplia o range a cada geração do
+   KSB1; `_celulas_com_erro` passou a checar também colunas de rótulo (A-H).
+8. "④ Rateio de Custos" não rateava nada da Gerência — coluna F (Mini-Fábrica) perdia o
+   zero à esquerda ("0499"→499) ao colar via COM → `NumberFormat="@"` força texto na
+   origem + `_normalizar_mini_fabrica` (zfill) protege o lado do rateio também.
+
+**Testado e CONFIRMADO funcionando:** "③ Finalização" rodou de ponta a ponta com sucesso
+(usuária confirmou: "deu certo"). "④ Rateio de Custos" testado com o arquivo real de Agosto
+(saída no scratchpad, nada escrito na rede) — Gerência ratada corretamente (SJP -16,7 |
+IBI -39,0 | GOI -21,5 | RES -2,4), todos os checks por unidade ✓ OK.
+
+**NÃO testado ainda:** a usuária ainda não rodou "④ Rateio de Custos" pelo cockpit de
+verdade (só eu testei via linha de comando, saída fora da rede) — Passos ⑤ Mensalização e
+⑥ P&L nem começaram este mês.
+
+**Cópia de rede do cockpit:** sincronizada com todos os arquivos tocados hoje
+(`gerar_base_intermediaria.py`, `gerar_ksb1_mensal.py`, `gerar_rateio_custos.py`).
+
+**Backup:** commit + push feitos (auto, pelo hook de sessão longa, e manual no fechamento
+desta janela) — tudo salvo no GitHub.
 
 **PENDENTE (checar na próxima sessão, nesta ordem):**
-1. **Perguntar se "③ Finalização" (Agosto/2026 Flash) já funcionou de ponta a ponta**, agora
-   com a correção #6 (retry célula a célula) também aplicada. Se não, pedir o log/print mais
-   recente — pode ser um 7º problema novo, não repetição dos 6 já corrigidos. Lembrar: ela
-   precisa fechar/reabrir o cockpit pra carregar o código corrigido, se ainda não fez.
-2. Se funcionou: seguir acompanhando o resto do fechamento de Agosto/2026 Flash pelo cockpit
-   (Passos ④-⑥ ainda não rodados nesta sessão nem na anterior).
+1. **Perguntar se "④ Rateio de Custos" (Agosto/2026 Flash) rodou pelo cockpit e bateu com o
+   que eu testei** (Gerência ratada, checks ✓). Se der erro novo, a mensagem de erro do
+   Pivot_Inter. agora aponta a coluna afetada — pedir esse texto.
+2. Se bateu: seguir acompanhando o resto do fechamento (Passos ⑤ Mensalização, ⑥ P&L —
+   ainda não rodados este mês).
 3. Investigar por que o Excel de operações bem-sucedidas não fecha sozinho às vezes
    (`excel.Quit()` não garantindo o encerramento) — não urgente, `com_retry` no Quit deve
    ajudar.
-4. Registrar em `memory/learnings/` (ou complementar o learning existente) os achados #4/#5/#6
-   acima se for útil pra outros scripts do cockpit — hoje só o achado #1 (cálculo manual) e
-   o #5a/#5b/#6 (arquivos de erro dedicados) estão documentados fora do BRIEFING.
+4. Considerar consolidar os achados #1-#8 acima em `memory/learnings/` (padrões reutilizáveis:
+   cálculo manual em colagem grande, `com_retry` sempre após operação pesada, diferenciar
+   #N/A real de corrupção de COM via contagem estável entre rodadas, cuidado com
+   zero-à-esquerda perdido ao escrever texto via COM) — hoje cada um só tem o arquivo de
+   erro/decisão individual, não uma lição consolidada.
 
 ---
 ## CONCLUÍDO 2026-09-01 — Cockpit reestruturado (7→6 abas), tooltips no hover, cor do botão; commitado, backup e push feitos, usuária liberada pra usar
