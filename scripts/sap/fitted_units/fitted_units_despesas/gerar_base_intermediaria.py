@@ -71,6 +71,7 @@ import json
 import re
 import shutil
 import sys
+import time
 
 import pywintypes
 from pathlib import Path
@@ -232,7 +233,7 @@ def atualizar_comparacao_flash(excel, wb, mes: int, ano: int, log):
 
     wb_flash = excel.Workbooks.Open(str(caminho_flash), ReadOnly=True, UpdateLinks=0)
     try:
-        excel.CalculateFullRebuild()
+        com_retry(excel.CalculateFullRebuild, log=log)
         ws_flash = wb_flash.Worksheets("Pivot")
         valor_despesas = ws_flash.Cells(LINHA_PIVOT_DESPESAS_PROPRIO, col).Value
         valor_mao_de_obra = ws_flash.Cells(LINHA_PIVOT_MAO_DE_OBRA_PROPRIO, col).Value
@@ -353,7 +354,7 @@ def ler_forecast_despesas_mao_de_obra(excel, caminho_forecast: Path, mes_coluna:
     col = COL_FORECAST_JANEIRO + mes_coluna - 1
     wb = excel.Workbooks.Open(str(caminho_forecast), ReadOnly=True, UpdateLinks=0)
     try:
-        excel.CalculateFullRebuild()
+        com_retry(excel.CalculateFullRebuild, log=log)
         ws = wb.Worksheets(ABA_FORECAST_RESUMO)
         variable_cost = ws.Cells(LINHA_FORECAST_VARIABLE_COST, col).Value
         labour_variavel = ws.Cells(LINHA_FORECAST_LABOUR_VARIAVEL, col).Value
@@ -438,22 +439,65 @@ def localizar_base_intermediaria_mes_anterior(mes: int, ano: int) -> Path:
     return caminho
 
 
-def ler_pivot_inter(caminho_base_ksb1: Path, excel, log):
+def _celulas_com_erro(valores, n_cols_rotulo):
+    """Devolve [(linha_relativa, coluna, rotulo_A_H)] pra toda celula de
+    VALOR (fora das colunas de rotulo) gravada como erro (#N/A etc. vem do
+    COM como int negativo) numa tupla de tuplas lida via Range.Value."""
+    erros = []
+    for i, linha in enumerate(valores):
+        linha = list(linha)
+        if linha and linha[0] == "Grand Total":
+            continue
+        for j, v in enumerate(linha):
+            if j >= n_cols_rotulo and isinstance(v, int) and v < 0:
+                erros.append((i, j, linha[:n_cols_rotulo]))
+    return erros
+
+
+def ler_pivot_inter(caminho_base_ksb1: Path, excel, log, tentativas=4, espera_s=5):
     log(f"Lendo Pivot_Inter. de {caminho_base_ksb1.name}...")
     wb = com_retry(
         excel.Workbooks.Open, str(caminho_base_ksb1), ReadOnly=True, UpdateLinks=0, log=log
     )
     try:
-        # Sem isso, algumas celulas do Pivot_Inter podem ser gravadas como
-        # "#N/A" no arquivo final (o calculo assincrono ligado ao link externo
-        # da base de contas nao tinha terminado antes do Save) - achado
-        # testando ao vivo em 2026-08-21.
-        com_retry(excel.CalculateFullRebuild, log=log)
-        com_retry(excel.CalculateUntilAsyncQueriesDone, log=log)
         ws = wb.Worksheets("Pivot_Inter.")
         last_row = ws.Cells(ws.Rows.Count, 1).End(XL_UP).Row
         last_col = ws.Cells(4, ws.Columns.Count).End(XL_TO_LEFT).Column
-        valores = ws.Range(ws.Cells(4, 1), ws.Cells(last_row, last_col)).Value
+
+        # Sem recalcular antes de ler, algumas celulas do Pivot_Inter podem
+        # ser gravadas como "#N/A" no arquivo final (o calculo assincrono
+        # ligado ao link externo da base de contas nao tinha terminado antes
+        # do Save) - achado testando ao vivo em 2026-08-21. Mesmo com o
+        # CalculateFullRebuild/CalculateUntilAsyncQueriesDone abaixo, o link
+        # externo pode levar mais alguns segundos pra "assentar" de verdade
+        # (rede) - por isso reconfere e tenta de novo (com espera) antes de
+        # desistir, em vez de devolver o #N/A direto pra usuaria decidir
+        # manualmente se roda tudo de novo (achado ao vivo em 2026-09-01: os
+        # mesmos ~40 valores vinham como erro em tentativas sucessivas do
+        # botao, cada uma com um Excel/leitura novos, ate sumirem sozinhos
+        # alguns minutos depois - ou seja, e' a origem assentando, nao o bug
+        # de marshalling da colagem, que ja e' protegido a parte).
+        for tentativa in range(tentativas):
+            com_retry(excel.CalculateFullRebuild, log=log)
+            com_retry(excel.CalculateUntilAsyncQueriesDone, log=log)
+            valores = ws.Range(ws.Cells(4, 1), ws.Cells(last_row, last_col)).Value
+            erros = _celulas_com_erro(valores[1:], N_COLS_LABEL)
+            if not erros:
+                break
+            log(
+                f"  {len(erros)} célula(s) do Pivot_Inter. ainda vieram como erro "
+                f"(link externo provavelmente ainda assentando) — esperando {espera_s}s "
+                f"e recalculando de novo ({tentativa + 1}/{tentativas})..."
+            )
+            time.sleep(espera_s)
+        else:
+            rotulos = ", ".join(str(rotulo) for _, _, rotulo in erros[:5])
+            raise RuntimeError(
+                f"{len(erros)} célula(s) do Pivot_Inter. de '{caminho_base_ksb1.name}' continuam "
+                f"gravadas como erro (#N/A) mesmo após {tentativas} recálculos — não é mais o "
+                "link externo assentando, é um problema real nos dados (ex: conta ou centro de "
+                f"custo sem correspondência na base de contas). Linhas afetadas (rótulo A-H): {rotulos}..."
+            )
     finally:
         com_retry(wb.Close, SaveChanges=False, log=log)
 
@@ -610,6 +654,7 @@ def preencher_provisoes_flash(wb, mes: int, ano: int, log):
     capacidade = ultima_linha_amarela - LINHA_INTER_PROVISAO_INICIO + 1
     if len(provisoes) > capacidade:
         inserir_linhas_amarelas_novas(ws, len(provisoes) - capacidade, ultima_linha_amarela, log)
+        ultima_linha_amarela = encontrar_ultima_linha_amarela(ws)
 
     col_mes = N_COLS_LABEL + mes
     for i, (conta, centro, valor) in enumerate(provisoes):
@@ -624,22 +669,45 @@ def preencher_provisoes_flash(wb, mes: int, ano: int, log):
 
     log(f"  {len(provisoes)} linha(s) colorida(s) preenchida(s) (linhas {LINHA_INTER_PROVISAO_INICIO}-{LINHA_INTER_PROVISAO_INICIO + len(provisoes) - 1}).")
 
-
-COL_PROVISAO_LIMPAR_FIM = N_COLS_LABEL + 12  # T - todos os 12 meses, alem dos rotulos A-H
+    # Linhas amarelas dentro da capacidade mas sem provisão neste mês (ex:
+    # mês com menos provisões que o mês anterior, ou capacidade herdada de
+    # um mês antigo com mais linhas): limpa por completo, incluindo as
+    # fórmulas de Y:AJ herdadas do template/inserção de linha, senão ficam
+    # penduradas referenciando uma linha em branco e sempre resolvem em
+    # #N/A — achado ao vivo em 2026-09-01 pela usuária, olhando o arquivo
+    # direto no Excel (linhas 27+ da Intermediária de Agosto/Flash).
+    primeira_linha_sobrando = LINHA_INTER_PROVISAO_INICIO + len(provisoes)
+    if primeira_linha_sobrando <= ultima_linha_amarela:
+        ws.Range(
+            ws.Cells(primeira_linha_sobrando, 1), ws.Cells(ultima_linha_amarela, COL_FORMULA_FIM)
+        ).ClearContents()
+        log(
+            f"  Linhas amarelas sem provisão este mês ({primeira_linha_sobrando}-{ultima_linha_amarela}) "
+            "limpas por completo (inclusive fórmulas Y:AJ herdadas), pra não sobrar #N/A."
+        )
 
 
 def limpar_provisoes(ws, log):
-    """Apaga o conteúdo das linhas AMARELAS (provisão), sem tocar na
-    formatação/cor nem nas linhas verdes/roxas (confirmado explicitamente
-    pela usuária em 2026-08-22 — bug real corrigido nesta data: a versão
-    anterior apagava até a última linha COLORIDA, incluindo verde/roxa, e
-    isso também destruía a fórmula "molde" da roxa antes dela ser copiada).
+    """Apaga o conteúdo das linhas AMARELAS (provisão) POR COMPLETO —
+    rótulos/valores (A-T) e as fórmulas herdadas de Y:AJ (Gestorial II até
+    Conta Geral) — sem tocar na formatação/cor nem nas linhas verdes/roxas
+    (confirmado explicitamente pela usuária em 2026-08-22 — bug real
+    corrigido nesta data: a versão anterior apagava até a última linha
+    COLORIDA, incluindo verde/roxa, e isso também destruía a fórmula
+    "molde" da roxa antes dela ser copiada).
+
+    Limpar só até a coluna T (sem incluir Y:AJ) deixava a fórmula de Y:AJ
+    de linhas que ficaram sem uso (ex: mês com menos provisões que o
+    anterior) pendurada referenciando uma linha agora em branco — sempre
+    resolvendo em #N/A. Achado ao vivo em 2026-09-01 pela usuária, olhando
+    o arquivo direto no Excel.
+
     Usado pelo 'Atualizar Provisões' antes de preencher de novo, mesmo
     espírito do full-rebuild da área branca (evita sobrar provisão antiga
     se a lista nova tiver menos linhas que a anterior)."""
     ultima_linha_amarela = encontrar_ultima_linha_amarela(ws)
     ws.Range(
-        ws.Cells(LINHA_INTER_PROVISAO_INICIO, 1), ws.Cells(ultima_linha_amarela, COL_PROVISAO_LIMPAR_FIM)
+        ws.Cells(LINHA_INTER_PROVISAO_INICIO, 1), ws.Cells(ultima_linha_amarela, COL_FORMULA_FIM)
     ).ClearContents()
     log(f"  Linhas amarelas (2-{ultima_linha_amarela}) limpas antes de preencher de novo (verdes/roxas não são tocadas).")
 
@@ -684,10 +752,10 @@ def lancar_provisoes(
                 "A cópia abriu em modo somente leitura — provavelmente já está aberta por outro processo."
             )
         preencher_provisoes_flash(wb, mes, ano, log)
-        excel.CalculateFullRebuild()
+        com_retry(excel.CalculateFullRebuild, log=log)
         log("Salvando...")
-        wb.Save()
-        wb.Close(SaveChanges=False)
+        com_retry(wb.Save, log=log)
+        com_retry(wb.Close, SaveChanges=False, log=log)
     finally:
         excel.Quit()
 
@@ -714,10 +782,10 @@ def atualizar_provisoes(mes: int, ano: int, pasta_saida: Path, log=print, pid_ca
         ws = wb.Worksheets("Intermediária")
         limpar_provisoes(ws, log)
         preencher_provisoes_flash(wb, mes, ano, log)
-        excel.CalculateFullRebuild()
+        com_retry(excel.CalculateFullRebuild, log=log)
         log("Salvando...")
-        wb.Save()
-        wb.Close(SaveChanges=False)
+        com_retry(wb.Save, log=log)
+        com_retry(wb.Close, SaveChanges=False, log=log)
     finally:
         excel.Quit()
 
