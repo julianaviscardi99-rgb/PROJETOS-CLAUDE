@@ -720,3 +720,66 @@ Mecanismo validado via COM: `wb.LinkSources(1)` lista os links; `wb.ChangeLink(n
 **Aplicado em `atualizar_ksb1_gui.py`:** descrição da aba ③ (Provisões) e da aba ④ (Base Intermediária) agora abrem com um parágrafo "ORDEM DE CLIQUE NO FLASH" explicando a sequência real (① Atualizar Pivot KSB1 → ② Lançar Provisões → ③ Finalização da Base Intermediária) e avisando que rodar fora de ordem no Flash dá erro ou sobrescreve provisões já lançadas. No Actual, sem essa quebra — os dois botões da aba ④ rodam direto.
 
 **Pendente:** rede não foi re-sincronizada (`robocopy /MIR` da cópia de rede pro estagiário) — fazer se/quando outras mudanças também estiverem prontas, pra não gerar vários syncs pequenos.
+
+---
+
+## 2026-09-01 (continuação) — Decisão anterior ("só reforçar texto") substituída: Passo 3 e 4 fundidos numa aba só
+
+**Contexto:** logo depois de aplicar a decisão anterior (só reforçar o texto de aviso nas
+abas ③ Provisões e ④ Base Intermediária — ver entrada acima), a usuária reconsiderou e
+propôs uma solução melhor: já que o problema é a ordem de clique não seguir a numeração das
+abas, por que não fundir as duas abas numa só e simplesmente numerar os botões na ordem
+certa?
+
+**Decisão da usuária:** fundir. Aplicada em `atualizar_ksb1_gui.py`:
+- Aba ③ "Provisões" + aba ④ "Base Intermediária" → uma aba só, nova ③ "Base Intermediária",
+  com 4 botões nomeados na ordem de clique real: "①  Atualizar Pivot KSB1", "②  Lançar
+  Provisões", "②  Atualizar Provisões" (mesma numeração ② nos dois — são alternativas pro
+  mesmo passo, não sequenciais entre si), "③  Finalização da Base Intermediária".
+- Abas seguintes renumeradas: Rateio de Custos (era ⑤/Passo 5) → ④/Passo 4; Mensalização
+  (era ⑥/Passo 6) → ⑤/Passo 5; P&L (era ⑦/Passo 7) → ⑥/Passo 6. Cockpit: 7 abas → 6 abas.
+- Wiring de botões (`botoes[indice][i].config(command=...)`) reajustado pros novos índices.
+- **Bug real achado durante o reajuste:** o aviso de Janeiro ("confirmar rateio da
+  Gerência") checava `indice == 4` (índice antigo da aba Rateio de Custos) — corrigido pra
+  `indice == 3` (novo índice). Sem essa correção, o aviso pararia de aparecer no Ciclo/mês
+  certo, silenciosamente (sem erro, só o aviso sumindo).
+- Textos corrigidos: aviso de Janeiro ("Vá na aba '④ Rateio de Custos'"), comentário e
+  mensagem sobre "Atualizar Faturamento (Passo 5)" e "O Custo do Passo 5 foi atualizado"
+  (ambos eram "Passo 6" antes da renumeração).
+
+**Validado:** `py_compile` sem erro. Não testado visualmente ainda na janela (pendente:
+confirmar que a aba ③ fundida renderiza os 4 botões e que cada um dispara a função certa).
+
+**Memória atualizada:** `reference_cockpit_fechamento_fitted.md` (7 abas → 6 abas, descrição
+da nova aba ③).
+
+**Cópia de rede:** re-sincronizada nesta mesma sessão (`robocopy /MIR`) — ver rodapé desta
+entrada ou a mensagem da sessão pra confirmação do resultado.
+
+---
+
+## 2026-09-01 (continuação) — Layout final do cockpit: texto lado a lado virou tooltip no hover; botão "Atualizar Provisões" ganhou cor cinza
+
+**Contexto:** depois de fundir Passo 3+4 numa aba só (entrada anterior), a primeira tentativa
+de resolver "botões empurrados pra baixo" foi colocar os 3 itens numerados lado a lado
+(3 colunas). A usuária testou e achou "um horror" — pediu pra inverter a prioridade: botões
+sempre no topo da aba, e o texto explicativo só aparece ao passar o mouse em cima do botão.
+
+**Decisão e implementação:**
+- Nova classe `_Tooltip` (Toplevel sem borda, aparece no `<Enter>`, some no `<Leave>`/clique)
+  aplicada a TODOS os botões do cockpit (não só na aba ③) — cada `passo["botoes"][i]` agora
+  tem um `passo["tooltips"][i]` correspondente. As chaves `"descricao"`/`"itens"` (texto
+  sempre visível) foram removidas do dicionário `PASSOS` e do `fazer_aba` — cada aba mostra
+  só `titulo` + botões, nada mais, o que deixou os botões colados no topo em todas as 6 abas
+  (não só na ③).
+- **Pedido adicional:** o botão "② Atualizar Provisões" (ação secundária/alternativa a
+  "Lançar Provisões", só usada depois de uma correção no Fast Provisão) ganhou uma cor
+  cinza-clara própria (`Secundario.TButton`, `#E7E7EA`), pra se diferenciar visualmente dos
+  demais botões amarelos (`Pirelli.TButton`). Suporte genérico adicionado (`passo["estilos"]`,
+  paralelo a `"botoes"`), reutilizável se outro botão precisar de estilo diferente no futuro.
+
+**Validado:** `py_compile` sem erro a cada mudança; usuária confirmou visualmente ("ficou
+ótimo") depois de reabrir o cockpit 3x ao longo da sessão (fusão de abas → tooltip → cor do
+botão). Wiring de botões (`botoes[indice][i].config(command=...)`) reconferido depois de cada
+mudança de estrutura — nenhuma função de negócio (`ao_clicar_*`) foi alterada, só a
+apresentação (título/tooltip/estilo) e a estrutura de abas.

@@ -307,94 +307,134 @@ TEXTO_SECUNDARIO = "#5a5c60"
 LOG_BG = "#ffffff"
 LOG_FG = "#111111"
 
+
+class _Tooltip:
+    """Caixa de texto que aparece ao passar o mouse sobre um widget (ex:
+    botao) e some ao tirar o mouse - usado pra explicar o que cada botao faz
+    sem deixar o texto sempre visivel ocupando espaco da tela (a usuaria
+    achou o texto sempre visivel "um horror" em 2026-09-01, depois de pedir
+    os passos lado a lado - preferiu botoes logo no topo da aba, com o
+    detalhe so' aparecendo sob demanda)."""
+
+    def __init__(self, widget, texto, wraplength=420):
+        self.widget = widget
+        self.texto = texto
+        self.wraplength = wraplength
+        self.janela = None
+        widget.bind("<Enter>", self._mostrar)
+        widget.bind("<Leave>", self._esconder)
+        widget.bind("<Button-1>", self._esconder)
+
+    def _mostrar(self, event=None):
+        if self.janela or not self.texto:
+            return
+        self.janela = tk.Toplevel(self.widget)
+        self.janela.wm_overrideredirect(True)
+        self.janela.wm_geometry(f"+{event.x_root + 16}+{event.y_root + 12}")
+        tk.Label(
+            self.janela, text=self.texto, justify="left", wraplength=self.wraplength,
+            bg="#FFFBE6", fg="#111111", font=("Segoe UI", 9),
+            relief="solid", borderwidth=1, padx=10, pady=8,
+        ).pack()
+
+    def _esconder(self, event=None):
+        if self.janela:
+            self.janela.destroy()
+            self.janela = None
+
+
 PASSOS = [
     {
         "aba": "①  Extração",
         "titulo": "Passo 1 · Extrair KSB1",
-        "descricao": (
+        "botoes": ["Extrair KSB1 (Gestoriais + Sem Agrupamento)"],
+        "tooltips": [
             "Baixa a KSB1 direto do SAP (Gestoriais + Sem Agrupamento) pro mês/ano/Ciclo "
             "escolhidos e salva os dois arquivos na área de rede, já identificados com o "
             "Ciclo no nome. Pré-requisito: SAP GUI aberto e logado na tela inicial (o "
-            "script abre a transação sozinho)."
-        ),
-        "botoes": ["Extrair KSB1 (Gestoriais + Sem Agrupamento)"],
+            "script abre a transação sozinho).",
+        ],
     },
     {
         "aba": "②  Check de Agrupamentos",
         "titulo": "Passo 2 · Check de Agrupamentos",
-        "descricao": (
+        "botoes": ["Gerar Check de Agrupamentos"],
+        "tooltips": [
             "Confere se toda conta contábil do Sem Agrupamento está vinculada a um "
             "agrupamento gestorial, comparando com o arquivo Gestoriais do mesmo mês/Ciclo. "
-            "Usa os arquivos já extraídos no Passo 1 — não acessa o SAP."
-        ),
-        "botoes": ["Gerar Check de Agrupamentos"],
+            "Usa os arquivos já extraídos no Passo 1 — não acessa o SAP.",
+        ],
     },
     {
         "aba": "③  Base Intermediária",
-        "titulo": "Passo 3 · Base Intermediária",
-        "descricao": (
-            "4 botões, sempre nesta ordem (o número no nome do botão é a ordem de clique):\n\n"
-            "① 'Atualizar Pivot KSB1' — atualiza o KSB1 acumulado do ano (BASE_KSB1 + Pivot "
-            "Tables nativas) com as linhas do mês e prepara os valores pra colar na Base "
-            "Intermediária. Usa o Ciclo selecionado (Actual/Flash) pra escolher a extração "
-            "certa do Passo 1 e também no nome do arquivo final.\n\n"
-            "② 'Lançar Provisões' / 'Atualizar Provisões' — SÓ pro Ciclo Flash (pule no "
-            "Actual). Cria a Base Intermediária Flash do mês (a partir do Actual do mês "
-            "anterior) e preenche as linhas coloridas com as provisões/reclassificações do "
-            "'Fast Provisão' mais recente da pasta de rede. 'Lançar' cria o arquivo pela "
-            "primeira vez; 'Atualizar' relê o Fast Provisão (ex: depois de uma correção) e "
-            "atualiza um arquivo já criado. O Fast Provisão precisa estar fechado e salvo "
-            "antes de rodar qualquer um dos dois.\n\n"
-            "③ 'Finalização da Base Intermediária' — lê o Pivot_Inter. do BASE_KSB1 (já "
-            "atualizado no botão ①) e reconstrói a área de dados da Intermediária. No Flash, "
-            "reaproveita o arquivo que o botão ② já criou/atualizou — rodar antes do ② dá "
-            "erro (arquivo não encontrado) ou sobrescreve as provisões já lançadas."
-        ),
+        "titulo": "Passo 3 · Base Intermediária (passe o mouse sobre cada botão pra ver o que ele faz)",
         "botoes": [
             "①  Atualizar Pivot KSB1",
             "②  Lançar Provisões",
             "②  Atualizar Provisões",
             "③  Finalização da Base Intermediária",
         ],
+        "estilos": [
+            "Pirelli.TButton",
+            "Pirelli.TButton",
+            "Secundario.TButton",
+            "Pirelli.TButton",
+        ],
+        "tooltips": [
+            "① Sempre o primeiro botão a clicar aqui. Atualiza o KSB1 acumulado do ano "
+            "(BASE_KSB1 + Pivot Tables nativas) com as linhas do mês e prepara os valores "
+            "pra colar na Base Intermediária. Usa o Ciclo selecionado (Actual/Flash) pra "
+            "escolher a extração certa do Passo 1 e também no nome do arquivo final.",
+            "② SÓ pro Ciclo Flash (pule no Actual). Cria a Base Intermediária Flash do mês "
+            "pela primeira vez (a partir do Actual do mês anterior) e preenche as linhas "
+            "coloridas com as provisões/reclassificações do 'Fast Provisão' mais recente da "
+            "pasta de rede. O Fast Provisão precisa estar fechado e salvo antes de rodar.",
+            "② SÓ pro Ciclo Flash. Relê o Fast Provisão (ex: depois de uma correção/nova "
+            "versão) e atualiza um arquivo de Base Intermediária Flash já criado pelo "
+            "'Lançar Provisões' — não cria cópia nova. O Fast Provisão precisa estar "
+            "fechado e salvo antes de rodar.",
+            "③ Lê o Pivot_Inter. do BASE_KSB1 (já atualizado no botão ①) e reconstrói a área "
+            "de dados da Base Intermediária. No Flash, reaproveita o arquivo que o botão ② "
+            "já criou/atualizou — rodar antes do ② dá erro (arquivo não encontrado) ou "
+            "sobrescreve as provisões já lançadas.",
+        ],
     },
     {
         "aba": "④  Rateio de Custos",
         "titulo": "Passo 4 · Rateio de Custos",
-        "descricao": (
-            "'Abertura de Custos por Unidade' lê a "
-            "Base Intermediária do mês/Ciclo (Passo 3 já rodado) e gera o arquivo de "
-            "Rateio de Custos, com o check por unidade e a aba 'Comentários'. "
-            "'Atualizar Rateio' abre um quadro editável com o % vigente pra cada "
-            "unidade — se você não mudar num Ciclo, o rateio anterior continua valendo."
-        ),
         "botoes": ["Abertura de Custos por Unidade", "Atualizar Rateio"],
+        "tooltips": [
+            "Lê a Base Intermediária do mês/Ciclo (Passo 3 já rodado) e gera o arquivo de "
+            "Rateio de Custos, com o check por unidade e a aba 'Comentários'.",
+            "Abre um quadro editável com o % vigente pra cada unidade — se você não mudar "
+            "num Ciclo, o rateio anterior continua valendo.",
+        ],
     },
     {
         "aba": "⑤  Mensalização",
         "titulo": "Passo 5 · Mensalização",
-        "descricao": (
-            "Gera o arquivo de Mensalização - copia a base certa (Forecast do mês, ou "
-            "o Flash já fechado quando o Ciclo for Actual), aplica os ajustes de cenário "
-            "quando necessário, e cola os valores do Passo 4 (Rateio de Custos) na "
-            "coluna do mês sendo fechado. 'Atualizar Faturamento' ainda não foi "
-            "automatizado (Net Sales continua manual por enquanto)."
-        ),
         "botoes": ["Atualizar Faturamento", "Atualizar Custo"],
+        "tooltips": [
+            "Ainda não foi automatizado — Net Sales continua manual por enquanto.",
+            "Gera o arquivo de Mensalização - copia a base certa (Forecast do mês, ou o "
+            "Flash já fechado quando o Ciclo for Actual), aplica os ajustes de cenário "
+            "quando necessário, e cola os valores do Passo 4 (Rateio de Custos) na coluna "
+            "do mês sendo fechado.",
+        ],
     },
     {
         "aba": "⑥  P&L",
         "titulo": "Passo 6 · P&L",
-        "descricao": (
-            "Gera o arquivo de P&L do mês/Ciclo selecionado - copia o P&L do mesmo Ciclo "
-            "do mês anterior (Actual ou Flash já fechados precisam existir) e troca os "
-            "links (Mensalização, Forecast, Flash - e PY/MP se for Janeiro) e os textos "
-            "que mudam todo mês. Gera também a cópia congelada (só valor). Validado "
-            "contra os arquivos reais de Julho/2026 (Actual e Flash, zero diferença). "
-            "'Enviar P&L para Controladoria Central via email' abre um rascunho no "
-            "Outlook (com a diferença de EBIT já calculada e o arquivo congelado em "
-            "anexo) - NUNCA envia sozinho, você confere e aperta enviar."
-        ),
         "botoes": ["Gerar Arquivo de P&L", "Enviar P&L para Controladoria Central via email"],
+        "tooltips": [
+            "Gera o arquivo de P&L do mês/Ciclo selecionado - copia o P&L do mesmo Ciclo do "
+            "mês anterior (Actual ou Flash já fechados precisam existir) e troca os links "
+            "(Mensalização, Forecast, Flash - e PY/MP se for Janeiro) e os textos que mudam "
+            "todo mês. Gera também a cópia congelada (só valor). Validado contra os "
+            "arquivos reais de Julho/2026 (Actual e Flash, zero diferença).",
+            "Abre um rascunho no Outlook (com a diferença de EBIT já calculada e o arquivo "
+            "congelado em anexo) - NUNCA envia sozinho, você confere e aperta enviar.",
+        ],
     },
 ]
 
@@ -461,6 +501,18 @@ def _configurar_estilo(root):
         ],
     )
 
+
+    # Botao cinza clarinho pra acoes secundarias/alternativas (ex: "Atualizar
+    # Provisoes", que so' se usa depois de uma correcao - "Lancar Provisoes"
+    # e' a acao principal do par) - pedido da usuaria, 2026-09-01. Reusa o
+    # mesmo layout do Pirelli.TButton (sem o artefato de foco do tema clam).
+    style.configure("Secundario.TButton", font=("Segoe UI", 11, "bold"), foreground="black", borderwidth=0)
+    style.map(
+        "Secundario.TButton",
+        background=[("!disabled", "#E7E7EA"), ("disabled", "#f1f1f2")],
+        foreground=[("!disabled", "black"), ("disabled", "#8a8a8a")],
+    )
+    style.layout("Secundario.TButton", style.layout("Pirelli.TButton"))
 
     # Combobox usa listas suspensas nativas do Tk (nao ttk) — precisam ser
     # coloridas separadamente, senao ficam brancas mesmo com o tema escuro.
@@ -740,10 +792,7 @@ def main():
             widget.bind("<Button-1>", lambda e, i=indice: selecionar_aba(i))
         labels_aba[indice] = (tab_frame, icone_lbl, texto_lbl)
 
-        ttk.Label(aba, text=passo["titulo"], style="Titulo.TLabel").pack(anchor="w")
-        ttk.Label(aba, text=passo["descricao"], style="Descricao.TLabel", justify="left").pack(
-            anchor="w", pady=(8, 20)
-        )
+        ttk.Label(aba, text=passo["titulo"], style="Titulo.TLabel").pack(anchor="w", pady=(0, 14))
 
         if indice == 3 and aviso_rateio_janeiro:
             tk.Label(
@@ -759,10 +808,15 @@ def main():
 
         widgets = []
         rotulos = passo["botoes"]
+        tooltips = passo.get("tooltips", [])
+        estilos = passo.get("estilos", [])
         for i, rotulo in enumerate(rotulos):
-            btn = ttk.Button(aba, text=rotulo, style="Pirelli.TButton", cursor="hand2")
+            estilo = estilos[i] if i < len(estilos) else "Pirelli.TButton"
+            btn = ttk.Button(aba, text=rotulo, style=estilo, cursor="hand2")
             btn.pack(fill=tk.X, ipady=8, pady=(0, 8) if i < len(rotulos) - 1 else 0)
             widgets.append(btn)
+            if i < len(tooltips) and tooltips[i]:
+                _Tooltip(btn, tooltips[i])
         botoes[indice] = widgets
         return aba
 
