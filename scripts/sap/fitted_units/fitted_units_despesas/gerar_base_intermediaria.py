@@ -777,18 +777,6 @@ def atualizar_base_intermediaria(
 
     excel = abrir_excel_isolado(log, pid_callback)
     try:
-        # Calculo manual durante a leitura do Pivot_Inter. + colagem linha a
-        # linha + AutoFill abaixo: com calculo automatico (padrao do Excel),
-        # cada uma das centenas/milhares de escritas dispara recalculo do
-        # arquivo inteiro - motivo real da operacao levar 10+ minutos num mes
-        # com muitas linhas (mesmo achado de gerar_ksb1_mensal.py, 2026-09-01).
-        # Nao afeta a protecao contra o bug de corrupcao #N/A (que e' sobre a
-        # GRANULARIDADE da escrita, nao o modo de calculo) - o recalculo
-        # completo abaixo (CalculateFullRebuild) continua garantindo o valor
-        # certo antes de qualquer leitura de celula.
-        excel.Calculation = XL_CALCULATION_MANUAL
-        excel.ScreenUpdating = False
-
         cabecalho_pivot, linhas_pivot, n_meses = ler_pivot_inter(caminho_base_ksb1, excel, log)
 
         wb = excel.Workbooks.Open(str(caminho_saida), UpdateLinks=0, ReadOnly=False)
@@ -797,6 +785,23 @@ def atualizar_base_intermediaria(
                 "A cópia abriu em modo somente leitura — provavelmente já está aberta por outro processo."
             )
         ws = wb.Worksheets("Intermediária")
+
+        # Calculo manual durante a colagem linha a linha + AutoFill abaixo:
+        # com calculo automatico (padrao do Excel), cada uma das
+        # centenas/milhares de escritas dispara recalculo do arquivo inteiro
+        # - motivo real da operacao levar 10+ minutos num mes com muitas
+        # linhas (mesmo achado de gerar_ksb1_mensal.py, 2026-09-01). Nao
+        # afeta a protecao contra o bug de corrupcao #N/A (que e' sobre a
+        # GRANULARIDADE da escrita, nao o modo de calculo) - o recalculo
+        # completo abaixo (CalculateFullRebuild) continua garantindo o valor
+        # certo antes de qualquer leitura de celula. Precisa vir DEPOIS de
+        # abrir uma pasta de trabalho - setar Application.Calculation sem
+        # nenhum workbook aberto (ex: logo apos abrir_excel_isolado, antes
+        # do ler_pivot_inter acima) derruba com "Unable to set the
+        # Calculation property of the Application class" (achado ao vivo,
+        # 2026-09-01, gerando erro real no Passo 3 pra usuaria).
+        excel.Calculation = XL_CALCULATION_MANUAL
+        excel.ScreenUpdating = False
 
         primeira_sem_cor = encontrar_primeira_linha_sem_cor(ws)
         last_row_antiga = ws.Cells(ws.Rows.Count, 1).End(XL_UP).Row
