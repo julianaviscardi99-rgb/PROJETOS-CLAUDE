@@ -180,6 +180,25 @@ CONTAS_FORCADAS_HANDLING_VARIAVEL = {4257000}
 CONTAS_FORCADAS_TRANSPORTATION_VARIAVEL = {4211000}
 
 
+def _normalizar_mini_fabrica(valor) -> str:
+    """O código da Mini-Fábrica é um texto de 4 dígitos com zero à esquerda
+    ("0499" = Gerência, "0491" = IBI...). Dependendo de como a linha foi
+    parar na Base Intermediária, ele pode chegar aqui como número (499) em
+    vez de texto: escrever a string "0499" numa célula de formato Geral faz
+    o Excel converter pra número e comer o zero. Quando isso acontecia,
+    NENHUMA unidade casava e a Gerência sumia do rateio inteiro (achado ao
+    vivo em 2026-09-01, fechamento de Agosto). A origem já foi corrigida
+    (gerar_base_intermediaria.py força formato de texto na coluna F), mas
+    normalizar aqui também garante que arquivo antigo ou mexido à mão não
+    volte a quebrar o rateio em silêncio."""
+    if valor is None:
+        return ""
+    if isinstance(valor, float) and valor.is_integer():
+        valor = int(valor)
+    texto = str(valor).strip()
+    return texto.zfill(4) if texto.isdigit() else texto
+
+
 def _resolver_subcategoria(tipo: str, conta_geral):
     """Traduz o valor da coluna AJ (Conta Geral) da Base Intermediária pro
     nosso rótulo de exibição, considerando se ele faz sentido dentro do
@@ -336,7 +355,7 @@ def ler_e_classificar(caminho_base_intermediaria: Path, mes: int, log):
             # corrigido em 2026-08-25, testando contra Julho/Actual real).
             chave = (tipo, subcat)
 
-        mini_fabrica_str = str(mini_fabrica).strip() if mini_fabrica is not None else ""
+        mini_fabrica_str = _normalizar_mini_fabrica(mini_fabrica)
         centro_custo_str = str(centro_custo).strip() if centro_custo is not None else ""
 
         # Soma bruta por Mini-Fábrica, independente de classificação/escopo -

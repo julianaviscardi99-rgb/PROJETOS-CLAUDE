@@ -783,3 +783,15 @@ sempre no topo da aba, e o texto explicativo só aparece ao passar o mouse em ci
 botão). Wiring de botões (`botoes[indice][i].config(command=...)`) reconferido depois de cada
 mudança de estrutura — nenhuma função de negócio (`ao_clicar_*`) foi alterada, só a
 apresentação (título/tooltip/estilo) e a estrutura de abas.
+
+---
+
+## 2026-09-01 — Range do de-para de MF ampliado e normalizado a cada geração do KSB1
+
+**Decisão:** o `gerar_ksb1_mensal.py` passa a reescrever a fórmula da coluna AH ("Centro de Montagem(2)") do BASE_KSB1 com o range ampliado `$K$2:$L$100` a cada geração, em vez de aceitar o range que vier herdado do arquivo do mês anterior.
+
+**Motivo:** a fórmula herdada tinha o range travado em `$K$2:$L$9`. Quando Resende (MF 0483) foi cadastrada na **linha K10** do de-para da `Base_Contas_Contábeis_Fitted_22.xlsx` (aba Centros), ela ficou fora do range e as 40 linhas da unidade viraram `#N/A` — quebrando o fechamento de Agosto/2026 Flash por 3 sessões seguidas, com o erro se disfarçando de "bug de marshalling do COM". Ampliar o range no arquivo de um mês só não resolveria: a fórmula se propaga mês a mês pelo AutoFill (S:AI), então precisa ser normalizada toda vez.
+
+**Decisão complementar:** a checagem de células em erro (`_celulas_com_erro`, `gerar_base_intermediaria.py`) passa a cobrir também as colunas de **rótulo** (A-H), que antes eram puladas de propósito. Motivo: foi exatamente num rótulo (coluna G) que o erro real apareceu, e pular essas colunas fazia o problema só estourar lá na frente, com mensagem genérica que despistava o diagnóstico.
+
+**Limite escolhido (linha 100):** folgado o bastante para o de-para crescer (hoje tem 8 unidades) sem o custo de VLOOKUP em coluna inteira sobre ~67 mil linhas. Se a tabela passar de 100 linhas, é só aumentar `ULTIMA_LINHA_DEPARA_MF`.

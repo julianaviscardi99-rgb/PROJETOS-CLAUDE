@@ -99,6 +99,7 @@ ONTOLOGY_PATH = Path(__file__).resolve().parents[4] / "ontology" / "fitted_units
 
 N_COLS_LABEL = 8         # A-H: rotulos comuns entre Pivot_Inter. e Intermediária
 COL_CENTRO_CUSTO = 5     # E, tanto no Pivot_Inter. quanto na Intermediária
+COL_MINI_FABRICA = 6     # F - codigo da unidade, TEXTO com zero a esquerda ("0499")
 COL_TOTAL_ANO = 21       # U
 COL_FORMULA_INICIO = 25  # Y (Gestorial II)
 COL_FORMULA_FIM = 36     # AJ (Conta Geral)
@@ -440,16 +441,24 @@ def localizar_base_intermediaria_mes_anterior(mes: int, ano: int) -> Path:
 
 
 def _celulas_com_erro(valores, n_cols_rotulo):
-    """Devolve [(linha_relativa, coluna, rotulo_A_H)] pra toda celula de
-    VALOR (fora das colunas de rotulo) gravada como erro (#N/A etc. vem do
-    COM como int negativo) numa tupla de tuplas lida via Range.Value."""
+    """Devolve [(linha_relativa, coluna, rotulo_A_H)] pra toda celula
+    gravada como erro (#N/A etc. vem do COM como int negativo) numa tupla
+    de tuplas lida via Range.Value.
+
+    Checa TAMBEM as colunas de rotulo (A-H), nao so' as de valor: um #N/A
+    ali e' o caso real de unidade nova que ficou fora do de-para de MF da
+    base de contas (Resende/MF 0483 em Agosto/2026, achado em 2026-09-01 -
+    a coluna G, 'Centro de Montagem', vinha #N/A em 40 linhas). Como essas
+    colunas eram puladas aqui, o erro passava batido na leitura e so'
+    estourava depois, ja' colado na Base Intermediaria, com a mensagem
+    generica de 'bug conhecido de marshalling' - despistando o diagnostico."""
     erros = []
     for i, linha in enumerate(valores):
         linha = list(linha)
         if linha and linha[0] == "Grand Total":
             continue
         for j, v in enumerate(linha):
-            if j >= n_cols_rotulo and isinstance(v, int) and v < 0:
+            if isinstance(v, int) and v < 0:
                 erros.append((i, j, linha[:n_cols_rotulo]))
     return erros
 
@@ -529,12 +538,17 @@ def ler_pivot_inter(caminho_base_ksb1: Path, excel, log, tentativas=4, espera_s=
             )
             time.sleep(espera_s)
         else:
-            rotulos = ", ".join(str(rotulo) for _, _, rotulo in erros[:5])
+            colunas = sorted({chr(ord("A") + j) if j < 26 else str(j + 1) for _, j, _ in erros})
+            rotulos = "\n  ".join(str(rotulo) for _, _, rotulo in erros[:5])
             raise RuntimeError(
                 f"{len(erros)} célula(s) do Pivot_Inter. de '{caminho_base_ksb1.name}' continuam "
-                f"gravadas como erro (#N/A) mesmo após {tentativas} recálculos — não é mais o "
-                "link externo assentando, é um problema real nos dados (ex: conta ou centro de "
-                f"custo sem correspondência na base de contas). Linhas afetadas (rótulo A-H): {rotulos}..."
+                f"gravadas como erro (#N/A) mesmo após {tentativas} recálculos — não é o link externo "
+                "assentando nem bug do COM, é um problema real nos dados: alguma conta, centro de "
+                "custo ou MF sem correspondência na base de contas "
+                "(Base_Contas_Contábeis_Fitted_22.xlsx). Se o erro estiver numa coluna de rótulo "
+                "(A-H), o suspeito nº 1 é uma unidade/MF nova cadastrada fora do range da fórmula "
+                f"de-para. Coluna(s) afetada(s): {', '.join(colunas)}. Primeiras linhas (rótulo A-H):"
+                f"\n  {rotulos}"
             )
     finally:
         com_retry(wb.Close, SaveChanges=False, log=log)
@@ -959,6 +973,23 @@ def atualizar_base_intermediaria(
         # achado e confirmado testando ao vivo em 2026-08-21: 166 erros colando
         # tudo de uma vez, 25 em blocos de 50, ZERO colando linha por linha).
         linhas_para_colar = [linha[: N_COLS_LABEL + n_meses] for linha in linhas_pivot]
+
+        # A coluna F (Mini-Fábrica) vem do Pivot_Inter. como TEXTO com zero
+        # à esquerda ("0499", "0491", "0483"...). Escrever essa string via
+        # COM numa célula de formato Geral faz o Excel converter pra NÚMERO
+        # (499) e perder o zero - e aí o Passo 4 (Rateio de Custos), que
+        # casa a unidade por esse código, não reconhece mais nada: a
+        # Gerência ("0499") deixa de existir e nada é rateado (achado ao
+        # vivo em 2026-09-01, no fechamento de Agosto - a usuária percebeu
+        # que "não está rateando nada da Gerência"). Forçar formato de
+        # texto na coluna F da área nova preserva o zero, igual aos
+        # arquivos montados à mão (conferido em Julho/2026: sempre '0499').
+        com_retry(
+            setattr,
+            ws.Range(ws.Cells(primeira_sem_cor, COL_MINI_FABRICA), ws.Cells(last_row_final, COL_MINI_FABRICA)),
+            "NumberFormat", "@", log=log,
+        )
+
         for i, linha in enumerate(linhas_para_colar):
             r = primeira_sem_cor + i
             ws.Range(ws.Cells(r, 1), ws.Cells(r, N_COLS_LABEL + n_meses)).Value = [linha]
