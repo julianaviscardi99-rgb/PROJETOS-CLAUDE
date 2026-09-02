@@ -911,11 +911,18 @@ def atualizar_base_intermediaria(
         log(f"Copiando {caminho_origem_inter.name} -> {caminho_saida.name} ...")
         shutil.copy2(caminho_origem_inter, caminho_saida)
     else:
-        # Flash: o arquivo ja foi criado pelo Passo 3 (botao "Lançar
-        # Provisões"), com as linhas coloridas ja preenchidas - so continua
-        # nele, nao cria copia nova nem repete as provisoes.
-        caminho_saida = localizar_base_intermediaria_flash_existente(mes, ano, pasta_saida)
-        log(f"Continuando na Base Intermediária Flash já criada pelo Passo 3: {caminho_saida.name}")
+        # Flash: parte do arquivo mais recente ja criado pelo Passo 3
+        # ("Lançar/Atualizar Provisões"), com as linhas coloridas ja
+        # preenchidas - mas SALVA como versao nova (_v2, _v3...), nunca por
+        # cima do arquivo de origem (pedido explicito da usuaria,
+        # 2026-09-02: cada rodada de "Finalização" deve gerar uma versao
+        # nova, igual ja acontecia no ciclo Actual e em "Lançar Provisões").
+        caminho_origem_flash = localizar_base_intermediaria_flash_existente(mes, ano, pasta_saida)
+        nome_base = f"Base Intermediária Fitted {MESES_INGLES[mes]} {ciclo} {ano}{sufixo_nome}.xlsx"
+        nome_saida = nome_com_versao(pasta_saida, nome_base)
+        caminho_saida = pasta_saida / nome_saida
+        log(f"Copiando {caminho_origem_flash.name} -> {caminho_saida.name} (versão nova, preservando a anterior)...")
+        shutil.copy2(caminho_origem_flash, caminho_saida)
 
     excel = abrir_excel_isolado(log, pid_callback)
     try:
