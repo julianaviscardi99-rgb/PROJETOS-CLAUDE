@@ -577,6 +577,16 @@ LINHA_INTER_PROVISAO_INICIO = 2   # primeira linha colorida da Intermediária
 COL_INTER_CONTA_FISCAL = 3        # C
 COL_INTER_CENTRO_CUSTO = 5        # E
 COL_FORMULA_MODELO = [1, 2, 4, 6, 7]  # A, B, D, F, G - colunas com formula VLOOKUP
+# Colunas adicionais que tambem precisam da formula "molde" arrastada pra
+# cada linha colorida ativa: Total Ano (U) e Y:AJ (Gestorial II ate Conta
+# Geral, que inclui "Var." e "MO/DG & Var" - campos que a PivotTable da aba
+# "Pivot" usa pra agrupar linhas). Sem isso, "Var."/"MO/DG & Var" ficam em
+# branco nas linhas de provisao, a PivotTable tem o item "(blank)"
+# desmarcado no filtro, e o valor da provisao some do Grand Total sem
+# nenhum erro/aviso - achado ao vivo em 2026-09-02 comparando a soma real
+# da coluna do mes na Intermediaria com o Grand Total da Pivot (usuaria
+# reportou "pivot nao considera as provisoes").
+COL_FORMULA_MOLDE_EXTRA = [COL_TOTAL_ANO] + list(range(COL_FORMULA_INICIO, COL_FORMULA_FIM + 1))
 
 
 def arquivo_esta_aberto(caminho: Path) -> bool:
@@ -701,7 +711,8 @@ def preencher_provisoes_flash(wb, mes: int, ano: int, log):
     # capturasse depois de inserir, o número já teria mudado.
     ultima_linha_colorida = encontrar_primeira_linha_sem_cor(ws) - 1
     formulas_modelo = {
-        c: ws.Cells(ultima_linha_colorida, c).Formula for c in COL_FORMULA_MODELO
+        c: ws.Cells(ultima_linha_colorida, c).Formula
+        for c in COL_FORMULA_MODELO + COL_FORMULA_MOLDE_EXTRA
     }
 
     ultima_linha_amarela = encontrar_ultima_linha_amarela(ws)
