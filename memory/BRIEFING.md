@@ -3,6 +3,59 @@
 > Manter apenas as últimas 2 sessões inline — sessões mais antigas vão para long_term/.
 
 ---
+## EM ANDAMENTO 2026-09-02 (nova janela) — Usuária voltou reportando "vários problemas" usando o cockpit em produção; revisão do Passo 3 em andamento
+
+**Contexto:** a usuária confirmou que Passos ① e ② do cockpit e os botões ①/② do Passo 3
+("Atualizar Pivot KSB1" e "Lançar/Atualizar Provisões") estão **funcionando perfeitamente,
+não mexer**. Os problemas reais estão no botão ③ "Finalização da Base Intermediária".
+
+**1. Bug real confirmado e CORRIGIDO — botão ③ sobrescrevia o arquivo Flash em vez de
+versionar.** Pedido explícito da usuária: toda rodada de Finalização deve gerar `_v2`, `_v3`
+etc., nunca sobrepor (mesma regra já vale pro resto do projeto, `REGRAS_RAPIDAS.md` #2/#12).
+- Causa: no branch `ciclo == "Flash"` de `atualizar_base_intermediaria`
+  (`gerar_base_intermediaria.py`), `caminho_saida` apontava direto pro arquivo já criado por
+  "Lançar/Atualizar Provisões" e `wb.Save()` gravava por cima dele. O branch `Actual` já fazia
+  certo (sempre `nome_com_versao` + `shutil.copy2` antes de editar).
+- **Correção aplicada:** branch Flash agora localiza o arquivo mais recente
+  (`localizar_base_intermediaria_flash_existente`), copia pra um nome novo via
+  `nome_com_versao` (mesmo padrão do resto do projeto) e só então abre/edita a cópia. `py_compile`
+  OK. Passos seguintes (Rateio de Custos, `gerar_rateio_custos.py`) já usam
+  `encontrar_arquivo_mais_recente` pra achar a Base Intermediária, então vão pegar a versão nova
+  sozinhos, sem precisar de mais nenhuma mudança.
+- **NÃO sincronizado na rede ainda** (`_Cockpit_KSB1\scripts\`) e **NÃO testado ao vivo** —
+  próximo passo.
+
+**2. Suspeita de bug NO quadro de comparação Forecast (Custos H26/I26) — investigado, mas os
+dados batem, aguardando esclarecimento da usuária.** Ela relatou que o quadro trouxe "a
+informação do forecast R7, mês de julho" em vez de agosto (mostrou print: Custos Forecast =
+5.925, Flash = 5.137). Fui direto no arquivo real de rede
+(`...\2026\07 - Jul\07_Jul_Forecast\07_P&L Fitted Units_Forecast_July_26_.xlsx`, aba "Resumo
+Resultado Ano") e conferi:
+- Cabeçalho confirma coluna J=Julho, K=Agosto.
+- Total Costs em **K (Agosto) = -5.925,41** — bate EXATAMENTE com o "5.925" do quadro dela.
+- Total Costs em J (Julho) = -6.320,46 — não bate.
+- Confirmei também que `08_Aug_Forecast` (pasta de rede) está vazia — não existe R8 de
+  verdade, então o fallback pro R7 está correto por design (já documentado em
+  `DECISOES.md`, 2026-08-22).
+- **Conclusão até agora: não achei o bug — os números automatizados parecem corretos
+  (coluna de Agosto, não Julho).** Perguntei pra ela se conferiu comparando célula a célula
+  ou só "pareceu" errado — pode ser outra célula (câmbio, Faturamento manual) que ela
+  confundiu, ou pode haver algo que eu não vi ainda. **Resposta dela ainda pendente.**
+
+**Outra coisa feita nesta sessão (fora do cockpit):** configurada a statusLine do Claude Code
+pra mostrar "Modelo | Pasta | Ctx XX%" (`~/.claude/statusline-command.sh` +
+`~/.claude/settings.json`). Trocado de `jq` (não instalado nesta máquina) pra Python (já
+instalado) depois que o primeiro teste falhou — testado com JSON de exemplo, funcionando.
+
+**PRIMEIRA COISA A PERGUNTAR NA PRÓXIMA SESSÃO/MENSAGEM:**
+1. A resposta dela sobre o quadro de comparação Forecast (item 2 acima) — ela confirmou que
+   comparou célula a célula, ou foi outra célula que ela viu errada?
+2. Sincronizar a correção do botão ③ (item 1) pra cópia de rede do cockpit e testar ao vivo.
+3. Ela mencionou "vários problemas" no plural — só cobrimos os 2 acima (botão ③ Finalização);
+   perguntar se tem mais algum problema noutro passo (④ Rateio, ⑤ Mensalização, ⑥ P&L) que
+   ainda não foi reportado.
+
+---
 ## EM ANDAMENTO 2026-09-02 — 9º bug real do fechamento de Agosto/2026 Flash: a PivotTable não considerava as provisões. CORRIGIDO no código, mas a usuária ainda NÃO rodou com o código novo carregado
 
 **PRIMEIRA COISA A PERGUNTAR NA PRÓXIMA SESSÃO:** ela fechou e reabriu o cockpit e rodou
