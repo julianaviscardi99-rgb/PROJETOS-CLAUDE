@@ -17,7 +17,9 @@ do mes anterior, replicando o processo manual real (BASE_KSB1 + Pivot nativo
 5. Salva a copia.
 
 Links externos do BASE_KSB1 (base de contas: abas Contas / Centros) SAO
-atualizados a cada geracao desde 2026-09-04 - ver atualizar_links_externos().
+resolvidos ao vivo a cada geracao desde 2026-09-04: o arquivo de origem e'
+aberto (somente leitura) na mesma instancia do Excel enquanto o arquivo do mes
+e' montado e salvo - ver abrir_fontes_dos_links().
 Antes disso eram deliberadamente ignorados (UpdateLinks=0), pra nao misturar
 "mudanca na base de contas" com "erro na automacao" ao validar contra um mes
 ja fechado manualmente; mas em producao isso fazia conta nova cadastrada no
@@ -201,36 +203,73 @@ def normalizar_formula_centro_montagem(ws, last_row: int, log) -> bool:
     return True
 
 
-def atualizar_links_externos(wb, log=print):
-    """Atualiza os links externos do arquivo do mes (a base de contas:
-    Base_Contas_Contabeis_Fitted_22.xlsx, abas 'Contas' e 'Centros').
+def abrir_fontes_dos_links(excel, wb, log=print) -> list:
+    """Abre (SOMENTE LEITURA) os arquivos de origem dos links externos do arquivo do
+    mes - na pratica a base de contas (Base_Contas_Contabeis_Fitted_22.xlsx, abas
+    'Contas' e 'Centros'). Devolve a lista de workbooks abertos, pra quem chama
+    fechar depois de salvar.
 
     Por que isso e' necessario (bug real, 2026-09-04): o arquivo do mes e' uma COPIA
     do Actual do mes anterior, entao ele carrega o CACHE do link externo daquele mes.
-    Sem atualizar, uma conta cadastrada no de-para DEPOIS daquele mes nunca resolve -
-    a coluna T (Gestorial) fica #N/A e a Pivot_Inter. descarta a linha em silencio
-    (o item '#N/A' esta desmarcado no filtro do campo). Foi assim que a conta
-    M240600000 (repasse de Ibirite, -R$ 79.787,48) sumiu do fechamento de Agosto/2026
-    Actual, deixando o custo R$ 79 mil mais alto que a realidade.
+    Sem isso, uma conta cadastrada no de-para DEPOIS daquele mes nunca resolve - a
+    coluna T (Gestorial) fica #N/A e a Pivot_Inter. descarta a linha em silencio (o
+    item '#N/A' esta desmarcado no filtro do campo). Foi assim que a conta M240600000
+    (repasse de Ibirite, -R$ 79.787,48) sumiu do fechamento de Agosto/2026 Actual,
+    deixando o custo R$ 79 mil mais alto que a realidade.
 
-    Falha de um link nao derruba a geracao: so' loga aviso e segue com o valor em
-    cache (o BASE_KSB1 ja teve link quebrado pra RHFitted, confirmado como lixo em
-    2026-08-11). Se o de-para nao tiver resolvido, a conferencia final
-    (conferir_pivot_contra_base) pega a divergencia de qualquer jeito."""
+    Por que ABRIR a fonte em vez de chamar UpdateLink (ideia da usuaria, 2026-09-04,
+    testada e confirmada): com o arquivo de origem aberto na mesma instancia do Excel,
+    a formula resolve AO VIVO contra ele, sem depender do cache nem de o UpdateLink
+    ter funcionado - UpdateLink e' uma chamada que pode retornar sem erro e nao ter
+    atualizado nada. Fica UpdateLink so' como plano B, se a fonte nao puder ser aberta.
+
+    IMPORTANTE pra quem chama: so' feche estes workbooks DEPOIS de salvar o arquivo do
+    mes - fechada a fonte antes do Save, o Excel volta a usar o valor em cache.
+
+    Falha aqui nao derruba a geracao: loga aviso e segue com o cache (o BASE_KSB1 ja
+    teve link quebrado pra RHFitted, confirmado como lixo em 2026-08-11). Se o de-para
+    nao tiver resolvido, conferir_pivot_contra_base() pega a divergencia no fim."""
     fontes = wb.LinkSources(XL_LINK_TYPE_EXCEL_LINKS)
     if not fontes:
-        log("Nenhum link externo pra atualizar.")
-        return
+        log("Nenhum link externo pra resolver.")
+        return []
+
+    abertos = []
     for fonte in fontes:
-        nome = Path(str(fonte)).name
+        caminho = Path(str(fonte))
+        if not caminho.exists():
+            log(f"AVISO: fonte do link não encontrada, seguindo com o cache: {caminho.name}")
+            continue
         try:
-            com_retry(wb.UpdateLink, Name=fonte, Type=XL_LINK_TYPE_EXCEL_LINKS, log=log)
-            log(f"Link externo atualizado: {nome}")
-        except pywintypes.com_error as e:
-            log(
-                f"AVISO: não consegui atualizar o link externo {nome} ({e}) — "
-                "as fórmulas que dependem dele seguem com o valor em cache."
+            abertos.append(
+                com_retry(
+                    excel.Workbooks.Open,
+                    str(caminho), UpdateLinks=0, ReadOnly=True,
+                    log=log,
+                )
             )
+            log(f"Fonte do link aberta (somente leitura): {caminho.name}")
+        except pywintypes.com_error as e:
+            log(f"AVISO: não consegui abrir a fonte {caminho.name} ({e}) — tentando UpdateLink.")
+            try:
+                com_retry(wb.UpdateLink, Name=fonte, Type=XL_LINK_TYPE_EXCEL_LINKS, log=log)
+                log(f"Link atualizado via UpdateLink: {caminho.name}")
+            except pywintypes.com_error as e2:
+                log(
+                    f"AVISO: UpdateLink também falhou para {caminho.name} ({e2}) — "
+                    "as fórmulas que dependem dele seguem com o valor em cache."
+                )
+    return abertos
+
+
+def fechar_fontes_dos_links(abertos: list, log=print):
+    """Fecha os workbooks de origem abertos por abrir_fontes_dos_links().
+    Chamar SEMPRE depois de salvar o arquivo do mes."""
+    for fonte in abertos:
+        try:
+            com_retry(fonte.Close, SaveChanges=False, log=log)
+        except pywintypes.com_error:
+            log("AVISO: não consegui fechar um dos arquivos de origem dos links.")
 
 
 def _contas_com_gestorial_em_erro(ws, last_row: int, mes: int) -> list:
@@ -337,6 +376,7 @@ def conferir_pivot_contra_base(excel, wb, ws, last_row: int, mes: int, log=print
 
 def colar_linhas_e_atualizar_pivots(caminho_copia: Path, linhas_novas: list, mes: int, log=print, pid_callback=None):
     excel = abrir_excel_isolado(log, pid_callback)
+    fontes_abertas = []
     try:
         # IgnoreReadOnlyRecommended=True: o BASE_KSB1 tem a flag interna
         # "Somente leitura recomendada" (fileSharing readOnlyRecommended="1")
@@ -371,10 +411,11 @@ def colar_linhas_e_atualizar_pivots(caminho_copia: Path, linhas_novas: list, mes
         com_retry(setattr, excel, "Calculation", XL_CALCULATION_MANUAL, log=log)
         com_retry(setattr, excel, "ScreenUpdating", False, log=log)
 
-        # Com o calculo ja em manual: atualizar os links agora nao dispara
-        # recalculo (o CalculateFullRebuild mais abaixo resolve tudo de uma vez).
-        log("Atualizando os links externos (base de contas)...")
-        atualizar_links_externos(wb, log)
+        # Com o calculo ja em manual: abrir as fontes agora nao dispara recalculo
+        # (o CalculateFullRebuild mais abaixo resolve tudo de uma vez). As fontes
+        # ficam abertas ate DEPOIS do Save - ver abrir_fontes_dos_links().
+        log("Abrindo as fontes dos links externos (base de contas)...")
+        fontes_abertas = abrir_fontes_dos_links(excel, wb, log)
 
         # Colar linha por linha, NUNCA o bloco inteiro de uma vez: escrever um
         # array grande via Range.Value em uma unica chamada COM pode corromper
@@ -442,6 +483,10 @@ def colar_linhas_e_atualizar_pivots(caminho_copia: Path, linhas_novas: list, mes
         com_retry(wb.Close, SaveChanges=False, log=log)
         log("Concluído.")
     finally:
+        # Fechar as fontes SO' aqui, depois do Save la' em cima: com a fonte
+        # fechada antes de salvar, o Excel volta a gravar o valor em cache.
+        fechar_fontes_dos_links(fontes_abertas, log)
+
         # Retentativa tambem no Quit - se o Excel "ocupado" derrubar essa
         # chamada, ela e' engolida sem retentar, deixa o processo orfao
         # rodando pra sempre (achado ao vivo, 2026-09-01: sobrou um

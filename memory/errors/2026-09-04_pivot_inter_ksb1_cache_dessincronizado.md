@@ -76,20 +76,32 @@ fazia as provisões sumirem) — só que agora no campo "Gestorial" e com o item
      (`UnicodeEncodeError`) — trocada por ">". Arquivo inteiro conferido: codifica em cp1252.
    - `py_compile` OK. **Sincronizado na cópia de rede do cockpit** (conferido idêntico com `diff`).
 
-3. **Links externos passam a ser atualizados a cada geração** (decisão dela, 2026-09-04): nova
-   função `atualizar_links_externos(wb)` em `gerar_ksb1_mensal.py`, chamada logo depois de pôr o
-   cálculo em manual (assim não dispara recálculo — o `CalculateFullRebuild` seguinte resolve tudo
-   de uma vez). Reverte a decisão de 2026-08-11 (`UpdateLinks=0`), que era pra **validação** contra
-   mês fechado mas em **produção** fazia conta nova nunca resolver. Falha de link não derruba a
-   geração (só loga aviso) — o BASE_KSB1 já teve link quebrado pra RHFitted (lixo conhecido).
+3. **Links externos passam a ser resolvidos AO VIVO a cada geração** (decisão dela, 2026-09-04):
+   `abrir_fontes_dos_links(excel, wb)` / `fechar_fontes_dos_links(abertos)` em
+   `gerar_ksb1_mensal.py` — abre o arquivo de origem do link **somente leitura** na mesma instância
+   do Excel (caminho descoberto pelo próprio `wb.LinkSources`, sem hardcode) e o mantém aberto
+   enquanto o arquivo do mês é montado e salvo. Reverte a decisão de 2026-08-11 (`UpdateLinks=0`),
+   que era pra **validação** contra mês fechado mas em **produção** fazia conta nova nunca resolver.
+   - **A abordagem foi ideia da usuária** ("e se você abrisse o arquivo base de contas pra ele ler
+     sempre?"). A minha primeira versão usava `wb.UpdateLink(...)`; funciona, mas é uma chamada que
+     pode retornar sem erro sem ter atualizado nada. **Testei a hipótese dela isolada, sem nenhum
+     `UpdateLink`: a coluna T saiu de `#N/A` para `4263000` só por a base de contas estar aberta.**
+     `UpdateLink` ficou como plano B, se a fonte não puder ser aberta.
+   - **Ordem que importa:** fechar as fontes **só depois do `Save`** — com a origem fechada antes de
+     salvar, o Excel volta a gravar o valor em cache. Por isso `fechar_fontes_dos_links` roda no
+     `finally`, depois do Save e da conferência.
+   - Falha ao abrir não derruba a geração (loga aviso, tenta `UpdateLink`, segue com o cache) — o
+     BASE_KSB1 já teve link quebrado pra RHFitted (lixo conhecido) — e a conferência final pega
+     qualquer resultado errado de qualquer jeito.
    - Risco conferido antes de mudar: a base de contas não era modificada desde **16/07** e o KSB1
      de Julho foi salvo em **21/08** — ou seja, o cache já estava atualizado pra todo o resto;
      atualizar os links muda **só** as 2 linhas da conta nova, nenhum mês histórico se mexe.
    - **Teste ponta a ponta na cópia local** (`KSB1 August Actual 2026_v2.xlsx`, nada escrito na
-     rede): antes `T=#N/A`; depois de `atualizar_links_externos` + recálculo, `T=4263000` e
-     `U=Outras Despesas`; depois do `RefreshAll`, a conferência **PASSOU**
-     ("Pivot_Inter. e BASE_KSB1 batem no mês 8 (5.671.131,15)"). `py_compile` OK, cp1252 OK,
-     sincronizado na rede.
+     rede), chamando as **funções de produção** na mesma ordem que `colar_linhas_e_atualizar_pivots`
+     usa: antes `T=#N/A`; com a fonte aberta + recálculo, `T=4263000` e `U=Outras Despesas`; depois
+     do `RefreshAll` e do `Save`, a conferência **PASSOU** e o **Grand Total de Agosto gravado em
+     disco ficou R$ 5.671.131,15** (o valor correto). `py_compile` OK, cp1252 OK, sincronizado na
+     rede.
 
 ## ARMADILHA EM QUE EU CAÍ (registrar pra não repetir)
 A primeira tentativa de cadastrar a conta **falhou em silêncio**: o script escreveu, imprimiu
