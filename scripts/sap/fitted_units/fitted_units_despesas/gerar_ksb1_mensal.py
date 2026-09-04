@@ -16,10 +16,13 @@ do mes anterior, replicando o processo manual real (BASE_KSB1 + Pivot nativo
    automacao COM do Excel.
 5. Salva a copia.
 
-Links externos do BASE_KSB1 (Contas / RHFitted) NAO sao atualizados
-(UpdateLinks=0) - usa o mesmo cache que ja estava no arquivo do mes
-anterior, para nao misturar "mudanca na base de contas" com "erro na
-automacao" ao validar contra um mes ja fechado manualmente.
+Links externos do BASE_KSB1 (base de contas: abas Contas / Centros) SAO
+atualizados a cada geracao desde 2026-09-04 - ver atualizar_links_externos().
+Antes disso eram deliberadamente ignorados (UpdateLinks=0), pra nao misturar
+"mudanca na base de contas" com "erro na automacao" ao validar contra um mes
+ja fechado manualmente; mas em producao isso fazia conta nova cadastrada no
+de-para NUNCA resolver (o arquivo do mes herda o cache do mes anterior), o que
+custou R$ 79.787,48 de custo inflado no fechamento de Agosto/2026 Actual.
 
 Depende de Excel instalado (pywin32) - abre uma instancia oculta e isolada
 (DispatchEx), nao interfere com o Excel que a usuaria tiver aberto.
@@ -80,6 +83,7 @@ XL_CALCULATION_MANUAL = -4135
 XL_CALCULATION_AUTOMATIC = -4105
 XL_CELL_TYPE_FORMULAS = -4123
 XL_ERRORS = 16
+XL_LINK_TYPE_EXCEL_LINKS = 1
 
 
 def _abrev(mes: int) -> str:
@@ -195,6 +199,38 @@ def normalizar_formula_centro_montagem(ws, last_row: int, log) -> bool:
         "do de-para de MF — unidade nova cadastrada no fim da tabela não vira mais #N/A."
     )
     return True
+
+
+def atualizar_links_externos(wb, log=print):
+    """Atualiza os links externos do arquivo do mes (a base de contas:
+    Base_Contas_Contabeis_Fitted_22.xlsx, abas 'Contas' e 'Centros').
+
+    Por que isso e' necessario (bug real, 2026-09-04): o arquivo do mes e' uma COPIA
+    do Actual do mes anterior, entao ele carrega o CACHE do link externo daquele mes.
+    Sem atualizar, uma conta cadastrada no de-para DEPOIS daquele mes nunca resolve -
+    a coluna T (Gestorial) fica #N/A e a Pivot_Inter. descarta a linha em silencio
+    (o item '#N/A' esta desmarcado no filtro do campo). Foi assim que a conta
+    M240600000 (repasse de Ibirite, -R$ 79.787,48) sumiu do fechamento de Agosto/2026
+    Actual, deixando o custo R$ 79 mil mais alto que a realidade.
+
+    Falha de um link nao derruba a geracao: so' loga aviso e segue com o valor em
+    cache (o BASE_KSB1 ja teve link quebrado pra RHFitted, confirmado como lixo em
+    2026-08-11). Se o de-para nao tiver resolvido, a conferencia final
+    (conferir_pivot_contra_base) pega a divergencia de qualquer jeito."""
+    fontes = wb.LinkSources(XL_LINK_TYPE_EXCEL_LINKS)
+    if not fontes:
+        log("Nenhum link externo pra atualizar.")
+        return
+    for fonte in fontes:
+        nome = Path(str(fonte)).name
+        try:
+            com_retry(wb.UpdateLink, Name=fonte, Type=XL_LINK_TYPE_EXCEL_LINKS, log=log)
+            log(f"Link externo atualizado: {nome}")
+        except pywintypes.com_error as e:
+            log(
+                f"AVISO: não consegui atualizar o link externo {nome} ({e}) — "
+                "as fórmulas que dependem dele seguem com o valor em cache."
+            )
 
 
 def _contas_com_gestorial_em_erro(ws, last_row: int, mes: int) -> list:
@@ -334,6 +370,11 @@ def colar_linhas_e_atualizar_pivots(caminho_copia: Path, linhas_novas: list, mes
         # calculo padrao do arquivo pra quem abrir depois.
         com_retry(setattr, excel, "Calculation", XL_CALCULATION_MANUAL, log=log)
         com_retry(setattr, excel, "ScreenUpdating", False, log=log)
+
+        # Com o calculo ja em manual: atualizar os links agora nao dispara
+        # recalculo (o CalculateFullRebuild mais abaixo resolve tudo de uma vez).
+        log("Atualizando os links externos (base de contas)...")
+        atualizar_links_externos(wb, log)
 
         # Colar linha por linha, NUNCA o bloco inteiro de uma vez: escrever um
         # array grande via Range.Value em uma unica chamada COM pode corromper

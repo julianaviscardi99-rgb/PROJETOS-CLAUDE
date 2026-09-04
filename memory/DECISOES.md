@@ -795,3 +795,19 @@ apresentação (título/tooltip/estilo) e a estrutura de abas.
 **Decisão complementar:** a checagem de células em erro (`_celulas_com_erro`, `gerar_base_intermediaria.py`) passa a cobrir também as colunas de **rótulo** (A-H), que antes eram puladas de propósito. Motivo: foi exatamente num rótulo (coluna G) que o erro real apareceu, e pular essas colunas fazia o problema só estourar lá na frente, com mensagem genérica que despistava o diagnóstico.
 
 **Limite escolhido (linha 100):** folgado o bastante para o de-para crescer (hoje tem 8 unidades) sem o custo de VLOOKUP em coluna inteira sobre ~67 mil linhas. Se a tabela passar de 100 linhas, é só aumentar `ULTIMA_LINHA_DEPARA_MF`.
+
+---
+
+## 2026-09-04 — Links externos do BASE_KSB1 passam a ser ATUALIZADOS a cada geração (reverte a decisão de 2026-08-11)
+
+**Decisão:** `gerar_ksb1_mensal.py` passa a atualizar os links externos (base de contas: `Base_Contas_Contábeis_Fitted_22.xlsx`, abas `Contas` e `Centros`) toda vez que gera o arquivo do mês — nova função `atualizar_links_externos(wb)`, chamada logo depois de pôr o cálculo em manual. Antes, os links eram deliberadamente **não** atualizados (`UpdateLinks=0`, decisão de 2026-08-11).
+
+**Motivo:** o `UpdateLinks=0` foi escolhido para **validação** (não misturar "mudança na base de contas" com "erro na automação" ao comparar contra um mês já fechado manualmente). Em **produção** isso vira um furo: o arquivo do mês é uma cópia do Actual do mês anterior, então herda o **cache** do link daquele mês — uma conta cadastrada no de-para depois disso **nunca** resolve. Foi exatamente o que aconteceu no fechamento de Agosto/2026 Actual: a conta `M240600000` ("Rech cost reco:FI-Gr", repasse de Ibirité, -R$ 79.787,48 em 2 linhas) não existia no de-para, a coluna T (Gestorial) ficou `#N/A`, e como o filtro do campo "Gestorial" da `Pivot_Inter.` tem o item `#N/A` **desmarcado**, as duas linhas sumiram do Grand Total sem erro nenhum — deixando o custo do mês **R$ 79.787,48 mais alto** que a realidade. Detalhe completo em `memory/errors/2026-09-04_pivot_inter_ksb1_cache_dessincronizado.md`.
+
+**Risco avaliado antes de mudar:** atualizar links re-resolve as fórmulas de **todos** os meses acumulados, então em tese um mês histórico poderia mudar de classificação. Conferido que não muda nada aqui: a base de contas não era modificada desde **16/07/2026** e o `KSB1 July Actual 2026.xlsx` foi salvo em **21/08/2026** (depois disso) — o cache já refletia o estado atual do de-para, então a atualização mexe **só** nas linhas da conta recém-cadastrada.
+
+**Trava complementar (mesma sessão):** nova função `conferir_pivot_contra_base()`, que roda no fim do Passo ① e compara o Grand Total do mês na `Pivot_Inter.` com um `SUMIF` direto do BASE_KSB1. Se divergir, levanta erro listando as contas com Gestorial em erro (via `SpecialCells(xlCellTypeFormulas, xlErrors)`, sem varrer as 67 mil linhas). Roda **depois** do `Save`, de propósito: os dados da BASE_KSB1 estão corretos e a colagem custa 10+ minutos, então o arquivo é preservado e o erro sobe para a usuária resolver o de-para antes de seguir para o Passo ③. Essa conferência pega a classe inteira do problema — qualquer item escondido no filtro de qualquer campo da Pivot, não só este caso.
+
+**Validado:** teste ponta a ponta numa cópia local do `KSB1 August Actual 2026_v2.xlsx` (nada escrito na rede): antes `T=#N/A`; depois da atualização de links + recálculo, `T=4263000` / `U=Outras Despesas`; depois do `RefreshAll`, a conferência passou (`Pivot_Inter.` = BASE_KSB1 = R$ 5.671.131,15). `py_compile` OK e cópia de rede do cockpit sincronizada.
+
+**Cadastro feito na mesma sessão:** conta `M240600000` inserida na linha 564 da aba `Contas` como **4263000 / Outras Despesas** (escolha da usuária, mesmo tratamento da conta irmã `M230600000` "Rec. de Custos Terceiros"), com backup datado (`Base_Contas_Contábeis_Fitted_22.backup_2026-09-04.xlsx`) criado antes.

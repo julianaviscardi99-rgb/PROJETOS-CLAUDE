@@ -76,6 +76,36 @@ fazia as provisões sumirem) — só que agora no campo "Gestorial" e com o item
      (`UnicodeEncodeError`) — trocada por ">". Arquivo inteiro conferido: codifica em cp1252.
    - `py_compile` OK. **Sincronizado na cópia de rede do cockpit** (conferido idêntico com `diff`).
 
+3. **Links externos passam a ser atualizados a cada geração** (decisão dela, 2026-09-04): nova
+   função `atualizar_links_externos(wb)` em `gerar_ksb1_mensal.py`, chamada logo depois de pôr o
+   cálculo em manual (assim não dispara recálculo — o `CalculateFullRebuild` seguinte resolve tudo
+   de uma vez). Reverte a decisão de 2026-08-11 (`UpdateLinks=0`), que era pra **validação** contra
+   mês fechado mas em **produção** fazia conta nova nunca resolver. Falha de link não derruba a
+   geração (só loga aviso) — o BASE_KSB1 já teve link quebrado pra RHFitted (lixo conhecido).
+   - Risco conferido antes de mudar: a base de contas não era modificada desde **16/07** e o KSB1
+     de Julho foi salvo em **21/08** — ou seja, o cache já estava atualizado pra todo o resto;
+     atualizar os links muda **só** as 2 linhas da conta nova, nenhum mês histórico se mexe.
+   - **Teste ponta a ponta na cópia local** (`KSB1 August Actual 2026_v2.xlsx`, nada escrito na
+     rede): antes `T=#N/A`; depois de `atualizar_links_externos` + recálculo, `T=4263000` e
+     `U=Outras Despesas`; depois do `RefreshAll`, a conferência **PASSOU**
+     ("Pivot_Inter. e BASE_KSB1 batem no mês 8 (5.671.131,15)"). `py_compile` OK, cp1252 OK,
+     sincronizado na rede.
+
+## ARMADILHA EM QUE EU CAÍ (registrar pra não repetir)
+A primeira tentativa de cadastrar a conta **falhou em silêncio**: o script escreveu, imprimiu
+"salvo." e o arquivo em disco continuou sem a linha. Causa: a
+`Base_Contas_Contábeis_Fitted_22.xlsx` também tem `<fileSharing readOnlyRecommended="1"/>` — o
+Excel abre em modo leitura **silenciosamente** com `DisplayAlerts=False`, e o `Save()` vira no-op
+sem erro. `IgnoreReadOnlyRecommended=True` **não resolveu** (limitação já documentada no próprio
+projeto, em `remover_flag_somente_leitura_recomendada`) e `wb.ReadOnly` continuou `True`.
+- **Solução usada (arquivo compartilhado, não uma cópia nossa):** remover a flag do XML → gravar
+  via COM → **restaurar a flag** no fim, pro arquivo terminar com o mesmo comportamento pra quem
+  abrir. Conferido depois: linha presente em disco **e** `fileSharing` de volta.
+- **Lição geral:** depois de escrever em xlsx via COM, **conferir no disco** (openpyxl) que o dado
+  persistiu — `wb.Save()` sem erro e `print("salvo")` não provam nada neste ambiente. Checar
+  `wb.ReadOnly` logo depois do `Open()` também (o `gerar_ksb1_mensal.py` já faz isso; meu script
+  pontual não fazia).
+
 ## Correção necessária (pendente de decisão da usuária)
 1. **Cadastrar `M240600000` na `Base_Contas_Contábeis_Fitted_22.xlsx` (aba `Contas`)** com o
    agrupamento gestorial correto — **decisão de negócio dela** (arquivo corporativo compartilhado,

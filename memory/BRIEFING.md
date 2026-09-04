@@ -39,7 +39,21 @@ duas linhas de Agosto com Gestorial `#N/A` são DESCARTADAS EM SILÊNCIO pela `P
   roda DEPOIS do Save (não joga fora os 10+ min de colagem). Testada contra o arquivo real:
   disparou certinho apontando `M240600000 (-79.787,48 em 2 linhas)`. `py_compile` OK e
   **sincronizada na cópia de rede do cockpit**.
-- **ATENÇÃO — rodar o Passo ① de novo NÃO resolve sozinho:** o script copia o KSB1 de Julho e abre
+- **DECISÃO DELA (2026-09-04): passar a atualizar os links externos ao gerar o arquivo do mês.**
+  Implementado (`atualizar_links_externos` em `gerar_ksb1_mensal.py`, chamado com o cálculo já em
+  manual), revertendo o `UpdateLinks=0` de 2026-08-11. **Testado ponta a ponta na cópia local:**
+  `T=#N/A` → `T=4263000` / `U=Outras Despesas`, e a conferência PASSOU (Pivot = BASE_KSB1 =
+  5.671.131,15). Risco conferido: base de contas parada desde 16/07 e KSB1 de Julho salvo em 21/08,
+  então atualizar os links mexe **só** nas 2 linhas da conta nova. Sincronizado na rede (17:38).
+  **Ela precisa fechar e reabrir o cockpit e rodar o Passo ① do zero.**
+- **ARMADILHA (não repetir):** a 1ª tentativa de cadastrar a conta falhou EM SILÊNCIO — a
+  `Base_Contas_Contábeis_Fitted_22.xlsx` também tem `readOnlyRecommended="1"`, o Excel abriu em modo
+  leitura com `DisplayAlerts=False`, o `Save()` virou no-op e o script imprimiu "salvo" mesmo assim.
+  `IgnoreReadOnlyRecommended=True` NÃO resolveu. Solução: remover a flag do XML → gravar via COM →
+  **restaurar a flag** (arquivo compartilhado, tem que terminar como estava). Lição geral: depois de
+  escrever xlsx via COM, **conferir no disco com openpyxl** — "salvo" sem erro não prova nada aqui.
+- ~~**ATENÇÃO — rodar o Passo ① de novo NÃO resolve sozinho:**~~ (RESOLVIDO pela mudança acima —
+  o texto abaixo valia antes de os links passarem a ser atualizados) o script copia o KSB1 de Julho e abre
   com `UpdateLinks=0`, então o arquivo novo herda o cache do link externo SEM a conta nova e a
   coluna T continua `#N/A`. Precisa atualizar os links do arquivo do mês. Caminho mais rápido
   proposto (aguardando OK dela): abrir o `KSB1 August Actual 2026_v2.xlsx` que já existe, atualizar
