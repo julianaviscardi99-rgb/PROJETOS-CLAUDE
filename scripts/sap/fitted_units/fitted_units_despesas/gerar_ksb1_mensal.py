@@ -58,6 +58,10 @@ MESES_INGLES = {
 N_COLS_BRUTO = 18  # colunas A-R do BASE_KSB1, 1:1 com o extrato bruto da KSB1
 COL_CONTA = 4
 COL_VALOR = 17
+COL_MES_BASE = 19       # S ("Mês")
+COL_GESTORIAL_BASE = 20  # T ("Gestorial")
+
+ABA_PIVOT_INTER = "Pivot_Inter."
 
 # Coluna AH ("Centro de Montagem(2)"): resolve a MF (coluna Z) na tabela
 # de-para da base de contas externa (Base_Contas_Contabeis_Fitted_22.xlsx,
@@ -74,6 +78,8 @@ XL_UP = -4162
 XL_FILL_DEFAULT = 0
 XL_CALCULATION_MANUAL = -4135
 XL_CALCULATION_AUTOMATIC = -4105
+XL_CELL_TYPE_FORMULAS = -4123
+XL_ERRORS = 16
 
 
 def _abrev(mes: int) -> str:
@@ -191,7 +197,109 @@ def normalizar_formula_centro_montagem(ws, last_row: int, log) -> bool:
     return True
 
 
-def colar_linhas_e_atualizar_pivots(caminho_copia: Path, linhas_novas: list, log=print, pid_callback=None):
+def _contas_com_gestorial_em_erro(ws, last_row: int, mes: int) -> list:
+    """Lista as contas contabeis do mes cujo Gestorial (coluna T) resolveu em erro
+    (#N/A tipicamente: conta que nao existe no de-para 'Contas' da base de contas).
+    Usa SpecialCells pra pegar so' as celulas em erro - nao varre as 60+ mil linhas."""
+    try:
+        celulas = ws.Range(
+            ws.Cells(2, COL_GESTORIAL_BASE), ws.Cells(last_row, COL_GESTORIAL_BASE)
+        ).SpecialCells(XL_CELL_TYPE_FORMULAS, XL_ERRORS)
+    except pywintypes.com_error:
+        return []  # SpecialCells estoura quando nao ha nenhuma celula em erro
+
+    if celulas.Count > 500:  # algo muito errado - nao vale varrer celula a celula
+        return []
+
+    achados = {}
+    for celula in celulas:
+        linha = celula.Row
+        if ws.Cells(linha, COL_MES_BASE).Value != mes:
+            continue
+        conta = ws.Cells(linha, COL_CONTA).Value
+        valor = ws.Cells(linha, COL_VALOR).Value or 0
+        atual = achados.setdefault(conta, [0.0, 0])
+        atual[0] += valor
+        atual[1] += 1
+    return sorted(achados.items(), key=lambda item: item[1][0])
+
+
+def conferir_pivot_contra_base(excel, wb, ws, last_row: int, mes: int, log=print):
+    """Confere se o Grand Total do mes na Pivot_Inter. bate com a soma direta do
+    BASE_KSB1 daquele mes.
+
+    Motivo (bug real, 2026-09-04, Agosto/2026 Actual): o filtro do campo "Gestorial"
+    da Pivot_Inter. tem os itens `#N/A` e `(vazio)` DESMARCADOS. Qualquer linha cujo
+    Gestorial nao resolva (conta nova fora do de-para) some do Grand Total sem erro
+    nenhum - naquele caso, 2 linhas de credito (-79.787,48, repasse de Ibirite,
+    conta M240600000) sumiram e a Base Intermediaria herdou custo INFLADO em R$ 79 mil.
+    E' o mesmo padrao do bug das provisoes de 2026-09-02 (item `(blank)` do campo
+    "Var." desmarcado). Esta conferencia pega essa classe inteira de problema de uma
+    vez, qualquer que seja o campo/item escondido no filtro.
+
+    Nao aborta antes de salvar: os dados da BASE_KSB1 estao corretos e a colagem
+    custa 10+ minutos - o arquivo e' preservado e o erro sobe depois, pra usuaria
+    resolver o de-para antes de seguir pra Finalizacao da Base Intermediaria."""
+    total_base = com_retry(
+        excel.WorksheetFunction.SumIf,
+        ws.Columns(COL_MES_BASE), mes, ws.Columns(COL_VALOR),
+        log=log,
+    )
+
+    wsp = wb.Worksheets(ABA_PIVOT_INTER)
+    pt = wsp.PivotTables(1)
+    intervalo = pt.TableRange1
+    linha_cabecalho = intervalo.Row + 1
+    linha_grand_total = intervalo.Row + intervalo.Rows.Count - 1
+
+    col_mes = None
+    for i in range(intervalo.Columns.Count):
+        coluna = intervalo.Column + i
+        if wsp.Cells(linha_cabecalho, coluna).Value == mes:
+            col_mes = coluna
+    if col_mes is None:
+        log(
+            f"AVISO: não achei a coluna do mês {mes} na {ABA_PIVOT_INTER} — "
+            "não foi possível conferir a Pivot contra o BASE_KSB1."
+        )
+        return
+
+    total_pivot = wsp.Cells(linha_grand_total, col_mes).Value or 0.0
+    diferenca = total_pivot - total_base
+    if abs(diferenca) <= 0.01:
+        log(f"Conferência OK: Pivot_Inter. e BASE_KSB1 batem no mês {mes} ({total_base:,.2f}).")
+        return
+
+    contas = _contas_com_gestorial_em_erro(ws, last_row, mes)
+    if contas:
+        detalhe = "; ".join(
+            f"{conta} ({valor:,.2f} em {n} linha(s))" for conta, (valor, n) in contas
+        )
+        pista = (
+            f"\nContas do mês com Gestorial em erro (#N/A) — provavelmente não cadastradas na aba "
+            f"'Contas' da Base_Contas_Contábeis_Fitted: {detalhe}."
+            f"\nCadastre a(s) conta(s) no de-para e gere o arquivo de novo. Atenção: o BASE_KSB1 abre "
+            f"com os links externos NÃO atualizados, então também é preciso atualizar os links "
+            f"(Dados > Editar Links > Atualizar valores) pra fórmula reresolver."
+        )
+    else:
+        pista = (
+            "\nNão achei célula em erro na coluna Gestorial — verifique os FILTROS dos campos da "
+            "Pivot_Inter. (itens desmarcados, como '#N/A' ou '(vazio)', somem do Grand Total sem avisar)."
+        )
+
+    raise RuntimeError(
+        f"O arquivo FOI SALVO e os dados da BASE_KSB1 estão corretos, mas a Pivot_Inter. NÃO bate "
+        f"com eles no mês {mes}:\n"
+        f"  BASE_KSB1 (soma real): {total_base:,.2f}\n"
+        f"  Pivot_Inter. (Grand Total): {total_pivot:,.2f}\n"
+        f"  Diferença: {diferenca:,.2f}\n"
+        f"A Pivot está deixando linha(s) de fora — NÃO siga para a 'Finalização da Base Intermediária' "
+        f"antes de resolver, senão a Base Intermediária herda o valor errado.{pista}"
+    )
+
+
+def colar_linhas_e_atualizar_pivots(caminho_copia: Path, linhas_novas: list, mes: int, log=print, pid_callback=None):
     excel = abrir_excel_isolado(log, pid_callback)
     try:
         # IgnoreReadOnlyRecommended=True: o BASE_KSB1 tem a flag interna
@@ -283,6 +391,13 @@ def colar_linhas_e_atualizar_pivots(caminho_copia: Path, linhas_novas: list, log
         com_retry(wb.Save, log=log)
         if not wb.Saved:
             raise RuntimeError("wb.Save() retornou mas wb.Saved ainda é False — o arquivo pode não ter sido gravado.")
+
+        # Conferencia DEPOIS de salvar, de proposito: se a Pivot nao bater, o
+        # arquivo (que custou 10+ minutos de colagem) e' preservado e o erro
+        # sobe pra usuaria resolver o de-para antes do proximo passo.
+        log("Conferindo se a Pivot_Inter. bate com o BASE_KSB1...")
+        conferir_pivot_contra_base(excel, wb, ws, last_row + n, mes, log)
+
         com_retry(wb.Close, SaveChanges=False, log=log)
         log("Concluído.")
     finally:
@@ -308,7 +423,7 @@ def gerar_ksb1_mensal(
     caminho_copia = copiar_para_teste(caminho_origem, pasta_saida, nome_base, log)
     remover_flag_somente_leitura_recomendada(caminho_copia, log)
 
-    colar_linhas_e_atualizar_pivots(caminho_copia, linhas_novas, log, pid_callback)
+    colar_linhas_e_atualizar_pivots(caminho_copia, linhas_novas, mes, log, pid_callback)
 
     log(f"\nArquivo gerado: {caminho_copia}")
     log(f"Fonte usada: {fonte} ({arquivo_fonte.name}), {len(linhas_novas)} linha(s) colada(s).")
