@@ -817,3 +817,7 @@ apresentação (título/tooltip/estilo) e a estrutura de abas.
 **Validado:** teste ponta a ponta numa cópia local do `KSB1 August Actual 2026_v2.xlsx` (nada escrito na rede), chamando as **funções de produção** na mesma ordem que `colar_linhas_e_atualizar_pivots` usa: antes `T=#N/A`; com a base de contas aberta somente leitura + recálculo, `T=4263000` / `U=Outras Despesas`; depois do `RefreshAll` e do `Save`, a conferência passou e o **Grand Total de Agosto gravado em disco ficou R$ 5.671.131,15** (o valor correto). `py_compile` OK, arquivo inteiro codifica em cp1252, e cópia de rede do cockpit sincronizada.
 
 **Cadastro feito na mesma sessão:** conta `M240600000` inserida na linha 564 da aba `Contas` como **4263000 / Outras Despesas** (escolha da usuária, mesmo tratamento da conta irmã `M230600000` "Rec. de Custos Terceiros"), com backup datado (`Base_Contas_Contábeis_Fitted_22.backup_2026-09-04.xlsx`) criado antes.
+
+## 2026-10-02 — Tarefa agendada ZLFIB: ligar StartWhenAvailable
+**Decisão:** ligar "executar assim que possível após execução perdida" em `Verificacao_ZLFIB_Duplicidade_Mensal`.
+**Motivo:** em 01/10 o Agendador perdeu 6 execuções (PC bloqueado/suspenso) e a checagem mensal não rodou. Ver `memory/errors/2026-10-02_zlfib_tarefa_agendada_execucoes_perdidas.md`.
