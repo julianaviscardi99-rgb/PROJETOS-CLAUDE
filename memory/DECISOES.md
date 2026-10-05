@@ -821,3 +821,8 @@ apresentação (título/tooltip/estilo) e a estrutura de abas.
 ## 2026-10-02 — Tarefa agendada ZLFIB: ligar StartWhenAvailable
 **Decisão:** ligar "executar assim que possível após execução perdida" em `Verificacao_ZLFIB_Duplicidade_Mensal`.
 **Motivo:** em 01/10 o Agendador perdeu 6 execuções (PC bloqueado/suspenso) e a checagem mensal não rodou. Ver `memory/errors/2026-10-02_zlfib_tarefa_agendada_execucoes_perdidas.md`.
+
+## 2026-10-05 — MP27 V2: revisar só a estrutura; bloco de premissas rejeitado
+**Decisão:** trabalhar só na V2 (V1 intocada), aba por aba (SJP → GO → IBI → RES), ler/achar/decidir/gravar. Valores serão revistos depois da estrutura.
+**Motivos / escolhas dela:** frete da SJP desmembrado em unitário × volume (0,9075 embutido); transporte da GO fixo `-65*1.03`; MO e depreciação provisórias (R9) até RH/áreas enviarem; depreciação da GO = valores mensais do R9; **bloco de PREMISSAS na SJP rejeitado ("NAO GOSTEI")** — não propor de novo; IFERROR e conferência da variante no padrão da SJP em todas as abas.
+**Backup:** tarefa `Backup_Conversas_Claude` (3 em 3 min) copia transcritos para `data/processed/conversas/` via `scripts/backup_conversas.py`.

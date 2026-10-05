@@ -1,0 +1,7 @@
+# 2026-10-05 — MP27: método de revisão da estrutura (SJP/GO) e armadilhas de ferramenta
+
+**Método que funcionou (repetir em IBI/RES):** 1) copiar a V2 da rede para `%TEMP%` e ler por COM só leitura; 2) comparar as fórmulas da aba nova contra a SJP (referência que fecha); 3) checar fórmula R1C1 igual Jan-Dez, erros, totais Q = soma dos meses, EBIT = MC + Fixo + Outras Receitas, R9/MP'26 = soma dos meses; 4) listar achados e esperar a decisão; 5) gravar com backup antes, validando "valores inalterados" e conferência OK ANTES do `Save`.
+**Teste que pega erro de sinal:** variante (T43/W43) tem que bater com `Q43 - R9/MP'26`. A linha de conferência (`=ROUND(T43-Q49,3)`) falhou em −727 e apontou direto o `(V16-V26)` no efeito volume; o certo é `(V16+V26)` porque a linha 26 (variável/pç) já é negativa. O erro ficava escondido em T8 porque o volume era igual ao do R9 (efeito = 0).
+**Ferramenta:** Python pelo Bash não enxerga `\FSS024...`; PowerShell enxerga. Heredoc do Bash perde uma barra do caminho UNC. `win32com`: `Range.Address` é propriedade. `NumberFormat` em célula colada pode falhar — desnecessário para texto OK/VERIFICAR.
+**Rede:** a usuária regrava a V2 pelo Excel dela; checar `LastWriteTime` antes de concluir que "sumiu algo" (hoje parecia perda das colunas Y/Z da GO, mas era ela reorganizando para o layout da SJP).
+**Segurança do Claude Code:** gravação na rede é negada pelo classificador mesmo com autorização verbal; reenviar após ela pedir "tenta novamente" passou. Nunca contornar com outra ferramenta sem ela mandar.
