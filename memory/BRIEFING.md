@@ -7,6 +7,17 @@
 
 **Estado do arquivo:** `...\Forecast\MP\MP 2027\MENS FITTED MP27_v2.xls` — última gravação 05/10 18:27, **hoje nada foi gravado na V2**. SJP e GO seguem prontas (ver seção 05/10). Backup de 05/10 em `data/processed/backups_mp27/2026-10-05/`.
 
+### FEITO 06/10 11:28 — aba nova "Impacto JLR" gravada na V2 (só leitura das outras abas; backup `v2_BACKUP_antes_aba_impacto_jlr_1114.xls`, script `criar_aba_impacto_jlr.py`)
+- Seções: (1) dados da JLR no R9 e MP'26 (lidos dos arquivos-fonte, em azul; **frete e material JLR = ESTIMATIVA** 21,84×0,9075 e 6,99/pç, células amarelas — usuária aprovou os ~R$ 21 mil no R9); (2) e (3) volume/mix/preço por cliente (Fiat, Iveco, CNH, **JLR em linha própria**) vs R9 e vs MP'26; (4) conferência com IBI!T16/W16 e volume + EBIT sem JLR. Status OK nos dois.
+- **Resultados (R$ mil):** margem direta JLR = **522,5 (R9)** e **526,8 (MP'26)**. Vs R9 a variante preço+mix da IBI (−1.457,1) é **quase toda JLR (−1.472,1)**; volume da JLR só −0,5 (1.059 pç de 2,9 mi) — a saída aparece como MIX. EBIT IBI: variante vs R9 −1.272,7 → **−750,2 sem a JLR**; vs MP'26 +506,3 → **+1.033,2 sem a JLR**.
+- Aba NÃO alimenta a TOTAL (não foi pedido). Rótulos da aba nova em português.
+
+### (concluído) pedido 06/10 ~11:15: medir o impacto da SAÍDA DA JLR (Ibirité) e expurgá-lo da variante volume/preço/mix
+- A usuária corrigiu: **não é Sorocaba, é a JLR de Ibirité** ("quero medir o quanto a saída da JLR impacta"). Fonte indicada: `...\Forecast\Fcst\Fcst 2026\R9 2026\MENS FITTED FORECAST SETEMBRO_FINAL.xls` (aba IBI). Também existe `...\MP\MP 2026\MENS FITTED MP2026_v3.xls` (aba IBI, mesmas linhas de JLR).
+- **Dados já localizados (dump em scratchpad, só leitura):** no R9 e no MP'26 a aba IBI tem Volume JLR (linha 55), Preço JLR (62), Faturamento JLR (69), JLR/Rodas insumos (R9: 76/77/83/84/88-89; MP'26: 73/77/81), Frete (R9 86 / MP'26 79). Na V2 atual a JLR **já foi retirada** da IBI pela usuária (volume = Fiat+Iveco+CNH; linhas 53-55).
+- **Plano:** criar na V2 uma ABA NOVA "Impacto JLR" (não mexe nas abas existentes), com volume/receita/materiais+rodas/frete/margem da JLR no R9 e no MP'26 (valores lidos dos arquivos-fonte, origem anotada), efeito volume/preço/mix da saída e a variante ex-JLR da IBI; conferir que Σ = variante já existente. Ainda NÃO criado. Pendente confirmar com ela: frete JLR Jan-Jun estimado (≈1.059 un × 21,84 × 0,9075 ≈ R$ 21 mil) e se a aba nova deve alimentar a TOTAL.
+- Lembrete: a usuária edita a V2 em paralelo (salvou 10:40); reler e conferir `LastWriteTime`/lock antes de gravar. Rótulos ficam em INGLÊS.
+
 ### GRAVADO 06/10 10:59 na V2 — REVISÃO ESTRUTURAL (RES, TOTAL, linha 50) + aba SOR EXCLUÍDA
 - Backup: `data/processed/backups_mp27/2026-10-06/v2_BACKUP_antes_revisao_estrutural_1040.xls` (+ `revisao_estrutural.py`, `audita.py`). Testado em cópia, reaberto e reauditado sem erros.
 - **A usuária salvou a V2 às 10:40** (IBI no layout da SJP: T=var R9, V=MP'26, W=var MP'26; JLR fora do volume; **rótulos de volta em INGLÊS de propósito — decisão dela: NÃO traduzir**).
