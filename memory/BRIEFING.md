@@ -3,6 +3,30 @@
 > Manter apenas as últimas 2 sessões inline — sessões mais antigas vão para long_term/.
 
 ---
+## EM ANDAMENTO 2026-10-06 — MP27 V2: revisão da IBIRITÉ (só leitura feita, NADA gravado) + decisão sobre saída da JLR
+
+**Estado do arquivo:** `...\Forecast\MP\MP 2027\MENS FITTED MP27_v2.xls` — última gravação 05/10 18:27, **hoje nada foi gravado na V2**. SJP e GO seguem prontas (ver seção 05/10). Backup de 05/10 em `data/processed/backups_mp27/2026-10-05/`.
+
+### IBI — achados (lido na V2, só leitura)
+- **OK:** variantes fecham (W43 = Q49 = −591,4; AC43 = Q43−AB43 = +1.187,6); EBIT 6.808,70 = MC − Fixo = soma dos meses; R9 (7.400,14) e MP'26 (5.621,12) = soma dos meses; **zero `#REF!`** (os "10 erros" de 05/10 eram `####`).
+- **CONVENÇÃO DE SINAL DIFERENTE da SJP/GO:** na IBI o custo é POSITIVO (MC = Vendas − Variável; EBIT = MC − Fixo; variantes S−Q, ganho +). Por isso `W8 = (Q8-S8)*(S16-S26)` está CERTO (corrigi o erro que eu tinha registrado). **Não aplicar o padrão da SJP sem converter o sinal.**
+- **A fazer (quando ela mandar):** (1) português (Pieces, NET SALES, Variable Cost, Labour, Handling, Rents, Other Fixed, FEB/APR/OCT/DEC, "Variabile / Pc", "Condominio"); (2) IFERROR em E44, Q26, Q29, Q44, linhas de preço/insumos; (3) linha de conferência (colunas W e AC; row 50 está livre); (4) hardcodes: `J52 =245303-4`, `H13 =(-7802.603325/1000)+0.5058`, frete Set-Dez com 311,55 e 21,84 embutidos; (5) Jan-Ago digitados × Set-Dez fórmula/link nas linhas 19-23, 32-37, 66-69 — MO Set-Dez (linhas 19 e 32) ainda lê `Labour Cost R09 2026` (mesmo link que ela quebrou na SJP); (6) linha 72: Jan-Fev usam linha 83, Mar-Dez usam linha 84; (7) colunas ocultas T,U,V,X,Y,Z com restos (U28/V28 = margem/pç rotulada como variação); (8) Outras Receitas (linha 41) fora do EBIT/variante.
+- **Preço JLR de abril (H62) digitado 0**, mas faturamento/volume = 1.335,78; média Q62 (1.390,59) e Q63 misturam JLR.
+
+### DECISÃO DA USUÁRIA (06/10) — JLR
+"Em Ibirité o cliente JLR sai; para 2027 não tem volume previsto." Escolheu: **zerar a JLR nos 12 meses (volume, preço, materiais, rodas, frete) E criar na variante uma linha "Efeito saída JLR"**, com volume/preço/custos calculados SEM a JLR (volume e preço da variante ex-JLR) para a variante continuar fechando com o EBIT.
+- **Dados achados:** a JLR na V2 é IDÊNTICA à do R9 (Jan 90, Abr 270, Mai 540, Jun 159 = 1.059 un; faturamento 1.472.631,9; rodas JLR 921.763,3 nas linhas 83/84; frete: termo `M55*21,84*0,9075` só existe Set-Dez, Jan-Ago é total digitado — o frete JLR de Jan-Jun precisa ser ESTIMADO ≈ 1.059×21,84×0,9075 ≈ R$ 21 mil, confirmar com ela). Margem JLR no R9 ≈ 1.472,6 − 921,8 − ~21 ≈ **R$ 530 mil** (aprox.).
+- **Ainda falta:** valores da JLR no **MP'26** (arquivo `\...\Forecast\MP\MP 2026\MENS FITTED MP2026_v3.xls`, aba IBI, mesmas linhas 55/69/83/84/86) para o efeito vs MP'26 (colunas AB/AC).
+- **Plano de fórmulas (gravar só com ok dela):** bloco auxiliar "JLR na referência" (volume, vendas, materiais/rodas, frete) sob as colunas S (R9) e AB (MP'26); bases ex-JLR (S8x = S8−vol JLR etc.); `W8=(Q8−S8x)*(S16x−S26x)`, `W16=(Q16−S16x)*Q8`, linhas 21/22 usam S21/S22 menos JLR; nova linha (ex.: 42) "Efeito saída JLR" = −margem JLR na referência; `W43` soma a nova linha; conferir W43 = Q49 e AC43 = Q43−AB43 antes de salvar. Zerar JLR: linha 55 (Jan-Jun→0), preços 62/88/89, materiais 76/77, frete.
+- **Atenção:** zerar a JLR muda EBIT da IBI (−~R$ 530 mil de margem) e os totais; ela disse que "valores serão revistos depois", mas ESCOLHEU zerar agora.
+
+### PRÓXIMOS PASSOS
+1. Ler MP'26 (JLR) → montar o bloco auxiliar → mostrar a ela as fórmulas e o impacto → **gravar na V2 com backup** (pedir que feche a V2; PowerShell, não Bash, para a rede; `win32com` via arquivo .py).
+2. Aplicar português + IFERROR + conferência na IBI (padrão adaptado à convenção de sinal da IBI).
+3. **RESENDE** (ainda não vista), depois **TOTAL** (20 `#REF!`).
+4. Pendências antigas: ver seção 05/10 e 02/10.
+
+---
 ## EM ANDAMENTO 2026-10-05 — MP 2027 (MENS FITTED MP27_v2): SJP e GOIANA revisadas e prontas na estrutura; AMANHÃ: IBIRITÉ e RESENDE
 
 **Arquivo de trabalho:** `\\FSS024-01BR.group.pirelli.com\EO_FITTED\BU FITTED\Forecast\MP\MP 2027\MENS FITTED MP27_v2.xls` (a **V1 não foi tocada**; trabalhamos só na V2). A usuária também edita a V2 no Excel dela e salva por cima — **sempre reler a V2 da rede antes de agir** e pedir que feche o arquivo antes de eu gravar. Última gravação vista: 18:25.
@@ -44,31 +68,6 @@ Backup do dia (fora do Git): `data/processed/backups_mp27/2026-10-05/` — V2 fi
 - O bloqueio de segurança do Claude Code **nega gravação na rede mesmo com "pode fazer" na conversa**; passou ao reenviar a mesma ação quando ela pediu "tenta novamente". Python pelo Bash **não enxerga** a pasta de rede (`\\FSS024...`) — usar PowerShell; heredoc do Bash **come uma barra** do `\\` (usar Write/arquivo). `win32com`: `Address` é propriedade (`.Address.replace("$","")`), não método.
 - Cuidado ao diagnosticar "perda": o arquivo na rede pode ter sido regravado pela usuária depois do meu save — conferir `LastWriteTime` antes de supor erro meu.
 - Ctrl+C duas vezes fecha o Claude Code e não é reconfigurável. Usar **Esc** para interromper; retomar com `/resume`.
-
----
-## CONCLUÍDO 2026-10-02 — ZLFIB mensal não rodou em 01/10: causa achada (execuções perdidas do Agendador), Setembro checado à mão (0 duplicidades) e tarefa corrigida
-
-**Pergunta da usuária:** "a tarefa do 1º dia útil foi feita ontem?" (checagem mensal ZLFIB de duplicidade de NF, ver `memory/DECISOES.md` / sub-projeto Fitted Recuperação).
-
-**Diagnóstico — NÃO rodou direito em 01/10 (quinta, 1º dia útil):**
-- Só 1 execução real, às 09:00, e o SAP ainda não estava logado → saiu sem fazer nada.
-- As outras 6 tentativas (09:36, 13:34, 13:36, 14:36, 17:07, 17:36) deram evento 153 do Agendador: *"missed its schedule"* — a tarefa nem foi iniciada (PC provavelmente bloqueado/suspenso; hipótese, o log não diz o motivo).
-- Sem execução às 18h, o e-mail de aviso "SAP não logado" também não saiu. O arquivo `data/processed/zlfib_mensal_estado.json` não existia.
-- Log antigo tinha 3 erros `No module named 'win32com'`, mas hoje `win32com` importa normal — não era o problema de ontem.
-
-**Ações feitas:**
-1. **Checagem de Setembro/2026 rodada manualmente hoje** (SAP logado), chamando `rodar_verificacao_mensal` direto (o `watcher()` sai cedo porque hoje não é 1º dia útil): 4.288 linhas → 3.360 NFs únicas (1.938 excluídas por serem R8, transferência de material) → **1.422 analisadas → 0 duplicidades**, sem e-mail (como combinado). Arquivo `Análise Duplicidade NF (ZLFIB)_v8.xlsx` na pasta de rede "Estudo Duplicidade Pagamento". Estado gravado como outubro já verificado.
-2. **Tarefa `Verificacao_ZLFIB_Duplicidade_Mensal`: `StartWhenAvailable` False → True** (conferido; 2 gatilhos e `.bat` inalterados). A 1ª tentativa foi bloqueada pelo classificador do Claude Code; só apliquei após a usuária autorizar explicitamente ("PODE FAZER").
-3. Registrado em `memory/errors/2026-10-02_zlfib_tarefa_agendada_execucoes_perdidas.md` e `memory/DECISOES.md`. Commit `819dea2` + push feitos.
-
-**Lição:** rotina que depende de PC ligado/logado precisa de `StartWhenAvailable`; quando algo "não rodou", olhar os eventos 153 do Agendador (consulta do `Get-WinEvent` é lenta — filtrar por data com `FilterHashtable`).
-
-**Status do fechamento:** a usuária informou que o **fechamento de Setembro já foi feito por ela e deu certo**. Do Agosto/2026 Actual, os Passos ④ (Rateio) em diante estavam pendentes no briefing de 09-04 — **não confirmado hoje** se já foram concluídos.
-
-**PENDÊNCIAS:**
-1. Confirmar com a usuária se o Agosto Actual (Passos ④/⑤/⑥) já foi fechado ou ainda falta algo.
-2. Ver em 03/11 (1º dia útil de novembro) se o ZLFIB rodou sozinho, agora com `StartWhenAvailable` ligado — ele ainda exige SAP logado; se não estiver, tenta de hora em hora e avisa por e-mail às 18h.
-3. Seguem do dia 09-04: estender o "Check de Agrupamentos" (Passo ②) p/ conferir contas no de-para; descobrir quem é o dono da `Base_Contas_Contábeis_Fitted_22.xlsx`; investigar por que o Excel às vezes não fecha sozinho.
 
 ---
 ## Histórico anterior (2026-09-01 para trás)
