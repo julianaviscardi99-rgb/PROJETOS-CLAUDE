@@ -826,3 +826,11 @@ apresentação (título/tooltip/estilo) e a estrutura de abas.
 **Decisão:** trabalhar só na V2 (V1 intocada), aba por aba (SJP → GO → IBI → RES), ler/achar/decidir/gravar. Valores serão revistos depois da estrutura.
 **Motivos / escolhas dela:** frete da SJP desmembrado em unitário × volume (0,9075 embutido); transporte da GO fixo `-65*1.03`; MO e depreciação provisórias (R9) até RH/áreas enviarem; depreciação da GO = valores mensais do R9; **bloco de PREMISSAS na SJP rejeitado ("NAO GOSTEI")** — não propor de novo; IFERROR e conferência da variante no padrão da SJP em todas as abas.
 **Backup:** tarefa `Backup_Conversas_Claude` (3 em 3 min) copia transcritos para `data/processed/conversas/` via `scripts/backup_conversas.py`.
+
+---
+
+## 2026-10-06 — MP27 V2: rótulos em inglês ficam; aba SOR excluída; TOTAL no layout da SJP
+
+**Decisão:** nas abas do MENS FITTED MP27_v2 os rótulos de linha (Pieces, NET SALES, Labour...) **ficam em inglês** — a usuária reverteu a tradução que eu tinha feito na IBI e disse "os rótulos em inglês é para deixar". Não traduzir mais. A aba **SOR (Sorocaba) foi excluída** porque a unidade deixa de existir em 2027; a TOTAL passou a somar só SJP+IBI+GO+RES e foi reconstruída no layout da SJP (T=variante vs R9, V=MP'26, W=variante vs MP'26, Y/Z=∆ volume). O R9 consolidado da TOTAL continua incluindo R$ 188,203 de Outras Receitas da SOR; a saída entra na variante via `T41 = Q41 − S41`.
+
+**Motivo:** pedido direto da usuária. **Como aplicar:** convenção de sinal única em todas as abas (custo negativo, MC = Vendas + Custo, EBIT = MC + Fixo + Outras Receitas, variante = ganho +); conferir sempre T43 = Q43−R9 e W43 = Q43−MP'26 (linha 51). A usuária edita a V2 em paralelo: reler da rede e conferir `LastWriteTime` antes de gravar.
