@@ -42,7 +42,7 @@ preenchimento de provisoes do Flash ganhou seu proprio Passo 3):
    editado a mao - passam a apontar sempre pra coluna do mes atual - e, so
    no caso Flash, os rotulos de texto herdados do template (linha 15/18 e
    cabecalho da linha 24) que precisam virar "Flash"/"Forecast".
-   Faturamento (linha 25) fica de fora, ainda e' manual.
+   Faturamento Flash (H25) vem do Flash (I25); Faturamento Actual (I25) ainda e' manual.
 
 Ciclo Flash (confirmado com a usuaria em 2026-08-21): antes do passo 3 acima,
 preenche as linhas coloridas (provisoes/reclassificacoes) a partir do "Fast
@@ -124,6 +124,7 @@ LINHA_PIVOT_GRAND_TOTAL = 11
 COL_QUADRO_CUSTOS_FLASH = 8    # H
 COL_QUADRO_CUSTOS_ACTUAL = 9   # I
 LINHA_QUADRO_CUSTOS = 26
+LINHA_QUADRO_FATURAMENTO = 25
 
 # Cambio (L25): so e' alterado no Flash - o Actual sempre puxa o mesmo valor
 # de la, celula por celula (nao depende da coluna do mes, e' fixo).
@@ -239,6 +240,8 @@ def atualizar_comparacao_flash(excel, wb, mes: int, ano: int, log):
         valor_despesas = ws_flash.Cells(LINHA_PIVOT_DESPESAS_PROPRIO, col).Value
         valor_mao_de_obra = ws_flash.Cells(LINHA_PIVOT_MAO_DE_OBRA_PROPRIO, col).Value
         valor_cambio = ws_flash.Cells(LINHA_CAMBIO, COL_CAMBIO).Value
+        # No arquivo Flash o faturamento Flash fica na coluna I (Forecast | Flash | delta).
+        valor_faturamento_flash = ws_flash.Cells(LINHA_QUADRO_FATURAMENTO, COL_QUADRO_CUSTOS_ACTUAL).Value
     finally:
         wb_flash.Close(SaveChanges=False)
 
@@ -255,9 +258,17 @@ def atualizar_comparacao_flash(excel, wb, mes: int, ano: int, log):
     # Quadro amarelo "Month/Flash/Actual/delta": H26 (Custos, Flash) e I26
     # (Custos, Actual) ficavam travados na coluna do ultimo mes editado a mao
     # - reescreve as duas formulas apontando pra coluna do mes atual (ex: em
-    # julho, H26 = "=(I18+I19)/1000", I26 = "=I11/1000"). Faturamento (linha
-    # 25) fica de fora de proposito - a usuaria confirmou que ainda vai
-    # automatizar isso em outro momento.
+    # julho, H26 = "=(I18+I19)/1000", I26 = "=I11/1000"). Faturamento Flash
+    # (H25) vem do Flash (I25 de la); o Faturamento Actual (I25) segue manual.
+    if valor_faturamento_flash is None:
+        log("AVISO: faturamento Flash (I25 do arquivo Flash) está vazio — H25 não foi atualizado.")
+    else:
+        valor_anterior = ws.Cells(LINHA_QUADRO_FATURAMENTO, COL_QUADRO_CUSTOS_FLASH).Value
+        ws.Cells(LINHA_QUADRO_FATURAMENTO, COL_QUADRO_CUSTOS_FLASH).Value = valor_faturamento_flash
+        log(
+            f"  Faturamento Flash (H{LINHA_QUADRO_FATURAMENTO}) = {valor_faturamento_flash:,.2f} "
+            f"(antes: {valor_anterior}). Faturamento Actual (I{LINHA_QUADRO_FATURAMENTO}) segue manual."
+        )
     letra_mes = _letra_coluna_mes(mes)
     ws.Cells(LINHA_QUADRO_CUSTOS, COL_QUADRO_CUSTOS_FLASH).Formula = (
         f"=({letra_mes}{LINHA_PIVOT_DESPESAS_COMPARACAO}+{letra_mes}{LINHA_PIVOT_MAO_DE_OBRA_COMPARACAO})/1000"

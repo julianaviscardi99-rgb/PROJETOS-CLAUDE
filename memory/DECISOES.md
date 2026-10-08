@@ -834,3 +834,11 @@ apresentação (título/tooltip/estilo) e a estrutura de abas.
 **Decisão:** nas abas do MENS FITTED MP27_v2 os rótulos de linha (Pieces, NET SALES, Labour...) **ficam em inglês** — a usuária reverteu a tradução que eu tinha feito na IBI e disse "os rótulos em inglês é para deixar". Não traduzir mais. A aba **SOR (Sorocaba) foi excluída** porque a unidade deixa de existir em 2027; a TOTAL passou a somar só SJP+IBI+GO+RES e foi reconstruída no layout da SJP (T=variante vs R9, V=MP'26, W=variante vs MP'26, Y/Z=∆ volume). O R9 consolidado da TOTAL continua incluindo R$ 188,203 de Outras Receitas da SOR; a saída entra na variante via `T41 = Q41 − S41`.
 
 **Motivo:** pedido direto da usuária. **Como aplicar:** convenção de sinal única em todas as abas (custo negativo, MC = Vendas + Custo, EBIT = MC + Fixo + Outras Receitas, variante = ganho +); conferir sempre T43 = Q43−R9 e W43 = Q43−MP'26 (linha 51). A usuária edita a V2 em paralelo: reler da rede e conferir `LastWriteTime` antes de gravar.
+
+## 2026-10-08 — Quadro amarelo: Faturamento Flash (H25) passa a vir do arquivo Flash
+
+**Decisão:** em `atualizar_comparacao_flash` (`gerar_base_intermediaria.py`, só ciclo Actual), H25 (Faturamento, coluna Flash) é copiado de I25 do arquivo Flash do mesmo mês. I25 (Faturamento Actual) continua manual.
+
+**Motivo:** no fechamento de Set/2026 o Actual mostrava Flash = 6.465, mas o Flash real é 6.547 (valor herdado/digitado antigo; delta de resultado ficou inflado: 84 em vez de 2). A fonte do faturamento Actual ainda não foi definida pela usuária.
+
+**Status:** código alterado e compilado, **não testado** contra os arquivos reais; validar em pasta local antes de rodar na rede.
