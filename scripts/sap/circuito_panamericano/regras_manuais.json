@@ -1,0 +1,6 @@
+{
+  "_comentario": "Regras da Juliana que valem acima do historico e da aba Parametros. 'contem' = trecho do texto do pedido (sem acento, minusculo).",
+  "regras": [
+    {"contem": "optimus", "classificacao": "I.T - Software Optimus", "motivo": "Optimus e software de IT, nao predial (Juliana, 2026-10-09)"}
+  ]
+}

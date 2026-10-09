@@ -856,3 +856,12 @@ apresentação (título/tooltip/estilo) e a estrutura de abas.
 **Sinal:** no MP27 os custos já estão negativos na aba TOTAL, então foi removido o `*-1` das 132 fórmulas de custo (linhas 20-24 e 31-36, D:O): `=([1]TOTAL!E19)*-1` → `=[1]TOTAL!E19`. Valores em cache refrescados a partir dos arquivos novos e `fullCalcOnLoad` ligado.
 
 **Pendente/atenção:** rótulos da linha 2 (anos 2026/2025/2025/2024) não foram alterados; linha 42 (Slow Moving) está vazia na TOTAL do MP27 (vira 0); se sair uma versão nova da MENS (v4, sem "teste daniel"), repontar o link 1.
+
+## 2026-10-09 — Circuito Panamericano: classificação de custos por regras + histórico
+- **Decisão:** a classificação da KSB1 do Circuito é sugerida por script (histórico Classe+Fornecedor+Texto, depois Parâmetros, depois Classe+Fornecedor), com 3 níveis de confiança (alta/média/revisar). Saída sempre em arquivo novo em `data/processed/`, sem tocar no `KSB1 - Jan-Dez_.xlsx` da rede.
+- **Motivo:** classificar manualmente leva horas por mês; o teste mostrou 94–99% de acerto nas linhas de confiança alta. Linhas sem classe/fornecedor (DAC, reclassificação MS) ficam para decisão manual.
+
+## 2026-10-09 — Cockpit novo do Circuito Panamericano (separado da Fitted)
+
+**Pedido:** cockpit próprio do CP, nome "Circuito Panamericano", foto das pistas do site no lugar do fundo preto do cabeçalho; **nada da Fitted pode ser alterado**; criar em `Circuito Panamericano\Extração SAP`.
+**Feito:** app novo e independente em `scripts/sap/circuito_panamericano/` (`cockpit_circuito_gui.py`, `cockpit_circuito_launcher.vbs`, `assets/pista_circuito.jpg` + `pirelli_tire.ico`). Foto = IMG_1352 de `assets.circuitopanamericano.com.br` (curva da pista com barreiras Pirelli), recorte horizontal com degradê escuro à esquerda pro título. Hoje é só a casca (sem etapas). Cópia de rede: `...\Circuito Panamericano\Extração SAP\_Cockpit_CP\` + atalho `Circuito Panamericano.lnk` (ícone de pneu da própria pasta de rede). **Cópia de rede não sincroniza sozinha com o projeto** — re-copiar após mudanças. Fitted intocada (`atualizar_ksb1_gui.py` não foi editado).

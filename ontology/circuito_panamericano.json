@@ -21,6 +21,16 @@
     "locacao": "Alugável para eventos e por horário em qualquer pista. Preços não são públicos no site."
   },
   "nomes_alternativos": ["CP", "Elias Fausto", "Circuito Panamericano"],
+  "sap": {
+    "empresa": "2281",
+    "observacao": "Código da empresa do Circuito Panamericano no SAP (informado pela Juliana em 2026-10-09)."
+  },
+  "pastas_rede": {
+    "caminho_base": "\\\\FSS024-01BR.group.pirelli.com\\CONTROLLING\\Reporting\\Reporting ACT_FCST_MP Cons. e Ind\\Circuito Panamericano\\<ano>\\<MM - Mes>\\<01. Forecast | 02. Flash | 03. Actual>",
+    "arquivo_de_classificacao": "KSB1 - Jan-Dez_.xlsx (1 aba por mês + Parâmetros + Check). Coluna 'Classificação' é preenchida manualmente.",
+    "outros_arquivos_do_flash": ["Base KSB1 - MM.YYYY.XLSX", "MENS CP 2026 - Flash <mês>.xlsx", "09_P&L Circuito Panamericano_Flash_<mês>_26.xlsx", "Base de Custo Flash <mês>.xlsx", "Fast Provisão_final_<mês>_26_CP.xlsx", "Reclassificação Motorsport - <mês>.xlsx"],
+    "nao_esta_em": "\\\\FSS024-01BR.group.pirelli.com\\GFU_DAC (share da Fitted Units)"
+  },
   "faturamento_tipos": {
     "descricao": "Duas grandes origens de receita (explicado pela Juliana em 2026-10-09): intercompany e terceiros.",
     "intercompany": {
@@ -75,11 +85,43 @@
         "uso": "Conferência de lançamento (mesma lógica da Fitted Units — a confirmar se aplica igual aqui)."
       }
     ],
-    "faturamento": "Diferente da Fitted Units: aqui o faturamento é recebido já fechado (não é extraído via ZLFIB pela Juliana)."
+    "faturamento": "Diferente da Fitted Units: não é extraído via ZLFIB. O faturamento chega por e-mail da gerente do Circuito (ver fluxo_faturamento)."
+  },
+  "gerencia": {
+    "gerente": "Camila Maluf",
+    "atualizado_em": "2026-10-09",
+    "papel": "Envia por e-mail à Juliana os faturamentos do mês com os recibos."
+  },
+  "fluxo_faturamento": {
+    "atualizado_em": "2026-10-09",
+    "documento_fiscal": "NÃO é emitida NF — apenas RECIBO.",
+    "etapas": [
+      "1. Camila Maluf (gerente do Circuito) envia por e-mail os faturamentos com os recibos.",
+      "2. Juliana cria um arquivo (consolidação do faturamento).",
+      "3. Juliana abre um chamado na Contabilidade para faturar o recibo."
+    ],
+    "correcao": "Substitui a premissa anterior de que o faturamento 'já chega fechado'. Ele chega como recibos por e-mail e a Juliana precisa processá-los e acionar a Contabilidade.",
+    "pendencias_a_confirmar": [
+      "Layout/colunas do arquivo que a Juliana cria",
+      "Como/onde o chamado é aberto na Contabilidade (sistema, categoria) e o que ele precisa conter",
+      "Prazo: até quando os recibos devem chegar para entrar no Flash e no Actual",
+      "Como o recibo é identificado por tipo (R&D, outro intercompany, terceiros, Alfasite)"
+    ]
   },
   "classificacao_despesas": {
     "conta_contabil": "Cada lançamento de despesa possui uma conta contábil no SAP.",
     "gestoriais": "Mesmo conceito da Fitted Units — agrupamento no SAP que classifica as contas contábeis."
+  },
+  "fechamento_mensalizacao": {
+    "atualizado_em": "2026-10-09",
+    "descricao": "No fechamento, a Juliana atualiza o arquivo de mensalização, pega os custos da KSB1 e os classifica conforme as regras.",
+    "foco_do_projeto": "Maior dor (definido pela Juliana em 2026-10-09): perde muito tempo CLASSIFICANDO os custos da KSB1, porque muitas vezes não sabe do que se trata o lançamento. Hoje decide ora pelo fornecedor, ora pelo texto do pedido. Objetivo: tornar a classificação mais rápida (regras, histórico, sugestão automática).",
+    "natureza_dos_custos": "Apenas custo FIXO. No Circuito Panamericano não existe custo variável (diferente da Fitted Units).",
+    "pendencias_a_confirmar": [
+      "Nome/localização do arquivo de mensalização e sua estrutura (abas, colunas)",
+      "Critérios de classificação dos custos da KSB1 (por conta contábil, gestorial, centro de custo?)",
+      "Como o faturamento (recibos) entra na mensalização"
+    ]
   },
   "processo_recorrente": {
     "frequencia": "2x por mês (Flash e Actual) — mesmo ciclo da Fitted Units.",
@@ -89,7 +131,7 @@
       "3. Carregar as informações da KSB1 em Excel para formar a base intermediária.",
       "4. Carregar a base intermediária diretamente no arquivo de P&L (sem etapa de rateio da Gerência)."
     ],
-    "observacao": "Diferença em relação à Fitted Units: não existe etapa de rateio da Gerência — a base intermediária vai direto para o P&L. Além disso, o faturamento já chega fechado (não é extraído/apurado pela Juliana)."
+    "observacao": "Diferença em relação à Fitted Units: não existe etapa de rateio da Gerência — a base intermediária vai direto para o P&L. Além disso, o faturamento vem por e-mail da gerente com recibos (sem NF); a Juliana monta o arquivo e abre chamado na Contabilidade (ver fluxo_faturamento)."
   },
   "ciclos": {
     "flash": {
