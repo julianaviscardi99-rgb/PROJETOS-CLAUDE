@@ -169,7 +169,10 @@ def extrair_um(session, mes, ano, ciclo, koagr, agrup_label, log):
     # A realocacao pra pasta final (pasta_rede) e' feita com shutil.move, uma
     # copia de arquivo comum que nao passa pelo SAP GUI Scripting - por isso
     # nao e' vigiada pela seguranca do SAP e nao gera popup nenhum.
-    pasta_staging = REDE_BASE / str(ano) / "00.Extração Base KSB1" / "Temporario"
+    # Desde 2026-10-09 (pedido da usuaria): a pasta Temporario de 2026 e' usada SEMPRE,
+    # tambem em 2027 em diante (nao muda por ano) - o SAP ja conhece essa pasta, entao
+    # nunca mais pede autorizacao. O Circuito Panamericano exporta pela mesma pasta.
+    pasta_staging = REDE_BASE / "2026" / "00.Extração Base KSB1" / "Temporario"
     pasta_staging.mkdir(parents=True, exist_ok=True)
     arquivo_staging = pasta_staging / nome_arquivo
     if arquivo_staging.exists():

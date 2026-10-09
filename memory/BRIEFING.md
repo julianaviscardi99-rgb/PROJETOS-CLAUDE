@@ -3,6 +3,25 @@
 > Manter apenas as últimas 2 sessões inline — sessões mais antigas vão para long_term/.
 
 ---
+## SESSÃO 2026-10-09 (janela "Circuito Panamericano: faturamento e B.U") — Onboarding do Circuito + classificação de custos
+
+### Feito
+- **Domínio explicado e registrado** em `ontology/circuito_panamericano.json`: site/estrutura, nomes (CP / Elias Fausto), empresa SAP **2281**, gerente **Camila Maluf**, faturamento = **intercompany** (R&D + demais empresas do grupo, ex.: Pirelli Pneus) e **terceiros** (eventos, pistas, antena Alfasite, valor fixo mensal). Faturamento chega por e-mail com **recibos (sem NF)**; Juliana cria arquivo e abre chamado na Contabilidade. Só **custo fixo**.
+- **Foco do projeto:** acelerar a classificação dos custos da KSB1 (horas manuais por mês). Arquivos em `...\Reporting ACT_FCST_MP Cons. e Ind\Circuito Panamericano\<ano>\<MM - Mes>\<02. Flash | 03. Actual>` (classificação manual em `KSB1 - Jan-Dez_.xlsx`: aba por mês + Parâmetros + Check; Jan–Jul na coluna N verde, Ago+ na coluna "Classificação").
+- **Script** `scripts/sap/circuito_panamericano/classificar_ksb1.py` (+ `regras_manuais.json`: Optimus = I.T, não predial): sugere classificação (histórico + Parâmetros); teste: 94–99% de acerto na confiança alta, 61–90% de cobertura. Gera xlsx novo em `data/processed/`. Juliana viu e **não gostou do formato** (quer manter o dela) — **NÃO está ligado ao cockpit ainda**.
+- **Cockpit do Circuito (janela separada; não importa nada da Fitted)** — `scripts/sap/circuito_panamericano/cockpit_circuito_gui.py` + `ksb1_cp.py`. Layout = **mesmo formato da Fitted** (painel Ano/Mês/Ciclo, abas escuras, pneu girando, barra de progresso, LOG, spinner), título "COCKPIT FECHAMENTO CIRCUITO", foto da pista no cabeçalho (pedido dela). **Passo 1 = Extração KSB1** pronto e **validado ao vivo** (Set/Actual): área 2281, mês inteiro, variante `/DESPFITTED`, sem grupo de centros de custo/agrupamento; salva em `<ano>\<MM - Mes>\<02. Flash|03. Actual>\` com nome no **padrão da Fitted**: `KSB1 - Circuito Panamericano MM.AAAA - <Ciclo>.XLSX` (`_v2/_v3` se já existir). Comparado ao arquivo manual dela: 172x19, soma Valor/MR idêntica (R$ 1.487.805,12). Passos ②–⑤ **em branco** (ela direciona um a um).
+- **Popup "Segurança SAPGUI"**: o 1º teste travou (pasta temporária nova do CP). Solução: exportar sempre pela pasta `Temporario` de **2026** da Fitted (`GFU_DAC\...\Resultados Fitted\2026\00.Extração Base KSB1\Temporario`), já autorizada — e **a pedido dela vale também em 2027+** (nos dois cockpits; `atualizar_ksb1_gui.py` da Fitted ajustado em uma linha).
+- **Cópias de rede atualizadas (autorizado):** cockpit da Fitted (`_Cockpit_KSB1`: `scripts\sap\fitted_units` + `ontology` sem o json do circuito + requirements) e cockpit do CP (`Circuito Panamericano\Extração SAP\_Cockpit_CP` + atalho `Circuito Panamericano.lnk`). **Nenhuma sincroniza sozinha** — re-copiar (robocopy) após mudanças.
+- **Limpeza (autorizada):** arquivo do teste renomeado para o padrão novo em `2026\09 - Sep\03. Actual`; `_v2` duplicado e pasta vazia `Extração SAP\Temporario` apagados. Original dela `Base KSB1 - 09.2026_Actual.xlsx` intacto.
+
+### Pendente / próximos passos (segunda-feira 12/10)
+1. **Passo 2 do cockpit do CP** — a Juliana define. Provável: classificação dos custos da KSB1 na mensalização (`classificar_ksb1.py` como base), **mantendo o formato/arquivo dela** (não criar layout novo).
+2. Faturamento por recibos (e-mail da Camila → arquivo → chamado na Contabilidade) e mensalização: ainda a explicar/automatizar. Pendências de negócio na ontologia (`faturamento_tipos`, `fluxo_faturamento`).
+3. **Regras dela:** não alterar arquivos da área na rede sem confirmar (só leitura / saída em `data/processed/` ou arquivo novo versionado); apagar/renomear só com confirmação.
+4. Opcional: aprender com as decisões dela nos "pendentes" do classificador; revisar a aba Parâmetros (Optimus ainda como "Predial" lá — ela decide se atualiza).
+5. Dica: o gravador de script do SAP (Alt+F12) mostra os cliques dela para novos passos de SAP.
+
+---
 ## SESSÃO 2026-10-09 — Revisão da MENS v2/v3 "teste daniel" + Bridge de EBIT MP'27 linkado
 
 ### Feito
