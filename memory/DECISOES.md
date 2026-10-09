@@ -842,3 +842,17 @@ apresentação (título/tooltip/estilo) e a estrutura de abas.
 **Motivo:** no fechamento de Set/2026 o Actual mostrava Flash = 6.465, mas o Flash real é 6.547 (valor herdado/digitado antigo; delta de resultado ficou inflado: 84 em vez de 2). A fonte do faturamento Actual ainda não foi definida pela usuária.
 
 **Status:** código alterado e compilado, **não testado** contra os arquivos reais; validar em pasta local antes de rodar na rede.
+
+## 2026-10-09 — Relink do P&L Fitted Units_Budget27 (MP 2027)
+
+**Arquivo:** `GFU_DAC\Management Plan\MP 2027\P&L Fitted Units_Budget27.xlsx` (backup do original em `data/processed/PL_Fitted_Units_Budget27_backup_antes_relink_2026-10-09.xlsx`).
+
+**Links trocados (4):**
+- Mensalização (cols D:O, "Budget27 final"): `MENS FITTED MP2026_v3.xls` → `EO_FITTED\BU FITTED\Forecast\MP\MP 2027\MENS FITTED MP27_v3_teste daniel.xlsx` (aba TOTAL, mesmas linhas/colunas E:P).
+- Forecast (S:AD): Forecast R10 2025 → `2026\09 - Sep\09_Sep_Forecast\09_P&L Fitted Units_Forecast_September_26_.xlsx` (R9 2026).
+- MP26_final (AH:AS): `Budget25_versao janeiro_` (MP25) → `MP 2026\P&L Fitted Units_Budget26_.xlsx`.
+- Actual (AW:BH): Dec-24 → `2025\12_December_Actual\12_P&L Fitted Units_Actual_December-25_.xlsx` (aba Resultado YTD).
+
+**Sinal:** no MP27 os custos já estão negativos na aba TOTAL, então foi removido o `*-1` das 132 fórmulas de custo (linhas 20-24 e 31-36, D:O): `=([1]TOTAL!E19)*-1` → `=[1]TOTAL!E19`. Valores em cache refrescados a partir dos arquivos novos e `fullCalcOnLoad` ligado.
+
+**Pendente/atenção:** rótulos da linha 2 (anos 2026/2025/2025/2024) não foram alterados; linha 42 (Slow Moving) está vazia na TOTAL do MP27 (vira 0); se sair uma versão nova da MENS (v4, sem "teste daniel"), repontar o link 1.

@@ -19,6 +19,13 @@
 4. Confirmar se o frete anterior da IBI (−1,5707, `Premissas!D6`) vale para as bases R9/MP'26.
 5. Itens das sessões 07/10 e 08/10 seguem abertos (Faturamento Actual I25, IFRS16/MAPPING WRONG, linhas de agosto na KSB1, créditos da IBI, MDO `#REF!`) — ver arquivo `long_term/2026-10-09_briefing_arquivo_sessoes_2026-10-06_e_07.md`.
 
+### NOTA DE AMBIENTE (09/10 tarde) — notebook lento/travando (diagnóstico, nada alterado)
+- Hardware OK (SSD saudável, 211 GB livres, RAM 66%). Ela usa **Wi-Fi** (sinal 82%, estável: 9 quedas em 7 dias).
+- **Placa Ethernet com link oscilando:** 223 eventos "link disconnected" em 7 dias (22 hoje, picos 12h e 14-15h, coincidindo com o travamento do Notes às 14:47). Mesmo usando Wi-Fi, cada oscilação faz o Windows/VPN Check Point reavaliar a rede → apps de rede (Outlook/Teams/SAP) congelam. Sugestão: tirar qualquer cabo/dock da porta de rede ou pedir à TI para desativar o adaptador Ethernet.
+- **Teams** é o maior consumidor (webview2 ~900 MB, mais de 2.000 s de CPU); o serviço de câmera do Windows (Camera Frame Server) caiu 13 vezes hoje. Notebook estava ligado havia 2 dias → ela foi reiniciar.
+- Throttling de CPU pelo firmware: um episódio só (07/10 17:23).
+- `%TEMP%\Outlook Logging` = **14,5 GB** (17.687 .etl desde ago/2025; logging NÃO está ligado nas opções, é log automático do Office). Instaladores antigos do Claude (.msix) ~2,5 GB. Limpeza **aguardando OK dela** (é exclusão).
+
 ---
 ## SESSÃO 2026-10-08 — Fechamento Fitted Set/2026: quadro amarelo (Flash x Actual), ganho de 84K e KSB1 Jul-Set
 

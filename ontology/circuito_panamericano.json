@@ -11,6 +11,57 @@
     }
   ],
   "modelo_de_negocio": "Aluguel de espaço do complexo de testes, para a Pirelli R&D (interno) e para clientes terceiros (externo).",
+  "sobre_o_complexo": {
+    "fonte": "https://www.circuitopanamericano.com.br/ (consultado em 2026-10-09)",
+    "localizacao": "Estrada Municipal Giovanni Battista Pirelli, 5400, Elias Fausto (SP) — 120 km de São Paulo, 48 km de Viracopos, 130 km de Guarulhos.",
+    "posicionamento": "Maior complexo multipistas da América Latina.",
+    "pistas": "7 pistas, 22 km no total, até 15 testes simultâneos: Dry Handling (3.400 m, com box), Wet Handling + Steering Pad, Comfort, Special Tests, External Noise, Off Road (70.000 m²).",
+    "estrutura": "Controle de acesso (sigilo), 6 eletropostos, Wi-Fi nas áreas sociais, área segura de abastecimento, recepção, auditório.",
+    "usos": "Testes técnicos (dinâmica, conforto, ruído, off-road), P&D com sigilo, lançamentos de veículos, test drives, cursos de direção, track days, treinos de equipes de automobilismo, provas de bike/corrida, produção audiovisual.",
+    "locacao": "Alugável para eventos e por horário em qualquer pista. Preços não são públicos no site."
+  },
+  "nomes_alternativos": ["CP", "Elias Fausto", "Circuito Panamericano"],
+  "faturamento_tipos": {
+    "descricao": "Duas grandes origens de receita (explicado pela Juliana em 2026-10-09): intercompany e terceiros.",
+    "intercompany": {
+      "nome": "Faturamento intercompany (empresas do grupo Pirelli)",
+      "detalhe": "Todo faturamento para outras empresas do grupo é intercompany, não só o R&D. O R&D é um dos componentes, mas há outros, por exemplo a Pirelli Pneus realizando um evento no Circuito.",
+      "componentes": [
+        {
+          "nome": "Locação para o time de R&D Pirelli",
+          "detalhe": "O time de R&D aluga o complexo para realizar testes (pneus). É classificado como intercompany."
+        },
+        {
+          "nome": "Demais intercompany",
+          "detalhe": "Outras empresas do grupo (ex.: Pirelli Pneus) que contratam o Circuito, por exemplo para eventos."
+        }
+      ]
+    },
+    "terceiros": {
+      "nome": "Faturamento de terceiros",
+      "subtipos": [
+        {
+          "nome": "Locação para eventos",
+          "detalhe": "Aluguel do complexo/estruturas para eventos."
+        },
+        {
+          "nome": "Locação das pistas",
+          "detalhe": "Aluguel de pistas (por horário/período) para testes, lançamentos, track days, etc."
+        },
+        {
+          "nome": "Locação de antena — cliente Alfasite",
+          "detalhe": "Cliente específico (Antena Alfasite) que paga um valor fixo mensal pelo uso de um espaço do terreno para instalação de antena. Receita recorrente e previsível."
+        }
+      ]
+    },
+    "pendencias_a_confirmar": [
+      "Como a receita de R&D Pirelli é calculada/precificada (tabela, horas de pista, valor fixo?)",
+      "Como separar R&D dos demais intercompany no faturamento (campo, cliente, conta?) e quais empresas do grupo são clientes",
+      "Contas contábeis / códigos de receita de cada tipo",
+      "Valor mensal e regra de reajuste do contrato da Alfasite",
+      "Formato do arquivo de faturamento 'já fechado' recebido e de quem vem"
+    ]
+  },
   "sistemas": {
     "ferramentas": ["SAP", "Excel"],
     "transacoes_sap": [
