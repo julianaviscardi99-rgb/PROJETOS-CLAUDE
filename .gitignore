@@ -10,3 +10,6 @@ data/processed/
 *.xlsx
 *.XLSX
 *.csv
+
+# Projeto pessoal (dados de saude de terceiros - nunca vai para o Git)
+Pessoal/
