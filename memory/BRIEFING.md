@@ -1,5 +1,7 @@
 # BRIEFING — Documento Vivo da Sessão
 > Atualizado por Claude em tempo real. Lido no início de cada sessão.
+
+> **16/10 (tarde) — TLM R10:** volume R10 (Draft, Rafaela) ligado numa cópia `2026\1. FCST\R10\Resultado TLM - R10 '26_v2.xlsm` (original do Caetano intocado). FY: fat. líq. 92.886 k, EBIT 4.070 k (era 4.248; R09 3.437). Detalhe e pendências em `memory/learnings/2026-10-16_tlm_r10_faturamento.md`.
 > Manter apenas as últimas 2 sessões inline — sessões mais antigas vão para long_term/.
 
 ---
