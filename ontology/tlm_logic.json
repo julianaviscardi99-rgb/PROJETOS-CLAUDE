@@ -1,0 +1,115 @@
+{
+  "_descricao": "Regras de negocio da TLM (empresa 0981, area DAC_TLM): P&L, forecast R0x e Master Plan (MP/PDG). Fonte da verdade; briefings em memory/briefings/RESULTADO_TLM.md e MP27_TLM.md.",
+  "master_plan": {
+    "definicao": "MP<aa> = PDG<aa> = Master Plan: orcamento anual do ano seguinte, feito para todas as empresas do grupo. Nasce em out/nov com base no forecast R09 (1a versao) e R10/R11 (revisoes). Versao SAP = J01 do ano seguinte.",
+    "gabarito": "\\\\SRV054-01BR.group.pirelli.com\\DAC_TLM\\MP26\\1ª Versão MP26 vs R09 — 3 cargas (Desp / Fixo RH / MDO) no layout da YKCCP003_LT",
+    "metodo_mp26": "despesas = R09 ano cheio x inflacao (4,5%) +/- ajustes item a item pelo responsavel da area; MDO = RH (Labour Cost/HC/Layoff), nunca indice; volume = area tecnica",
+    "perimetro_mp27": {
+      "registrado_em": "2026-09-28",
+      "fonte": "Caetano",
+      "sai_cabreuva": "A unidade de Cabreuva (mini-fabrica 108 Log_Cabreuva, WH CBLog + CB_AG, CCs 7500-7575/7712 e 7700-7707) NAO existe mais no MP27. Peso no R09'26: 1.706 k set-dez (~5% da base de custo) + faturamento e volume proprios. Excluir custo, faturamento, HC e toneladas; confirmar se volume migra para outra unidade.",
+      "sai_faturamento_barueri_mp": "O faturamento de Materia Prima de Barueri (bloco BAMP, CCs 7219/7220) NAO existe mais no MP27. Premissas 2026 ja mostravam volume MP Barueri 13 t/mes ate abr/26 e zero depois; custo residual no R09 set-dez = 83 k (alugueis, alimentacao). Excluir receita, tarifa e custo do bloco.",
+      "pendente": "RESOLVIDO 28/09/2026: Cabreuva e faturamento MP Barueri nao existem em 2027; a base 2026 fica intacta e os dois blocos saem inteiros do MP27, sem migracao de volume."
+    },
+    "macro_mp2027_brasil": {
+      "fonte": "MP27\\Macroeconomics 1st draft 10_09.pdf + Budget 2027 ForEx 1st draft 10_09.pdf",
+      "inflacao_media": 4.4,
+      "inflacao_fim_periodo": 4.3,
+      "pib_pirelli": 1.5,
+      "brl_usd": 5.25,
+      "brl_eur": 6.14,
+      "brl_usd_2026_r9": 5.16
+    },
+    "draft_mp27": {
+      "script": "scripts/tlm/mp27_draft.py",
+      "metodo": "base 2026 ano cheio (Actual jan-ago + F09 set-dez, intermediaria Fix+Var por CC x conta fiscal) x indice por conta gestorial; versao J01/2027; carga so com classes que subiram no MP26",
+      "grupos_indice": {
+        "INFLACAO": 0.044,
+        "RH": 0,
+        "CONTRATO": 0,
+        "REVISAR": 0
+      },
+      "armadilha": "a intermediaria e o resultado do SAP: classes _HR, PF/PI, N2..., N61... vem do rateio e nunca sobem na YKCCP003_LT"
+    },
+    "faturamento_mp27": {
+      "script": "scripts/tlm/mp27_faturamento_base.py",
+      "fonte": "2026/1. FCST/R09/Análise Fat. R09 vs R07.xlsx (aba 'Analise Faturamento vs Fct')",
+      "estrutura": "unidade x BU (Car/Moto) x linha (Tarifa R$/t, Tons k, Valor Liq.Var = Tarifa x Tons, Ecolabel, Valor Liq.Fix) + Outras Atividades por cliente (Comercial/Pneus); R$ mil",
+      "total_2026": {
+        "log": 76181,
+        "outras_atividades": 16663,
+        "tlm": 92844
+      },
+      "armadilha": "depois do bloco de Feira de Santana vem Total CAR / Total Moto consolidados sem unidade na coluna A; fechar o bloco no Total <unidade>"
+    },
+    "resultado_mp27": {
+      "script": "scripts/tlm/mp27_resultado.py",
+      "como": "copia do Resultado Flash Set (LF R09) + ChangeLink Base Total_Act_Flash_Fct -> Base Total MP27 (tabela Intermediaria com WH/Variabilidade/Desc.Resultado/Cenario/Mes-Ano) + P&L-TLM linhas 5/6 = MP27 + aba Faturamento ligada a planilha da pasta Volume",
+      "regras_excel": [
+        "referencia estruturada a tabela externa so resolve com a fonte aberta",
+        "SUMIF/SUMIFS em pasta externa fechada devolve #VALUE! - abrir as fontes dos links antes de recalcular",
+        "Workbooks.Open devolve None para fonte ja aberta"
+      ],
+      "check": "TOTAL COST FY = base - Other Income (893 k, nao vai a custo)"
+    },
+    "tarifa_mp27": {
+      "registrado": "2026-10-08 (Caetano: 'incluir o raciocinio de como montamos a tarifa fixa e variavel, base MP26')",
+      "fonte_da_regra": "MP26\\1ª Versão MP26 vs R09\\Resultado TLM - MP26 vs R09.xlsx, abas Tarifa e Tarifa por B.U (fórmulas lidas em 08/10/2026)",
+      "tarifa_variavel": "Custo variavel da WH (P&L linha 21 CUSTOS VARIAVEIS) x % BU / toneladas da BU x (1 + markup). Barueri = BALog + BAADM (markup 2 %), Campinas = CPLog (0 %), Feira = FSLog (0 %). Media anual ponderada aplicada igual nos 12 meses (MP26: SUMPRODUCT / SUM das toneladas).",
+      "tarifa_fixa": "(Custo fixo da WH (linha 50) - Questoes trabalhistas (linha 83) - receita de Ecolabel da unidade) / m2 utilizados no ano (m2-mes). Uma tarifa por unidade, igual para Car e Moto. So Barueri abate Ecolabel no MP26. Questoes trabalhistas NAO entram na tarifa.",
+      "percentual_bu": "Coeficiente de empenho de M.O por BU (MP26): Barueri Car 76 % / Moto 24 %, Campinas 50/50, Cabreuva 50/50, Feira so Car. Alternativa pedida em 08/10: % pela tonelada carregada MP27 -- com ela a tarifa variavel por tonelada fica IGUAL em Car e Moto (o coeficiente existe para carregar mais custo na Moto, que empenha mais M.O por tonelada). Padrao mantido = coeficiente; criterio selecionavel na planilha (aba BU, C4).",
+      "gross_up": "Faturamento bruto = liquido / (1 - impostos): Barueri e Cabreuva 11,25 %, Campinas e Feira 14,25 % (CP/FS Fab 12,25 %).",
+      "outras_atividades_mp26": "SB.Transp = custo fixo / 3 (Comercial, CP Check, Pneus); CP Fab e FS Fab = custo / 0,98; CB Eng = custo / 0,95; R&D CB, CP Check e MP BA = R09 x 1,044; Hevea por area; Ecolabel = pecas x tarifa R09 x 1,044.",
+      "r09_vs_metodo": "Com o volume do R09, a regra do MP26 aplicada ao custo MP27 da: Barueri Car 200 / Moto 255 R$/t (R09 praticado 96 / 142) e fixa 39,8 R$/m2 (R09 46,3 Car / 55,4 Moto); Campinas Car 46,8 / Moto 191,8 (R09 51,5 / 247,2) e fixa 28,2 (R09 22,9); Feira 47,1 R$/t (R09 36,5) e fixa 22,0 (R09 24,3). Margem R09 praticada: Barueri +1.589 k, Campinas -522 k, Feira -323 k.",
+      "onde": "Faturamento MP27 - base R09 - <data>.xlsx (pasta Volume), abas Custos / Area_m2 / BU / Tarifa / Comparativo_R09; gerado por scripts/tlm/mp27_faturamento_base.py + mp27_tarifa.py",
+      "simulacao_2026_10_08": "Caetano 08/10: enquanto a técnica não entrega o Volume MP27, toneladas, Ecolabel e Outras Atividades do MP27 = curva do R09 mês a mês (células LARANJA; chave SIMULAR_TONS_R09 em mp27_faturamento_base.py), para o Resultado já pegar. Resultado: faturamento líquido 86.724 k (R09 93.024 sem tirar Cabreúva/MP BA), custo -84.687 k, PBIT 2.037 k (R09 3.437, MP26 189)."
+    },
+    "resumo_mp27": {
+      "registrado": "2026-10-08 (Caetano: 'o mesmo arquivo de resumo de resultado que usamos para as versoes de flash/fct')",
+      "modelo": "2026\\1. FCST\\R09\\Resumo Resultado TLM - R09 '26.xlsx (abas Parametros, Resumo FY/Month/YTD/YTG, P&L - TLM, Resumo de Resultado)",
+      "como": "copia + ChangeLink Resultado R09 -> Resultado TLM - MP27 vs R09.xlsm; Parametros B3 = MP27, C3 = R09; colunas: C = MP27 (col F do Resumo de Resultado), G = R09 (col L), I = MP26 (col R). Coluna Flash e linhas digitadas a mao do R09 limpas.",
+      "onde": "MP27\\1ª Versão MP27 vs R09\\TLM_Automation\\Resumo Resultado TLM - MP27 vs R09.xlsx; script scripts/tlm/mp27_resumo.py",
+      "armadilhas": [
+        "não abrir o Resultado junto no recálculo: CalculateFull recalcula também o Resultado com as fontes DELE fechadas e a coluna MP27 vira #REF!/#VALUE!",
+        "o mesmo vale no mp27_resultado.py para o Resultado do MP26 (bloco AD:AP): fica fechado, a referência direta lê o valor gravado",
+        "abertura por WH do Resumo YTD/YTG usa INDIRECT com o nome do Resultado em TEXTO: o script troca o texto; só resolve com o Resultado aberto (como no Flash/FCT)",
+        "M55/M57 do Resumo FY/Month já vêm #REF! no modelo do R09"
+      ]
+    },
+    "base_areas_mp27": {
+      "fonte": "e-mail 'MP27 | Base custos TLM' (Rafaela Moreira, 09/10/2026) - anexo '20261009 - MP'27 Custos TLM_envio.xlsx', copiado em MP27\\1ª Versão MP27 vs R09\\Arquivos Recebidos (movido de Bases 2027 em 15/10/2026)",
+      "layout": "aba Base, cabecalho na linha 4: Emp, WH (site BA/CP/FS/SB/GV), Conta Gest, Conta Fisc, CC, Variabilidade, jan-dez, Area, Versao. Duas versoes empilhadas: 'MP27' (sem inflacao) e 'MP27 Inf' (x1,044) - a que vale e a 'MP27 Inf'",
+      "o_que_cobre": "despesas nao-folha por CC final, item a item com comentario do responsavel; Cabreuva ja fora. NAO cobre vozes de RH nem alocadas (pendentes em 09/10)",
+      "variabilidade": "vem toda F; a tarifa variavel sai do custo variavel da WH, entao a VAR. e trazida do R09/Actual 2026 do mesmo CC x classe (decisao Caetano 14/10/2026)",
+      "wh": "o WH da base e o site; o WH do Resultado (BALog, BAADM, CPLog...) sai do CC pelo Centros TLM",
+      "uso": "scripts/tlm/mp27_base_areas.py monta a BASE UNICA (ver base_unica_mp27) e grava 'Draft MP27 Despesas - <data> - base unica.xlsx', que o mp27_resultado.py pega como ultimo",
+      "em_aberto": "3 linhas IFRS16 repetidas identicas (N4221000RT CC7000, N4221100RT e N1430600RT CC7289) - perguntado a Rafaela em 14/10; mantidas como vieram",
+      "numeros_20261014": {
+        "despesas_draft_indice": 39153935,
+        "despesas_base_areas": 34247080,
+        "rh_mantido": 46035662,
+        "total_mp27": 80282743
+      }
+    },
+    "base_unica_mp27": {
+      "decisao": "Caetano 15/10/2026: uma base unica de custo do MP27 com colunas Fonte e Enviado por, e a carga J01 + Base Total a partir dela",
+      "fontes": {
+        "AREAS": "Rafaela Moreira - base custos das areas (versao 'MP27 Inf')",
+        "RH_FIXO": "Iana Brito (RH corporativo) - fio 'Custo fixo - MP27'; base de TODAS as empresas, filtrada em COD. EMPRESA 981 por scripts/tlm/mp27_rh_iana_981.py, sempre o ultimo anexo do Outlook; VAR. e ORIG. da propria base dela",
+        "MDO": "Labour Cost TLM - MP27.xlsx do Pyplan (e-mail 'Versao Disponivel Labour Cost - TLM - Pyplan Test', No Reply - Pyplan); contas 42xxxxxP por CC antes do rateio; VAR. = Cost Center Variability"
+      },
+      "sobreposicao": "as tres fontes SOMAM mesmo na mesma CC x classe (22 CC x classe Iana x Rafaela; N23121A003 CC 7020 Labour Cost x Rafaela) - decisao do Caetano 15/10/2026; aba Sobreposicao lista os casos",
+      "substitui": "o grupo RH do draft por indice (R09 pos-rateio, 46,0 mi) sai; entra Labour Cost + Iana",
+      "classe_a_corrigir": "Iana mandou Aprendizes de CC da TLM em N14215M001/N14219M000 (classes de fabrica do Pneus, ~696 mil): ficam como vieram, sem conta gestorial, e o Resultado nao as enxerga ate o RH corrigir a classe",
+      "saidas": "TLM_Automation: 'Draft MP27 Despesas - <data> - base unica.xlsx' (abas Por_Fonte, Sobreposicao, Draft_MP27 com Fonte/Enviado por, Carga_J01) + 'Carga Custo MP27 - <data>.xlsx' (layout YKCCP003_LT, J01) + Base Total MP27 (Source.Name = quem mandou | fonte)",
+      "pastas": "Arquivos Recebidos = o que chega (raiz = versao vigente; _Original = anexo como veio; _Versoes_anteriores = substituidas)",
+      "numeros_20261015": {
+        "areas": 34247080,
+        "rh_fixo_iana": 2942680,
+        "mdo_labour_cost": 54439455,
+        "total": 91629216
+      },
+      "regra_so_o_recebido": "Caetano 15/10/2026: nada entra na base que nao tenha vindo das bases recebidas - classe, valor, VAR. e ORIG. como vieram. Excecao ja decidida: VAR. da base das areas vem do R09 (14/10) porque ela veio toda F. Retirar (perimetro Cabreuva/BAMP) e permitido; inventar equivalencia de classe, nao"
+    }
+  }
+}

@@ -81,6 +81,7 @@ scripts/sap/fitted_units/
 ## Projeto 4: TLM — Controladoria (assumida em 2026-10-16)
 - Empresa SAP **0981**; rede `\\SRV054-01BR.group.pirelli.com\DAC_TLM`. Antecessor: Jose Caetano Farillo (já usava Claude; scripts `scripts/tlm/*` ficaram no PC dele).
 - Inventário do que foi automatizado: `memory/learnings/2026-10-16_tlm_inventario_handoff.md`.
+- **Scripts no repo (integrados 16/10):** `scripts/tlm/` (MP27: base_areas → resultado → faturamento_base → resultado → resumo), `scripts/antidumping/caderno.py` + `scripts/copc/copc_estilo.py` (padrão azul). Regras: `ontology/tlm_logic.json › master_plan`. Histórico do Caetano: `memory/tlm/`.
 
 ---
 

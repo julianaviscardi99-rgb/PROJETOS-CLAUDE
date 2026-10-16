@@ -3,6 +3,23 @@
 > Manter apenas as últimas 2 sessões inline — sessões mais antigas vão para long_term/.
 
 ---
+## SESSÃO 2026-10-16 — TLM: Juliana assumiu a controladoria; handoff do MP27 do Caetano
+
+### Feito
+- **Nova frente: TLM** (empresa 0981, rede `\SRV054-01BR.group.pirelli.com\DAC_TLM`). Antecessor: Jose Caetano Farillo (usava Claude). Inventário completo: `memory/learnings/2026-10-16_tlm_inventario_handoff.md`.
+- **Pacote do Caetano integrado ao repo** (a pedido dela: "GitHub"): `scripts/tlm/` (8 scripts + `verificar_ambiente.py` + meu `gerar_depara_pyplan.py`), `scripts/antidumping/caderno.py` e `scripts/copc/copc_estilo.py` (padrão azul), `ontology/tlm_logic.json`, `memory/tlm/` (BRIEFING e CLAUDE.md do Caetano, contexto, learnings, errors). Original na rede: `MP27\Projeto_Claude_MP27_TLM\`. pandas instalado; `verificar_ambiente.py` OK.
+- **Bug achado no MP27:** R$ 44,85 mi de MO do Pyplan não entram no Resultado. Causa: `mp27_resultado.py › montar_base` mapeia Desc.Resultado por conta FISCAL (aba Parametros da base 2026); Pyplan usa `4201000P` → cai na descrição crua. Nasceu na base única (15/10); nunca rodou o Resultado depois disso. Última rodada parou no passo 2 (Resultado na rede = cópia crua do Flash Set). Resumo atual NÃO confiável.
+- **De-para pronto** (`data/processed/tlm/mp2027/De-para Pyplan MP27 - 20261016.xlsx`): chave = conta gestorial → Desc.Resultado da base 2026; 12 contas trocam; simulação: Pyplan fora 44,85 mi → 0.
+
+### PRÓXIMO (ela já autorizou seguir; "pode trabalhar")
+1. Corrigir `scripts/tlm/mp27_resultado.py › montar_base`: se conta fiscal não estiver no mapa, buscar Desc.Resultado pela conta gestorial (base 2026).
+2. Fazer `montar_resultado` e `mp27_resumo.py` guardarem a versão anterior em `_Versoes_anteriores\` antes do `copy2` (hoje sobrescrevem; o Resultado de 14/10 se perdeu). Idem Base Total MP27.
+3. Rodar a ordem: `mp27_base_areas` → `mp27_resultado` → `mp27_faturamento_base` → `mp27_resultado` → `mp27_resumo` (escreve na rede, arquivos novos) e trazer o EBIT MP27 x R09 (último conhecido: 14/10 PBIT 2.501 k com RH antigo).
+4. **Decisão pendente dela:** previdência 4247100 (R$ 12 mil V no Pyplan) → manter "VAR. como veio" (regra Caetano, fica fora) ou F (como 2026).
+5. Pendências herdadas: e-mail de duplicidades 15/10 (Rafaela/Jefferson, 23 CC×classe, 6,81 mi); 19 linhas da Iana sem conta (696 mil); Volume MP27 da técnica; aluguel BA; carga J01 não subida. `mp27_rh_iana_981.py` lê o Outlook de quem roda (só funciona se ela estiver no fio "Custo fixo - MP27").
+6. Faturamento mensal TLM (`2026\TLM_Automation`): outubro ainda não feito.
+
+---
 ## SESSÃO 2026-10-09 (janela "Circuito Panamericano: faturamento e B.U") — Onboarding do Circuito + classificação de custos
 
 ### Feito

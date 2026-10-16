@@ -32,7 +32,7 @@ BASE_MP27 = PASTA_MP27 / "Base Total MP27.xlsx"
 # Resultado ligado ao MP27 (08/10) - usado so para ler os rotulos/abas que o SUMIFS procura
 RESULTADO_REF = PASTA_MP27 / "_Versoes_anteriores" / "20261008_draft_por_indice" / "Resultado TLM - MP27 vs R09.xlsm"
 BASE_2026 = REDE_TLM / "2026" / "Base Total_Act_Flash_Fct.xlsx"
-SAIDA = Path(__file__).resolve().parents[4] / "data" / "processed" / "tlm" / "mp2027"
+SAIDA = Path(__file__).resolve().parents[2] / "data" / "processed" / "tlm" / "mp2027"
 
 FONTE_PYPLAN = "RH via Pyplan"
 MESES = ["January", "February", "March", "April", "May", "June", "July",
@@ -144,7 +144,7 @@ def main():
     ws.title = "Resumo"
     ws.append(["TLM MP27 - de-para da mão de obra do Pyplan"])
     ws["A1"].font = titulo
-    ws.append([f"gerado em {dt.datetime.now():%d/%m/%Y %H:%M} por scripts/sap/tlm/mp2027/gerar_depara_pyplan.py - só leitura da rede"])
+    ws.append([f"gerado em {dt.datetime.now():%d/%m/%Y %H:%M} por scripts/tlm/gerar_depara_pyplan.py - só leitura da rede"])
     ws.append([])
     ws.append(["Simulação da puxada do Resultado (SUMIFS por WH + Variabilidade + Desc.Resultado), R$ ano"])
     ws.append(["Fonte", "Total na base", "Entra no Resultado HOJE", "Fica fora HOJE",
