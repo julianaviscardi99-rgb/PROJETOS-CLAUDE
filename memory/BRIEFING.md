@@ -1,6 +1,7 @@
 # BRIEFING — Documento Vivo da Sessão
 > Atualizado por Claude em tempo real. Lido no início de cada sessão.
 
+> **16/10 (17:20) — TLM R10: v2 religada ao `20261016 - Volume Movimentado R10 - Draft.xlsm` (Rafaela; linhas novas → fórmulas repontadas, check 219 = 0). Só outubro muda: +1.188 t, fat. líq. +46,6 k, PBIT Out −1.149,7 / FY 4.116,1. Resumo v2 recalculado e salvo 17:38 (FY fat. líq. 92.932,9, PBIT 4.116,1; erros de YTD/YTG/Month old são antigos, mesma contagem). Reserva: CC 7071 na Carga linha 1367; pedido do Caetano = PBIT Out 2.000 com FY igual (ver learnings/2026-10-16_tlm_reserva_caetano.md).**
 > **16/10 (tarde) — TLM R10 (sessão encerrada no limite de ações):** v2 criadas na rede, original do Caetano intocado: `2026\1. FCST\R10\Resultado TLM - R10 '26_v2.xlsm` (volume R10 Draft ligado, 24 fórmulas) e `Resumo Resultado TLM - R10 '26_v2.xlsx` (ChangeLink p/ Resultado v2). Conferido: FY fat. líq. 92.886 k, PBIT 4.070 k (era 4.248; R09 3.437). Para abrir sem #VALUE!: abrir antes Base Total_Act_Flash_Fct, Base_KSB1 e os 3 HC (R09\HC R09 TLM, R07\HC R07, Act_09\Headcount TLM - 2026.09) — o faturamento de maio da CPFab depende do HC (CPFab F148=F147/F19). **Próximo:** (a) Juliana revê com a Rafaela fixo de Cabreúva/m²/tarifas/Ecolabel; (b) trocar link se vier volume final; (c) opcional: YTD/YTG do Resumo apontam por INDIRECT p/ o R09. Detalhe em `memory/learnings/2026-10-16_tlm_r10_faturamento.md`. MP27 continua pendente (ver seção abaixo).
 > Manter apenas as últimas 2 sessões inline — sessões mais antigas vão para long_term/.
 
