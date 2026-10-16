@@ -29,7 +29,26 @@ COMENTARIOS = {
     ("RES", "4200000P"): "Idem: mensalistas de RES so aparecem no R9 a partir de ago.",
     ("GOI", "4201100P"): "HE: R9 43-59k/mes ate jul e ~19k de ago em diante; MP'27 segue o nivel recente (~22k).",
     ("GOI", "4201000P"): "Reajuste sobre o nivel do R9.",
+    ("IBI", "4201120P"): "Provisao de ferias horista: R9 set-dez = 9,0% dos salarios; MP'27 = 14,0% (11,1% + HE). R9 parece subprovisionado.",
+    ("SJP", "4201120P"): "Provisao de ferias: R9 set-dez = 5,7% dos salarios; MP'27 = 9,9%.",
+    ("GOI", "4201120P"): "Provisao de ferias: R9 set-dez = 3,2% dos salarios; MP'27 = 10,9%.",
+    ("GOI", "4201150P"): "Percentual de encargos igual (37%); cai porque a base de HE da GOI e menor no MP'27.",
+    ("GOI", "4200000P"): "Mensalistas: reajuste (~1% sobre run-rate) + ferias/plano de saude.",
     ("ENC", "4201130P"): "PLR provisionado so em jan/26 (223k) em CCs 8231/8269/8292 sem MP'27: nao recorrente.",
+}
+
+
+CAUSA_CONTA = {
+    "4201000P": "Rampa de IBI e SJP em 2026 (R9 comeca baixo) + reajuste de ~5-7% sobre o run-rate; RES com ano cheio.",
+    "4245100P": "IBI: R9 ~100k/mes ate ago e 134k desde set; MP'27 136k e 151k desde abr (reajuste do plano).",
+    "4201160P": "Encargos s/ HE entram no R9 so em set/26 (IBI); MP'27 tem os 12 meses. Efeito de calendario.",
+    "4201130P": "SJP: PLR = 42% dos salarios no MP'27 vs 36,5% no R9; mais PLR de jan/26 em CCs sem MP'27 (-223k).",
+    "4200000P": "RES com ano cheio (+176k) e reajuste dos mensalistas.",
+    "4201110P": "13o horista: IBI 14,2% dos salarios no MP'27 vs 11,3% no R9.",
+    "4201170P": "Encargos s/ ferias: R9 tem estornos no inicio do ano; MP'27 normalizado.",
+    "4201100P": "GOI: HE de 43-59k/mes ate jul no R9 e ~19k desde ago; MP'27 usa o nivel recente.",
+    "4201120P": "Provisao de ferias horista no R9 set-dez muito baixa (IBI 9,0%, SJP 5,7%, GOI 3,2% dos salarios) vs MP'27 (14,0% / 9,9% / 10,9%): possivel subprovisao no R9.",
+    "4201150P": "Percentual de encargos igual nos dois (38,5% IBI; 37% SJP/GOI): queda por base menor de HE.",
 }
 
 
@@ -90,13 +109,18 @@ def main(f27, f9, saida):
         for col in "EFG": wb_[f"{col}{r}"].number_format = num
         wb_[f"H{r}"].number_format = wb_[f"I{r}"].number_format = pct
         wb_[f"H{r}"].alignment = Alignment(horizontal="right")
+    wb_.cell(4, 11, "R9 set-dez (4 meses)").font = Font(bold=True, color="FFFFFF"); wb_.cell(4, 11).fill = hdr
+    wb_.cell(4, 11).alignment = Alignment(horizontal="center", wrap_text=True)
+    for n, k in enumerate(linhas):
+        c = wb_.cell(r0 + n, 11, round(sum(m9.get(k, z)[8:12]), 2)); c.font = azul; c.number_format = num
+    wb_.cell(rt, 11, f"=SUM(K{r0}:K{rt-1})").number_format = num
     wb_.cell(rt, 1, "TOTAL")
     for col in "EFG": wb_[f"{col}{rt}"] = f"=SUM({col}{r0}:{col}{rt-1})"; wb_[f"{col}{rt}"].number_format = num
     wb_[f"H{rt}"] = f"=G{rt}/ABS(E{rt})"; wb_[f"I{rt}"] = f"=SUM(I{r0}:I{rt-1})"
     wb_[f"H{rt}"].number_format = wb_[f"I{rt}"].number_format = pct
-    for c in range(1, 11):
+    for c in range(1, 12):
         wb_.cell(rt, c).font = neg; wb_.cell(rt, c).border = Border(top=Side(style="medium"))
-    for col, w in zip("ABCDEFGHIJ", [9, 12, 11, 34, 14, 14, 14, 10, 14, 90]):
+    for col, w in zip("ABCDEFGHIJK", [9, 12, 11, 34, 14, 14, 14, 10, 14, 90, 14]):
         wb_.column_dimensions[col].width = w
     wb_.freeze_panes = "A5"
     B = f"'Base unidade x conta'!"
@@ -180,7 +204,7 @@ def main(f27, f9, saida):
     # --- por conta
     wc = wb.create_sheet("Delta por conta", 1)
     wc["A1"] = "Delta por conta SAP (todas as unidades)"; wc["A1"].font = Font(bold=True, size=14)
-    cab(wc, 3, ["Conta SAP", "Descricao", "R9 2026", "MP'27", "Delta R$", "Delta %", "% do delta total"])
+    cab(wc, 3, ["Conta SAP", "Descricao", "R9 2026", "MP'27", "Delta R$", "Delta %", "% do delta total", "Run-rate R9 (set-dez x3)", "MP'27 vs run-rate R$", "MP'27 vs run-rate %", "Causa provavel"])
     contas = sorted({k[2] for k in chaves}, key=lambda a: -abs(sum(sum(m27[k]) for k in m27 if k[2] == a) - sum(sum(m9[k]) for k in m9 if k[2] == a)))
     for j, ac in enumerate(contas):
         r = 4 + j
@@ -189,16 +213,22 @@ def main(f27, f9, saida):
         wc[f"D{r}"] = f'=SUMIF({rng("C")},A{r},{rng("F")})'
         wc[f"E{r}"] = f"=D{r}-C{r}"; wc[f"F{r}"] = f'=IF(C{r}=0,"n/a",E{r}/ABS(C{r}))'
         wc[f"G{r}"] = f"=E{r}/$E${4+len(contas)}"
+        wc[f"H{r}"] = f'=SUMIF({rng("C")},A{r},{rng("K")})*3'
+        wc[f"I{r}"] = f"=D{r}-H{r}"; wc[f"J{r}"] = f'=IF(H{r}=0,"n/a",I{r}/ABS(H{r}))'
+        wc[f"K{r}"] = CAUSA_CONTA.get(ac, ""); wc[f"K{r}"].alignment = Alignment(wrap_text=True, vertical="top")
+        for col in "HI": wc[f"{col}{r}"].number_format = num
+        wc[f"J{r}"].number_format = pct; wc[f"J{r}"].alignment = Alignment(horizontal="right")
         for col in "CDE": wc[f"{col}{r}"].number_format = num
         wc[f"F{r}"].number_format = wc[f"G{r}"].number_format = pct; wc[f"F{r}"].alignment = Alignment(horizontal="right")
     rt3 = 4 + len(contas)
     wc.cell(rt3, 1, "TOTAL")
-    for col in "CDE": wc[f"{col}{rt3}"] = f"=SUM({col}4:{col}{rt3-1})"; wc[f"{col}{rt3}"].number_format = num
+    for col in "CDEHI": wc[f"{col}{rt3}"] = f"=SUM({col}4:{col}{rt3-1})"; wc[f"{col}{rt3}"].number_format = num
+    wc[f"J{rt3}"] = f"=I{rt3}/ABS(H{rt3})"; wc[f"J{rt3}"].number_format = pct
     wc[f"F{rt3}"] = f"=E{rt3}/ABS(C{rt3})"; wc[f"G{rt3}"] = f"=SUM(G4:G{rt3-1})"
     wc[f"F{rt3}"].number_format = wc[f"G{rt3}"].number_format = pct
-    for c in range(1, 8):
+    for c in range(1, 12):
         wc.cell(rt3, c).font = neg; wc.cell(rt3, c).border = Border(top=Side(style="medium"))
-    for col, w in zip("ABCDEFG", [12, 36, 15, 15, 15, 10, 14]): wc.column_dimensions[col].width = w
+    for col, w in zip("ABCDEFGHIJK", [12, 36, 15, 15, 15, 10, 14, 16, 16, 12, 80]): wc.column_dimensions[col].width = w
     wc.freeze_panes = "A4"
     wb.save(saida)
 

@@ -78,6 +78,12 @@ scripts/sap/fitted_units/
 
 ---
 
+## Projeto 4: TLM — Controladoria (assumida em 2026-10-16)
+- Empresa SAP **0981**; rede `\\SRV054-01BR.group.pirelli.com\DAC_TLM`. Antecessor: Jose Caetano Farillo (já usava Claude; scripts `scripts/tlm/*` ficaram no PC dele).
+- Inventário do que foi automatizado: `memory/learnings/2026-10-16_tlm_inventario_handoff.md`.
+
+---
+
 ## Regra de carregamento cruzado
 
 Ao iniciar qualquer tarefa, verificar neste arquivo quais projetos estão conectados e carregar as ontologias correspondentes.
