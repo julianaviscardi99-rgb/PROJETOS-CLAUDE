@@ -1,7 +1,7 @@
 # BRIEFING — Documento Vivo da Sessão
 > Atualizado por Claude em tempo real. Lido no início de cada sessão.
 
-> **16/10 (tarde) — TLM R10:** volume R10 (Draft, Rafaela) ligado numa cópia `2026\1. FCST\R10\Resultado TLM - R10 '26_v2.xlsm` (original do Caetano intocado). FY: fat. líq. 92.886 k, EBIT 4.070 k (era 4.248; R09 3.437). Detalhe e pendências em `memory/learnings/2026-10-16_tlm_r10_faturamento.md`.
+> **16/10 (tarde) — TLM R10 (sessão encerrada no limite de ações):** v2 criadas na rede, original do Caetano intocado: `2026\1. FCST\R10\Resultado TLM - R10 '26_v2.xlsm` (volume R10 Draft ligado, 24 fórmulas) e `Resumo Resultado TLM - R10 '26_v2.xlsx` (ChangeLink p/ Resultado v2). Conferido: FY fat. líq. 92.886 k, PBIT 4.070 k (era 4.248; R09 3.437). Para abrir sem #VALUE!: abrir antes Base Total_Act_Flash_Fct, Base_KSB1 e os 3 HC (R09\HC R09 TLM, R07\HC R07, Act_09\Headcount TLM - 2026.09) — o faturamento de maio da CPFab depende do HC (CPFab F148=F147/F19). **Próximo:** (a) Juliana revê com a Rafaela fixo de Cabreúva/m²/tarifas/Ecolabel; (b) trocar link se vier volume final; (c) opcional: YTD/YTG do Resumo apontam por INDIRECT p/ o R09. Detalhe em `memory/learnings/2026-10-16_tlm_r10_faturamento.md`. MP27 continua pendente (ver seção abaixo).
 > Manter apenas as últimas 2 sessões inline — sessões mais antigas vão para long_term/.
 
 ---

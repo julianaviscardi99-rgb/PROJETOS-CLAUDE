@@ -31,3 +31,8 @@ Mensalização = `Resultado TLM - R10 '26.xlsm` (mesmo esqueleto do R09: abas Fa
 - Reconciliação: Δ fat. líq. de cada unidade/mês = Δ tons × tarifa var. da própria linha, diferença 0,00; total −178.615 = Δ da linha 216.
 - `R10\Resumo Resultado TLM - R10 '26_v2.xlsx`: cópia do Resumo + ChangeLink para o Resultado v2. Resumo FY: R10 92.886 / PBIT 4.070 (R09 3.437). YTD igual (51.254), YTG −179.
 - Erros que JÁ existem no original (não mexi): M55/M57 #REF! (Resumo FY/Month) e 962 #REF! nas abas Resumo YTD/YTG, colunas por WH — o INDIRECT está fixo em `'[Resultado TLM - R09 ''26.xlsm]...'`, ou seja, ainda aponta para o Resultado do **R09** (sobra da virada R09→R10) e só resolve com esse arquivo aberto.
+
+## #VALUE! ao abrir o Resultado (16/10)
+- Valores gravados estão certos; o erro aparece quando o Excel recalcula com fontes fechadas (SUMIF/SUMIFS em arquivo fechado = #VALUE!).
+- Fontes que precisam estar abertas: `2026\Base Total_Act_Flash_Fct.xlsx`, `2026\Base_KSB1.xlsx` e os HC da linha 19 de todas as abas de WH: `R09\HC R09 TLM.xlsx`, `R07\HC R07.xlsx`, `3. Actual\Act_09.Setembro\Headcount TLM - 2026.09.xlsx`.
+- O HC contamina o faturamento: CPFab F14 (maio) = 360,1 + F153; F153 = F150 × F148; F148 = F147 / F19 (HC). Por isso o P&L - TLM coluna maio (F, BJ) e FY ficavam #VALUE!.
