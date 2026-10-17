@@ -879,3 +879,7 @@ apresentação (título/tooltip/estilo) e a estrutura de abas.
 ## 2026-10-16 — TLM MP27: projeto do Caetano integrado a este repositório
 - **Decisão:** trazer o pacote `MP27\Projeto_Claude_MP27_TLM` (scripts, ontologia, memória) para dentro deste repo, em vez de usar a pasta separada.
 - **Motivo:** ela pediu ("pode trabalhar onde está correto" / "GitHub"); um lugar só, com backup no GitHub e a memória deste projeto. O BRIEFING do Caetano fica como histórico em `memory/tlm/`; o briefing que vale é o `memory/BRIEFING.md`.
+
+## 2026-10-17 — Rentabilidade por cliente de Ibirité: método de rateio
+- **Decisão:** faturamento e material de consumo diretos por cliente; demais custos rateados por volume de peças (mensal); frete 100% Fiat.
+- **Motivo:** a aba IBI só abre esses itens por cliente; frete é calculado só com volume Fiat (confirmado por ela). Rateio por volume pode subestimar custos específicos de CNH/Iveco — ela vai validar com a Rafaela antes de fechar.
