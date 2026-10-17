@@ -1,0 +1,48 @@
+# BRIEFING — Documento Vivo da Sessão
+> Atualizado por Claude em tempo real. Lido no início de cada sessão.
+
+> **17/10 — PPT MP27 do Circuito (CP) para o César:** criado na rede `Circuito Panamericano\2027\MP'27\Bridge CP_v3.pptx` (v2 intacto). Slide 1: bridge refeito com formas nativas, Cost Fix. (−1.502) aberto em **Despesas postergadas 2026→2027 (−611)** + Cost Fix. demais (−891); R9 2.486 → MP'27 2.686 (+8,0%). Slide 2 (novo): 13 itens postergados (R$ 611 mil; Operacional 385 / Manut. Geral 167 / Marketing 59), copiados do slide 2 do `Bridge CP_v2` aberto em `2026\09 - Sep\01. Forecast`. Premissa a confirmar: os 611 estão dentro do Cost Fix. do MP'27 (não conferido linha a linha na Base de Custo). Script: `scratchpad\build_cp_v3.py` (não está no repo).
+>
+> **17/10 — PPT MP27 para o César (Fitted Units):** criadas na rede `...\Forecast\MP\MP 2027\Fitted_Units_Meeting_Budget'27_v2.pptx` (comentários em inglês) e `..._v3.pptx` (**comentários em português — a versão atual**). Original intacto; tabelas (imagens) intactas. Bridge dos 10 slides (2–6 com target, 8–12 sem) refeito com **formas nativas** a partir de `GFU_DAC\...\Base_Book_Fitted Units_MP27.xlsx` (abas "Tabela Variantes targ / s targ / CM"); **think-cell não pôde ser usado** (instalado mas não carrega via automação; dados em OLE proprietário) — dados do bridge estão nas notas de cada slide para ela colar no think-cell se quiser. Erros do bridge antigo corrigidos (Brasil Cost Var/Fix; IBI fechava 5,8 e -100%; GOI 1,5/+3,8%; RES -0,3/+222%; slides 10–12 eram cópias dos com target). Pontos p/ ela: target = 82% do EBIT (sem ele EBIT Brasil 1,6; IBI -0,4; RES -0,2); R9 Brasil 13,0 inclui 0,2 de outras receitas da SOR (unidades somam 12,8). Script: `scratchpad\build_v3.py` (não está no repo). Pendente: revisar o painel de comentários dela (premissas "~7% reajuste MO", "frete GO ~R$60k/mês") e decidir qual proposta (com/sem target) vai ao César.
+
+> **16/10 (~17:50, fim de sessão por limite de ações) — TLM R10 auditoria da aba Faturamento (v2):** sem erros; Out–Dez 100% ligados ao volume 16/10; check 219 = 0 (Set = 1.187 é Actual vs R09, esperado); Faturamento!216 + P&L Fab = P&L-TLM linha 13 (Out 6.535,4 + 453,5 = 6.988,9). **Pontos p/ Juliana/Rafaela:** (1) Cabreúva: tons zeram em Nov/Dez (esvaziamento em Out) mas fixo m² 12.970 × 21,85 = 283,5 k/mês segue em Nov/Dez, e Ecolabel CB (linha 92) segue 25,5 mil peças/mês; (2) Fitted (linhas 210–212) fatura só até Set (17,1 k líq.), Out–Dez = 0; (3) digitados em K–M: Barueri MP área 1.500/1.000 (182), Hevea 670 t / 500 m² (192/193), Bahia Check Pintas 16,1 k (203); (4) linhas 274–278 = check velho contra volume R06 (lixo). Reserva: PBIT Out −1.149,7 → faltam 3.149,7 p/ 2.000 (Carga linha 1367, CC 7071). Resultado e Resumo v2 abertos no Excel dela.
+> **16/10 (17:20) — TLM R10: v2 religada ao `20261016 - Volume Movimentado R10 - Draft.xlsm` (Rafaela; linhas novas → fórmulas repontadas, check 219 = 0). Só outubro muda: +1.188 t, fat. líq. +46,6 k, PBIT Out −1.149,7 / FY 4.116,1. Resumo v2 recalculado e salvo 17:38 (FY fat. líq. 92.932,9, PBIT 4.116,1; erros de YTD/YTG/Month old são antigos, mesma contagem). Reserva: CC 7071 na Carga linha 1367; pedido do Caetano = PBIT Out 2.000 com FY igual (ver learnings/2026-10-16_tlm_reserva_caetano.md).**
+> **16/10 (tarde) — TLM R10 (sessão encerrada no limite de ações):** v2 criadas na rede, original do Caetano intocado: `2026\1. FCST\R10\Resultado TLM - R10 '26_v2.xlsm` (volume R10 Draft ligado, 24 fórmulas) e `Resumo Resultado TLM - R10 '26_v2.xlsx` (ChangeLink p/ Resultado v2). Conferido: FY fat. líq. 92.886 k, PBIT 4.070 k (era 4.248; R09 3.437). Para abrir sem #VALUE!: abrir antes Base Total_Act_Flash_Fct, Base_KSB1 e os 3 HC (R09\HC R09 TLM, R07\HC R07, Act_09\Headcount TLM - 2026.09) — o faturamento de maio da CPFab depende do HC (CPFab F148=F147/F19). **Próximo:** (a) Juliana revê com a Rafaela fixo de Cabreúva/m²/tarifas/Ecolabel; (b) trocar link se vier volume final; (c) opcional: YTD/YTG do Resumo apontam por INDIRECT p/ o R09. Detalhe em `memory/learnings/2026-10-16_tlm_r10_faturamento.md`. MP27 continua pendente (ver seção abaixo).
+> Manter apenas as últimas 2 sessões inline — sessões mais antigas vão para long_term/.
+
+---
+## SESSÃO 2026-10-16 — TLM: Juliana assumiu a controladoria; handoff do MP27 do Caetano
+
+### Feito
+- **Nova frente: TLM** (empresa 0981, rede `\SRV054-01BR.group.pirelli.com\DAC_TLM`). Antecessor: Jose Caetano Farillo (usava Claude). Inventário completo: `memory/learnings/2026-10-16_tlm_inventario_handoff.md`.
+- **Pacote do Caetano integrado ao repo** (a pedido dela: "GitHub"): `scripts/tlm/` (8 scripts + `verificar_ambiente.py` + meu `gerar_depara_pyplan.py`), `scripts/antidumping/caderno.py` e `scripts/copc/copc_estilo.py` (padrão azul), `ontology/tlm_logic.json`, `memory/tlm/` (BRIEFING e CLAUDE.md do Caetano, contexto, learnings, errors). Original na rede: `MP27\Projeto_Claude_MP27_TLM\`. pandas instalado; `verificar_ambiente.py` OK.
+- **Bug achado no MP27:** R$ 44,85 mi de MO do Pyplan não entram no Resultado. Causa: `mp27_resultado.py › montar_base` mapeia Desc.Resultado por conta FISCAL (aba Parametros da base 2026); Pyplan usa `4201000P` → cai na descrição crua. Nasceu na base única (15/10); nunca rodou o Resultado depois disso. Última rodada parou no passo 2 (Resultado na rede = cópia crua do Flash Set). Resumo atual NÃO confiável.
+- **De-para pronto** (`data/processed/tlm/mp2027/De-para Pyplan MP27 - 20261016.xlsx`): chave = conta gestorial → Desc.Resultado da base 2026; 12 contas trocam; simulação: Pyplan fora 44,85 mi → 0.
+
+### PRÓXIMO (ela já autorizou seguir; "pode trabalhar")
+1. Corrigir `scripts/tlm/mp27_resultado.py › montar_base`: se conta fiscal não estiver no mapa, buscar Desc.Resultado pela conta gestorial (base 2026).
+2. Fazer `montar_resultado` e `mp27_resumo.py` guardarem a versão anterior em `_Versoes_anteriores\` antes do `copy2` (hoje sobrescrevem; o Resultado de 14/10 se perdeu). Idem Base Total MP27.
+3. Rodar a ordem: `mp27_base_areas` → `mp27_resultado` → `mp27_faturamento_base` → `mp27_resultado` → `mp27_resumo` (escreve na rede, arquivos novos) e trazer o EBIT MP27 x R09 (último conhecido: 14/10 PBIT 2.501 k com RH antigo).
+4. **Decisão pendente dela:** previdência 4247100 (R$ 12 mil V no Pyplan) → manter "VAR. como veio" (regra Caetano, fica fora) ou F (como 2026).
+5. Pendências herdadas: e-mail de duplicidades 15/10 (Rafaela/Jefferson, 23 CC×classe, 6,81 mi); 19 linhas da Iana sem conta (696 mil); Volume MP27 da técnica; aluguel BA; carga J01 não subida. `mp27_rh_iana_981.py` lê o Outlook de quem roda (só funciona se ela estiver no fio "Custo fixo - MP27").
+6. Faturamento mensal TLM (`2026\TLM_Automation`): outubro ainda não feito.
+
+---
+## SESSÃO 2026-10-17 — Fitted MP27: delta de Labour v1 vs v2 e rentabilidade por cliente de Ibirité
+
+### Feito
+- **Delta Labour Cost FITTED MP27 v1 vs v2** (`MP 2027\Labour Cost FITTED - MP27.xlsx` x `_v2`): mesma estrutura (189 linhas), 46 mudaram. Total −R$ 882,5 mil (30.748,7 → 29.866,1 mil; −2,9%); IBI −562 / GOI −158 / SJP −131 / RES −24 / GER −8. Causa: provisões (PROV FÉRIAS HORISTA 4201120P e PROV 13º HORISTA 4201110P), ~−70 a −75 mil/mês. Arquivo: `MP 2027\Delta Labour Cost FITTED - MP27 v1 vs v2.xlsx` (cópia em `data/processed/`). Script `scripts/fitted/delta_labour_v1_v2.py`.
+- **Rentabilidade por cliente — só Ibirité** a partir de `EO_FITTED\BU FITTED\Forecast\MP\MP 2027\MENS FITTED MP27_v3_teste daniel.xlsx` (aba IBI; clientes Fiat/Iveco/CNH). Direto por cliente: faturamento e material de consumo. Rateio por **volume de peças** (mensal) nos demais custos; **frete 100% Fiat** (confirmado por ela). Driver editável na aba Premissas. Resultado (R$ mil): EBIT Fiat 2.689 / Iveco 1.069 / CNH 1.633 = 5.391 (fecha com a aba IBI). Salvo em `MP 2027\Rentabilidade por Cliente IBI - MP27.xlsx` (local: `..._v2.xlsx`; a v1 local tinha frete por volume). Script `scripts/fitted/rentabilidade_cliente_ibi.py`.
+
+### PENDENTE
+1. **Juliana vai falar com a Rafaela (Fitted):** suspeita que **CNH e Iveco têm custos específicos** (hoje rateados por volume e provavelmente subestimados). Quando voltar: abrir esses custos por cliente na aba Premissas/Dados IBI (direto em vez de rateio) e recalcular.
+2. A aba IBI da MENS só abre por cliente volume, preço, faturamento e material de consumo (frete é fórmula só da Fiat).
+3. Mesma rentabilidade para SJP/GO/RES não foi pedida.
+
+
+---
+## Histórico anterior (2026-09-01 para trás)
+
+Movido para `memory/long_term/2026-09-04_briefing_arquivo_ate_2026-09-01.md` em 2026-09-04
+(regra: no máximo 2 sessões inline no BRIEFING). Snapshots automáticos completos também ficam
+em `memory/long_term/*_briefing_snapshot.md`.
