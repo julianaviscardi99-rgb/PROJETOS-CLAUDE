@@ -883,3 +883,6 @@ apresentação (título/tooltip/estilo) e a estrutura de abas.
 ## 2026-10-17 — Rentabilidade por cliente de Ibirité: método de rateio
 - **Decisão:** faturamento e material de consumo diretos por cliente; demais custos rateados por volume de peças (mensal); frete 100% Fiat.
 - **Motivo:** a aba IBI só abre esses itens por cliente; frete é calculado só com volume Fiat (confirmado por ela). Rateio por volume pode subestimar custos específicos de CNH/Iveco — ela vai validar com a Rafaela antes de fechar.
+
+## 2026-10-17 — PPT MP27 para o César: bridge em formas nativas, sem corte de eixo
+**Decisão:** o bridge do PPT é desenhado com formas nativas do PowerPoint (grupo "Bridge MP27 (Base Book)") alimentadas pelo Base Book, pois o think-cell não é controlável por automação; os dados vão nas notas dos slides. **Corte de eixo nas barras R9/MP27 foi testado (v4) e retirado a pedido dela (v5).** Comentários em português; slides novos de mix do EBIT (pizzas) e rentabilidade por cliente IBI nas duas seções (com/sem target). Versões nunca sobrescritas (v2→v5).
