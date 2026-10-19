@@ -107,4 +107,11 @@ em `memory/long_term/*_briefing_snapshot.md`.
 - **PENDENTE:** (1) versão F10 no SAP ainda pode estar duplicada (linhas JOSECA001 + SILVEJU001) — pedir ao Caetano/SAP para limpar antes do próximo download; botão ATUALIZAR_INTERMEDIARIA usa versão 'ACT' em Parametros!D3 (confirmar). (2) P&L linhas 155/156 (layoff vs R6) e 166 (Carga R06) ainda R6. (3) #REF! antigos do Resumo YTD/YTG (INDIRECT no R09). (4) Cabreúva AG ainda lê R09 (zero) — ok por ora.
 - Backups em `data/processed/tlm/r10/` (v2 antes de layoff/HC/aluguel, Resumo antes do aluguel, Base Total, intermediárias ANTES/DUPLICADA/dedup). `work_v2_final.xlsm` tem #VALUE! — não usar.
 
-- 2026-10-19 (noite): gerado Variacao MO FITTED MP27 v2 x R9 x run-rate - 20261019.xlsx (script scripts/fitted/variacao_mo_r9_runrate_mp27.py; copiado p/ MP 2027). MO total MP27 v2 29.866 vs R9 FY 25.501 (+17,1%) e run-rate 28.184 (+6,0%); assist. médica +10,5% vs run-rate. Sem headcount no Labour -> 'médio por unidade' = R$/mês por unidade, não por funcionário (pendente HC 2027).
+## 2026-10-19 (noite) — Variação da MO FITTED: MP27 v2 x R9 x run-rate
+- Arquivo `Variacao MO FITTED MP27 v2 x R9 x run-rate - 20261019.xlsx` (data/processed + cópia em `MP 2027`). Script `scripts/fitted/variacao_mo_r9_runrate_mp27.py` (args: labour v2, labour R9, saída). Abas: Tabelas por unidade (apresentação), Resumo (4 grupos), Detalhe (6 grupos), Contas x grupo.
+- Grupos: Salários e PPR (inclui HE e provisões 13º/férias) | Encargos | Assistência médica | Outros benefícios. Custo direto, sem rateio GER, ENC fora.
+- Resultado (R$ mil): MO total R9 ano 25.501 | run-rate (set-dez x12) 28.184 | MP27 v2 29.866 → **+17,1% vs R9 ano, +6,0% vs run-rate**. Assist. médica +10,5% vs run-rate (maior); salários+PPR +5,5%; encargos +5,6%. Por unidade vs run-rate: SJP +7,9% (médica +16,3%), IBI +6,2%, GOI +6,0%, RES -0,1%, GER -0,1%. RES +174% vs R9 ano é rampa de 2026 (não usar com o presidente).
+- Sem headcount no Labour: "médio por unidade" = R$/mês por unidade, não por funcionário. Pendente HC 2027 para custo/funcionário.
+- Se RH confirmar férias horista 11,1% (hoje 5,5%), MP27 sobe ~R$ 1 mi (+6,0% → ~+9,5%).
+- Auditoria Labour também copiada para `MP 2027` (já estava em `Custos Fitted Units`).
+- Fórmulas dos deltas não foram conferidas no Excel (sem LibreOffice na máquina).
