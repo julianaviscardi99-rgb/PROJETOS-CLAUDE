@@ -50,6 +50,7 @@ def contar_erros(ws):
 
 def montar():
     import win32com.client
+    mp27_tarifa.guardar_versao(RESUMO)
     shutil.copy2(RESUMO_ORIGEM, RESUMO)
     xl = mp27_tarifa.abrir_excel()
     xl.EnableEvents = False

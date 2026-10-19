@@ -886,3 +886,7 @@ apresentação (título/tooltip/estilo) e a estrutura de abas.
 
 ## 2026-10-17 — PPT MP27 para o César: bridge em formas nativas, sem corte de eixo
 **Decisão:** o bridge do PPT é desenhado com formas nativas do PowerPoint (grupo "Bridge MP27 (Base Book)") alimentadas pelo Base Book, pois o think-cell não é controlável por automação; os dados vão nas notas dos slides. **Corte de eixo nas barras R9/MP27 foi testado (v4) e retirado a pedido dela (v5).** Comentários em português; slides novos de mix do EBIT (pizzas) e rentabilidade por cliente IBI nas duas seções (com/sem target). Versões nunca sobrescritas (v2→v5).
+
+## 2026-10-19 — TLM MP27: previdência 4247100 e duplicidades
+- **Decisão (Juliana):** previdência 4247100 segue a regra do Caetano ("VAR. como veio", fica fora/sem trocar V→F). As três bases (áreas + RH fixo + Mão de Obra) continuam somadas mesmo onde CC × classe repete (duplicidades 6,81 mi), até a Rafaela/Jefferson responderem.
+- **Motivo:** manter a regra "nada entra que não tenha vindo das bases recebidas" do Caetano (15/10).

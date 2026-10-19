@@ -96,6 +96,21 @@ def _ultimo(pasta, padrao):
 
 
 # ----------------------------------------------------------------------------- [1] Base Total MP27
+def desc_resultado_por_gestorial():
+    """Conta Gestorial -> Desc.Resultado mais usado na tabela Intermediaria da base oficial 2026."""
+    import collections
+    from openpyxl import load_workbook as _lw
+    ws = _lw(BASE_ACT_FLASH, read_only=True, data_only=True).worksheets[0]
+    it = ws.iter_rows(values_only=True)
+    cab = next(r for r in it if r and "Conta Gestorial" in r and "Desc.Resultado" in r)
+    ig, idr = cab.index("Conta Gestorial"), cab.index("Desc.Resultado")
+    cont = collections.defaultdict(collections.Counter)
+    for r in it:
+        if r and r[ig] is not None and r[idr]:
+            cont[str(r[ig])][r[idr]] += 1
+    return {cg: c.most_common(1)[0][0] for cg, c in cont.items()}
+
+
 def montar_base(draft):
     d = pd.read_excel(draft, sheet_name="Draft_%s" % CENARIO, header=LINHA_CABECALHO - 1,
                       dtype={"Centro de Custo": str, "Conta Gestorial": str, "Conta Fiscal": str})
@@ -103,6 +118,9 @@ def montar_base(draft):
     mapa = dict(zip(mapa.iloc[:, 0].str.strip(), mapa.iloc[:, 1]))
     desc_res = d["Conta Fiscal"].map(mapa)
     sem_mapa = d.loc[desc_res.isna(), "Conta Fiscal"].unique()
+    # conta fiscal fora do mapa (ex.: Pyplan 4201000P): usa o Desc.Resultado da base 2026 para a mesma conta GESTORIAL
+    # (de-para validado em 16/10; sem isso R$ 44,85 mi de MO cai em nome cru e fica fora do Resultado)
+    desc_res = desc_res.fillna(d["Conta Gestorial"].map(desc_resultado_por_gestorial()))
     desc_res = desc_res.fillna(d["Conta Gestorial Desc"])
     agora = datetime.now()
     t = pd.DataFrame({
@@ -129,6 +147,7 @@ def montar_base(draft):
     t["Check Mdo"] = t["Conta Fiscal"].str[:4]
     t = t[COLS_TABELA]
 
+    mp27_tarifa.guardar_versao(BASE_MP)
     escrever_caderno(BASE_MP, [("Intermediaria", "Base Total %s" % CENARIO,
                                 "tabela Intermediaria lida pelo Resultado TLM - %s vs R09 - fonte: %s" % (CENARIO, os.path.basename(draft)), t)])
     wb = load_workbook(BASE_MP)
@@ -153,6 +172,7 @@ def linhas_da_planilha(fat):
 
 def montar_resultado(fat):
     import win32com.client
+    mp27_tarifa.guardar_versao(RESULTADO)
     shutil.copy2(FLASH_ORIGEM, RESULTADO)
     linhas = linhas_da_planilha(fat)
     ref_fat = "'%s\\[%s]Faturamento'" % (os.path.dirname(fat), os.path.basename(fat))

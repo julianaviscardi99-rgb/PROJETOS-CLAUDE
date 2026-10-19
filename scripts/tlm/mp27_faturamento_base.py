@@ -166,6 +166,11 @@ def montar():
 
     os.makedirs(PASTA_VOLUME, exist_ok=True)
     destino = os.path.join(PASTA_VOLUME, "Faturamento MP%d - base %s - %s.xlsx" % (AA_MP, ROUND, datetime.now().strftime("%Y%m%d")))
+    n = 1
+    base_nome = destino[:-len(".xlsx")]
+    while os.path.exists(destino):                  # nunca sobrescrever: _v2, _v3...
+        n += 1
+        destino = "%s_v%d.xlsx" % (base_nome, n)
     escrever_caderno(destino, [
         ("Premissas", "Faturamento MP%d TLM - como usar" % AA_MP, "", premissas),
         ("Faturamento", "Faturamento MP%d - base %s %d x preenchimento MP%d" % (AA_MP, ROUND, ANO_BASE, AA_MP),

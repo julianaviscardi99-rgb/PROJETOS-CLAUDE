@@ -48,7 +48,7 @@ def _formato_da_coluna(nome, serie):
 
 
 def _largura(df, coluna):
-    amostra = df[coluna].head(200).astype(str)
+    amostra = df[coluna].head(200).astype(object).where(df[coluna].head(200).notna(), "").astype(str)   # pandas 3: astype(str) mantem NaN
     maior = max([len(str(coluna))] + [len(v) for v in amostra]) + 2
     return max(LARGURA_MIN, min(LARGURA_MAX, maior))
 

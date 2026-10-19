@@ -25,6 +25,8 @@ Regra do MP26 (lida nas formulas do arquivo de out/25):
   Faturamento bruto        = liquido / (1 - impostos): 11,25 % Barueri, 14,25 % Campinas e Feira.
 """
 import os
+from datetime import datetime
+import shutil
 
 from openpyxl import load_workbook
 from openpyxl.styles import Alignment, Font, PatternFill
@@ -442,6 +444,18 @@ def ligar_faturamento(wb, fat_ref, area_ref, tar_ref, col_mp0):
                 ws.cell(row=rf, column=dica_col, value="R$ mil - CALCULADO: tarifa fixa (aba Tarifa) x m2 do mes (aba Area_m2)")
     ws["A2"] = ("R$ mil e k ton - amarelo = digitar - verde = calculado na aba Tarifa (regra MP26) - "
                 "Valor Liq.Var = Tarifa x Tons")
+
+
+def guardar_versao(arq):
+    """Antes de gravar por cima, copia o arquivo atual para a subpasta _Versoes_anteriores (prefixo aaaammdd_hhmm; regra: nunca perder versao)."""
+    if not os.path.exists(arq):
+        return
+    pasta = os.path.join(os.path.dirname(arq), "_Versoes_anteriores")
+    os.makedirs(pasta, exist_ok=True)
+    carimbo = datetime.fromtimestamp(os.path.getmtime(arq)).strftime("%Y%m%d_%H%M")
+    destino = os.path.join(pasta, "%s_%s" % (carimbo, os.path.basename(arq)))
+    shutil.copy2(arq, destino)
+    print("  versao anterior guardada em", destino)
 
 
 def abrir_excel(tentativas=6, espera=45):
