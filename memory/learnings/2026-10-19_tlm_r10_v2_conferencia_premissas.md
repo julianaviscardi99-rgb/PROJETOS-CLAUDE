@@ -38,3 +38,14 @@
 - Efeito esperado (só isso): PBIT Out −1.149,7 → ~+250,3 k; FY 4.116,1 → ~5.516,1 k; linha "Aluguel Barueri" do P&L ≈ +1.389 k. Para manter FY em 4.116,1 e Out = +2.000 k é preciso reserva (CC 7071) com Out ≈ −1.749,7 k e +1.749,7 k em Nov/Dez (mais o −1.400 de FY se houver contrapartida).
 - Backup das intermediárias antes da troca: `data/processed/tlm/r10/Base_interm_Fcst_R10_10.2026_Fix|Var_ANTES_aluguel.XLSX`.
 - Excel dela deixado com Resultado v2 + 22 fontes abertos (read-only); NÃO salvar o Resultado v2 nesse estado.
+
+## ERRO: carga F10 duplicou a versão no SAP (19/10 13:07)
+- Intermediárias baixadas às 13:07 (`Base_interm_Fcst_R10_10.2026_Fix|Var`) vieram com o DOBRO de linhas: 793→1.586 (Fix) e 401→802 (Var), cada linha 2x — uma com usuário `JOSECA001` (carga antiga do Caetano) e outra `SILVEJU001` (carga nova da Juliana). Out/Nov/Dez dobrados (Fix Out 8.997 k, Var Out 5.880 k).
+- A parte SILVEJU001 sozinha está certa: Fix Out 3.798,7 (= 5.198,7 − 1.400) + Var Out 2.939,9 = 6.738,6 = total da Carga v2; linha 7287/N14301S001 Out = −1.400.000.
+- Causa provável: carga em modo "Atualizar dados Versão" (soma por usuário) em vez de "Re/Carga Versão" (substitui a versão). Lição: antes de subir carga no SAP, confirmar o modo; a chave inclui o usuário.
+- NÃO atualizar a Base Total com esses arquivos (dobraria o custo). Backups das intermediárias de 14/10 em data/processed/tlm/r10/*_ANTES_aluguel.XLSX.
+
+## Workaround 19/10 13:30: intermediárias sem duplicata (SAP ainda duplicado)
+- Mesmo após Re/Carga ("1.194 incluídos, recarga substituição") e novo download (13:15/13:16), as bases vieram com 793+793 (Fix) e 401+401 (Var), `JOSECA001`+`SILVEJU001`. Causa não confirmada (download antes da substituição valer, ou intermediária precisa de recálculo — botão 1 ATUALIZAR_INTERMEDIARIA, mas Parametros!D3 está com versão 'ACT'; confirmar com o Caetano).
+- Com OK da Juliana ("isso, faz isso por favor"): geradas as bases sem as linhas JOSECA001 (793 / 401 linhas, só SILVEJU001; Out/Nov/Dez 6.738,6 / 8.499,0 / 9.666,4 k = Carga v2). **AINDA NÃO COPIADAS para `2026\Bases`**: os arquivos estavam abertos (lock ~$) no Excel dela; copiar depois que ela fechar. Cópias: `data/processed/tlm/r10/dedup/` (corrigidas), `..._DUPLICADA_1316.XLSX` (como baixadas), `..._ANTES_aluguel.XLSX` (14/10).
+- Próximo: atualizar a Base Total (Refresh All) e conferir EBIT (esperado PBIT Out ≈ +250 k; FY ≈ 5.516 k).

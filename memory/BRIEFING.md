@@ -64,3 +64,9 @@ em `memory/long_term/*_briefing_snapshot.md`.
 - Faturamento líquido R10 v2 × R09: FY −91 k; YTG (Out–Dez) −132 k (Out +1, Nov −55, Dez −78); Cabreúva −125 k no YTG; tons YTG −6.549 t (Cabreúva −5.157).
 - **Lay-off: a v2 NÃO está atualizada** — P&L - TLM linha 126 (K:M) lê `R09\Layoff R9.xlsx` (Out/Dez 171,2 k) e o `Layoff R10.xlsx` tem Out/Dez 196,0 k (Nov 286,8 k igual). Diferença −24,8 k em Out e em Dez (−49,6 k no YTG), abaixo do PBIT (afeta só Operating Income). Aguardando OK da Juliana para trocar o link e regerar _ENVIO GUILHERME.
 - Pendências: Resumo v2 sem links (se for enviar); #REF! antigos do Resumo (INDIRECT ainda no R09); Lay-off R10; HC linha 19 ainda R09; Campinas Fab Ago/Set −101 k vs R09 a explicar.
+
+## SESSÃO 2026-10-19 (continuação) — TLM R10: aluguel Barueri na Carga e próximos passos
+- v2 do Resultado já com Lay-off R10 e HC R10 (Out–Dez) gravados na rede. EBIT/PBIT antes do aluguel: Out −1.149,7 · Nov −1.667,3 · Dez −2.908,3 · **FY 4.116,1 k** (Operating Income FY 2.535,3).
+- Criada `R10\Carga FCST R10_v2.xlsx`; Juliana digitou **R1365 = −1.400.000** (CC 7287, N14301S001, só Out). Salva. Efeito esperado: PBIT Out ≈ +250,3 k; FY ≈ 5.516,1 k.
+- **Próximos passos:** (1) decidir reserva (CC 7071) e se o FY deve ficar em 4.116,1 / Out +2.000 → incluir na MESMA carga; (2) copiar Carga p/ `C:\tempsap\` e subir no SAP `YKCCP003_LT` 0981/2026/F10 (confirmar Re/Carga × Atualizar com o Caetano; considerar meses 10–12); (3) baixar intermediária Fix/Var (Parametros L18 → `Base_interm_Fcst_R10_10.2026_Fix|Var`; backup do atual em data/processed/tlm/r10); (4) atualizar Base Total; (5) recalcular Resultado v2 com fontes abertas e conferir EBIT; (6) atualizar Resumo v2.
+- Pendências menores: Resumo v2 sem links/#REF!; linha 155/166 do P&L ainda R6; Excel dela com 24 arquivos abertos (não salvar o Resultado v2 nesse estado).
