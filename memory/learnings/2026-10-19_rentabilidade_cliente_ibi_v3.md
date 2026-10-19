@@ -1,0 +1,7 @@
+# 2026-10-19 — Rentabilidade por cliente IBI v3 (ligada à MENS, custos específicos CNH/Iveco, meta ROS Fiat)
+
+- v3 = `data/processed/Rentabilidade por Cliente IBI - MP27_v3.xlsx` (cópia em `GFU_DAC\Management Plan\MP 2027\`, junto com `_v2`, que é a antiga preservada). Script `scripts/fitted/rentabilidade_cliente_ibi_v3.py`.
+- Aba "Dados IBI" agora com **link externo** para a aba IBI da `MENS FITTED MP27_v3_teste daniel.xlsx` (linhas 53-55 vol, 65-67 fat, 75-77 mat, custos 19-37, EBIT 43). Atenção: a MENS mudou (19/10 18:31): faturamento IBI 46,9 mi (era 39,8), EBIT 6.108 (era 5.391).
+- Premissas (Juliana): CNH Handling +400k/ano (2.470 m², empilhadeira) e Labour +240k (2 pessoas); Iveco Labour +110k e Handling +63k (450 m²). Tratados como **realocação do total IBI** (EBIT total continua fechando com a MENS) — o restante é rateado pelo driver. Labour entrou no Variable Labour (linha 19). Premissa a confirmar se deveria ser custo adicional.
+- Driver: Faturamento dá Fiat melhor que Volume (ROS Fiat 13,3% x 9,7%). v3 usa Faturamento (frete 100% Fiat, material direto). Meta ROS Fiat mín 10,5% atendida sem realocação extra (mecanismo existe: Premissas, realocação Fiat→Iveco/CNH). Resultado: Fiat 5.785 (13,3%), Iveco 259 (17,2%), CNH 64 (3,4%).
+- Técnica: openpyxl gera, Excel COM (DispatchEx, instância própria) escreve fórmulas `='[MENS...xlsx]IBI'!E53` com a fonte aberta read-only e salva → link externo com caminho de rede. Git Bash corrompe `\servidor` em python -c/heredoc: usar `//servidor/...`.

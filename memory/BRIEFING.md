@@ -1,6 +1,9 @@
 # BRIEFING — Documento Vivo da Sessão
 > Atualizado por Claude em tempo real. Lido no início de cada sessão.
 
+> **19/10 (noite) — Fitted IBI: Rentabilidade por cliente v3 pronta** (`data/processed/Rentabilidade por Cliente IBI - MP27_v3.xlsx`, cópia na rede GFU_DAC\Management Plan\MP 2027 com `_v2` preservada). Dados ligados à MENS v3 (link). CNH +400 handling/+240 labour, Iveco +110 labour/+63 handling (realocados do total). Driver Faturamento: Fiat ROS 13,3% (meta 10,5% atendida), Iveco 17,2%, CNH 3,4%. Detalhe: `memory/learnings/2026-10-19_rentabilidade_cliente_ibi_v3.md`. A MENS mudou desde sábado (EBIT IBI 6.108 vs 5.391).
+> Salvo (v2 e v3) na pasta da MENS (EO_FITTED\...\MP 2027) e em GFU_DAC\Management Plan\MP 2027. **Pendente:** confirmar com ela (1) se CNH/Iveco são realocação do total (feito) ou custo adicional (EBIT IBI −813k); (2) se o labour da CNH é variável ou fixo; (3) validar CNH 3,4% de ROS com a Rafaela antes de usar em preço.
+
 > **19/10 (noite) — TLM: Resultado dá #VALUE! (ex. N124) até abrir outro arquivo — PENDENTE, LEMBRAR A JULIANA.** Suspeito nº1: `Base Total MP27.xlsx` (referência estruturada externa só resolve com a fonte aberta; Resultado MP27 tem 27 links externos). R10 v2 local não tem links gravados (causa seria INDIRECT da aba Resumo/recálculo). Hipótese NÃO confirmada. Falta: ela testar abrindo a Base Total antes; dizer qual arquivo (MP27 ou R10 v2) e se é só N124; depois converter o link em valores. Detalhe: `memory/learnings/2026-10-19_tlm_resultado_value_links_externos.md`.
 
 > **19/10 (fim do dia) — PENDENTES MP27 TLM para retomar:**
@@ -103,3 +106,5 @@ em `memory/long_term/*_briefing_snapshot.md`.
 - **Regra de recálculo da v2:** abrir só 5 fontes (Base Total, Base_KSB1, HC R09 TLM, HC R07, Headcount TLM 2026.09), `ForceFullCalculation` só na v2. Abrir todas as fontes (ex.: MP26 salvo em jan) gera #VALUE! nos comparativos.
 - **PENDENTE:** (1) versão F10 no SAP ainda pode estar duplicada (linhas JOSECA001 + SILVEJU001) — pedir ao Caetano/SAP para limpar antes do próximo download; botão ATUALIZAR_INTERMEDIARIA usa versão 'ACT' em Parametros!D3 (confirmar). (2) P&L linhas 155/156 (layoff vs R6) e 166 (Carga R06) ainda R6. (3) #REF! antigos do Resumo YTD/YTG (INDIRECT no R09). (4) Cabreúva AG ainda lê R09 (zero) — ok por ora.
 - Backups em `data/processed/tlm/r10/` (v2 antes de layoff/HC/aluguel, Resumo antes do aluguel, Base Total, intermediárias ANTES/DUPLICADA/dedup). `work_v2_final.xlsm` tem #VALUE! — não usar.
+
+- 2026-10-19 (noite): gerado Variacao MO FITTED MP27 v2 x R9 x run-rate - 20261019.xlsx (script scripts/fitted/variacao_mo_r9_runrate_mp27.py; copiado p/ MP 2027). MO total MP27 v2 29.866 vs R9 FY 25.501 (+17,1%) e run-rate 28.184 (+6,0%); assist. médica +10,5% vs run-rate. Sem headcount no Labour -> 'médio por unidade' = R$/mês por unidade, não por funcionário (pendente HC 2027).
