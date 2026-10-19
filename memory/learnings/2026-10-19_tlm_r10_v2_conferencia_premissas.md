@@ -20,3 +20,21 @@
 - FY líquido 92.933 vs 93.024 = −91 (bruto −104). Jan–Jul 0; Ago −53 (CPFab, Pneus); Set +94 (Actual vs fcst: BA +80, CP +17, FS +20, CB +8, Fab −48, Fitted +17); Out +1; Nov −55; Dez −78.
 - Tons FY −5.362 t, quase tudo Cabreúva (−5.071 t: −1.160 Out, −1.968 Nov, −2.029 Dez); BA −202, CP +379, FS −468. Líquido de CB −116 FY.
 - Mix: Pneus −145, Comercial +54. Campneus/Hevea/Terceiros iguais.
+
+## Lay-off corrigido na v2 + auditoria R9 (19/10)
+- Pedido da Juliana: o ENVIO GUILHERME era só para ele ver faturamento; faturamento fechado → não precisa mais manter esse arquivo.
+- v2 (rede) ajustada: ChangeLink `R09\Layoff R9.xlsx` → `R10\Layoff R10.xlsx` (P&L - TLM K126:M126: −171,2/−286,8/−171,2 → −196,0/−286,8/−196,0). PBIT inalterado (−1.149,7 / −1.667,3 / −2.908,3); Operating Income Out −1.345,7, Nov −1.954,1, Dez −3.104,4. Backup: `data/processed/tlm/r10/Resultado TLM - R10 '26_v2_backup_antes_layoff_1910.xlsm`.
+- Custos Out–Dez (TOTAL COST −8.139/−8.499/−9.666) batem exatamente com `Fcst_R10` da Base Total (14/10) → custo está em R10.
+- Ainda R09/antigo: HC (linha 19 das abas WH, Out–Dez ← `HC R09 TLM.xlsx`; não existe HC R10 na pasta; informativo); P&L linha 155 (check do lay-off ← Layoff R6, linha 156 vira diferença); linha 166 ← Carga R06 (zeros). Comparativos "vs R09/MP26" (Faturamento col R+, P&L P126:R126, AD126) são intencionais.
+- Pendente do round: reserva do Caetano (Out PBIT −1.149,7 vs alvo +2.000 k; ver learning 2026-10-16_tlm_reserva_caetano). Resumo v2 não reflete o novo Lay-off até ser atualizado.
+
+## HC R10 aplicado na v2 (19/10)
+- Novo arquivo `R10\20261009 - HC_R10.xlsx`: aba `Base dados` com todas as versões (MP26…09. R09, 10. R10) e só Out/Nov/Dez; sem coluna de chave por armazém. Chave da v2 (WH2) vem do CC → mapa do `HC R09 TLM.xlsx` (col V, VLOOKUP no 'Centros de Custos TLM.xls'); os 177 CCs da versão R10 mapeiam 100%.
+- HC Out/Nov/Dez total: R09 505/505/505 → R10 509/489/489 (BALog +3 só Out; CPLog +2; FSLog −1; CBLog −17 Nov/Dez = phase out). Bate com a tabela "Revisões HC TLM" do arquivo.
+- Na v2: K19:M19 das abas BALog, CBLog, CPLog, FSLog trocados por valores (constantes); demais abas inalteradas (método reproduz os valores atuais). Jan–Set continuam ligados ao HC R09/R07/Act Set. PBIT sem mudança (HC é informativo). Backup: `..._v2_backup_antes_hc_1910.xlsm`.
+
+## Carga FCST R10_v2 — aluguel Barueri (19/10)
+- Cópia editável: `R10\Carga FCST R10_v2.xlsx` (original intocado). Juliana digitou **R1365 = −1.400.000** (CC 7287 BALog, N14301S001 "COM aluguel armazém", linha "Passagem de custo do Aluguel para Pirelli Pneus"; só Out; Nov/Dez vazios). Diff vs original = 1 célula. Total da carga Out/Nov/Dez = 6.738,6 / 8.499,0 / 9.666,4 k (intermediária atual 8.139/8.499/9.666 → Out −1.400 exato).
+- Efeito esperado (só isso): PBIT Out −1.149,7 → ~+250,3 k; FY 4.116,1 → ~5.516,1 k; linha "Aluguel Barueri" do P&L ≈ +1.389 k. Para manter FY em 4.116,1 e Out = +2.000 k é preciso reserva (CC 7071) com Out ≈ −1.749,7 k e +1.749,7 k em Nov/Dez (mais o −1.400 de FY se houver contrapartida).
+- Backup das intermediárias antes da troca: `data/processed/tlm/r10/Base_interm_Fcst_R10_10.2026_Fix|Var_ANTES_aluguel.XLSX`.
+- Excel dela deixado com Resultado v2 + 22 fontes abertos (read-only); NÃO salvar o Resultado v2 nesse estado.

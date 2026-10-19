@@ -56,3 +56,11 @@
 Movido para `memory/long_term/2026-09-04_briefing_arquivo_ate_2026-09-01.md` em 2026-09-04
 (regra: no máximo 2 sessões inline no BRIEFING). Snapshots automáticos completos também ficam
 em `memory/long_term/*_briefing_snapshot.md`.
+
+## SESSÃO 2026-10-19 — TLM R10 v2: conferência de volume, cópia de envio, Resumo, faturamento vs R09, Lay-off
+- Detalhes em `memory/learnings/2026-10-19_tlm_r10_v2_conferencia_premissas.md`.
+- Volume 16/10 já na v2 (21 células de tons batem). Mudança 15→16/10 = esvaziamento de Cabreúva em Out (594 t; +46,6 k líquido/PBIT Out). Nenhuma premissa de CUSTO nova de 16/10 encontrada na rede.
+- Criado e salvo na rede (R10): `Resultado TLM - R10 '26_v2_ENVIO GUILHERME.xlsm` — cópia da v2 sem nenhum link (27 links quebrados + 2 hiperlinks removidos; 0 diferenças de valor). Resumo v2 está 100% alinhado ao Resultado v2 (cache), mas continua com links.
+- Faturamento líquido R10 v2 × R09: FY −91 k; YTG (Out–Dez) −132 k (Out +1, Nov −55, Dez −78); Cabreúva −125 k no YTG; tons YTG −6.549 t (Cabreúva −5.157).
+- **Lay-off: a v2 NÃO está atualizada** — P&L - TLM linha 126 (K:M) lê `R09\Layoff R9.xlsx` (Out/Dez 171,2 k) e o `Layoff R10.xlsx` tem Out/Dez 196,0 k (Nov 286,8 k igual). Diferença −24,8 k em Out e em Dez (−49,6 k no YTG), abaixo do PBIT (afeta só Operating Income). Aguardando OK da Juliana para trocar o link e regerar _ENVIO GUILHERME.
+- Pendências: Resumo v2 sem links (se for enviar); #REF! antigos do Resumo (INDIRECT ainda no R09); Lay-off R10; HC linha 19 ainda R09; Campinas Fab Ago/Set −101 k vs R09 a explicar.
