@@ -70,3 +70,9 @@ em `memory/long_term/*_briefing_snapshot.md`.
 - Criada `R10\Carga FCST R10_v2.xlsx`; Juliana digitou **R1365 = −1.400.000** (CC 7287, N14301S001, só Out). Salva. Efeito esperado: PBIT Out ≈ +250,3 k; FY ≈ 5.516,1 k.
 - **Próximos passos:** (1) decidir reserva (CC 7071) e se o FY deve ficar em 4.116,1 / Out +2.000 → incluir na MESMA carga; (2) copiar Carga p/ `C:\tempsap\` e subir no SAP `YKCCP003_LT` 0981/2026/F10 (confirmar Re/Carga × Atualizar com o Caetano; considerar meses 10–12); (3) baixar intermediária Fix/Var (Parametros L18 → `Base_interm_Fcst_R10_10.2026_Fix|Var`; backup do atual em data/processed/tlm/r10); (4) atualizar Base Total; (5) recalcular Resultado v2 com fontes abertas e conferir EBIT; (6) atualizar Resumo v2.
 - Pendências menores: Resumo v2 sem links/#REF!; linha 155/166 do P&L ainda R6; Excel dela com 24 arquivos abertos (não salvar o Resultado v2 nesse estado).
+
+## 2026-10-19 — Auditoria Labour MP27 (v1 x v2 x R9)
+- Script `scripts/fitted/auditoria_labour_mp27.py`; saída `data/processed/Auditoria Labour FITTED MP27 v1 v2 R9 - 20261019_v2.xlsx` (7 abas, "Achados" primeira). Learning: `memory/learnings/2026-10-19_auditoria_labour_mp27.md`.
+- Copiado (a pedido dela) para `\FSS024-01BR...\GFU_DAC\Custos Fitted Units\` (raiz).
+- Pendente: IBI v2 +R$ 895k vs run-rate (3T já previsto; ela diz que não deveria ter reajuste) — salário horista sobe ~7% em mai/jul, médica +11,1% em abr. Aguardando premissa de reajuste ou HC previsto 2027. Se confirmado, gerar _v3 com achado.
+- Pendente: confirmar com RH regra de férias horista (5,5% vs 11,1%).
