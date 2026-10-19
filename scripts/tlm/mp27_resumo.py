@@ -104,7 +104,10 @@ def montar():
         wb.Save()
         wb.Close(SaveChanges=False)
     finally:
-        xl.Quit()
+        try:
+            xl.Quit()
+        except Exception as e_quit:             # nao mascarar a excecao original (Excel ocupado: 'Call was rejected by callee')
+            print('  AVISO: Excel nao fechou (%s)' % str(e_quit)[:60])
     return checks, erros, links
 
 

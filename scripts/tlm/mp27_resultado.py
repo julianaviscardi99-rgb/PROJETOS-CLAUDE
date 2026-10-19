@@ -244,7 +244,10 @@ def montar_resultado(fat):
             if a is not None:               # Workbooks.Open devolve None para fonte que ja estava aberta (xlsm com macro)
                 a.Close(SaveChanges=False)
     finally:
-        xl.Quit()
+        try:
+            xl.Quit()
+        except Exception as e_quit:             # nao mascarar a excecao original (Excel ocupado: 'Call was rejected by callee')
+            print('  AVISO: Excel nao fechou (%s)' % str(e_quit)[:60])
     return checks, erros
 
 

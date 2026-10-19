@@ -72,7 +72,10 @@ def main(origem, volume, destino):
         wv.Close(False)
         print("Gravado:", destino)
     finally:
-        xl.Quit()
+        try:
+            xl.Quit()
+        except Exception as e_quit:             # nao mascarar a excecao original (Excel ocupado: 'Call was rejected by callee')
+            print('  AVISO: Excel nao fechou (%s)' % str(e_quit)[:60])
 
 
 if __name__ == "__main__":
