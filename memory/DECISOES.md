@@ -896,3 +896,6 @@ apresentação (título/tooltip/estilo) e a estrutura de abas.
 - **Motivo:** o RH das áreas era R09 só para comparativo; vale o RH oficial (Iana + Labour Cost Pyplan). Com isso as duplicidades CC × classe caíram de 23 (R$ 6,81 mi) para 5 (R$ 0,71 mi).
 - **Estado:** Resultado/Resumo MP27 de 19/10 16:41 já usam a base Sem RH (despesas das áreas R$ 29,35 mi; custo total R$ 85,37 mi; PBIT R$ 1.605 mil).
 - **Labour Cost:** vale o do Pyplan de 16/10 18:03 (R$ 53.390.513,03). Ela cita R$ 53.950.513,03 no arquivo da área — diferença de R$ 560.000,00 ainda sem explicação.
+
+## 2026-10-19 — PPT MP27 v2 (presidente): só versão sem target, tabelas nativas
+**Decisão:** a v2 do deck usa só o bridge "s targ" (o Base Book de 19/10 não tem mais a versão com target) e remove a seção duplicada; as tabelas de P&L passam a ser tabelas nativas do PowerPoint com os valores do Base Book (não foi possível colar como imagem: clipboard bloqueado). Slides novos: resumo executivo, mão de obra e perguntas-chave do CEO. **Motivo:** pedido dela de deck "padrão ouro" para o presidente, com tudo atualizado e respostas às perguntas prováveis.

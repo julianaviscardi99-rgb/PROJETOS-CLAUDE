@@ -198,6 +198,9 @@ CNH_ESPEC = (float(wcp['D19'].value) + float(wcp['D20'].value)) / 1000
 ROS_META = float(wcp['B23'].value)
 wce = openpyxl.load_workbook(CLI, data_only=True)['EBIT Mensal']
 CNH_MES = [float(wce.cell(4, c).value) for c in range(2, 14)]
+wcd = openpyxl.load_workbook(CLI, data_only=True)['Dados IBI']
+assert wcd['A4'].value.startswith('Volume') and wcd['B4'].value == 'CNH'
+CNH_VOL = [float(wcd.cell(4, c).value or 0) for c in range(3, 15)]
 
 # Mao de obra (R$ mil): {unidade: {grupo: (R9, run-rate, MP27)}}
 wm = openpyxl.load_workbook(MO, data_only=True)['Resumo (4 grupos)']
@@ -481,6 +484,8 @@ def put(cell, runs, align=PP_ALIGN.RIGHT, fill=None, anchor=MSO_ANCHOR.MIDDLE, m
         r.font.bold = b
         r.font.italic = it
         r.font.color.rgb = c
+    # fim de paragrafo com a menor fonte (celula vazia nao herda 18pt e nao estica a linha)
+    p._p.get_or_add_endParaRPr().set('sz', str(int(min(x[1] for x in runs) * 100)))
 
 
 def pl_table(slide, u):
@@ -625,7 +630,7 @@ COMMENTS = {
     'SJP': ("SJP", [
         head_kpi('SJP'),
         ("Desconto de −3,5% repassado ao cliente", [
-            f"Preço R$ {f1(SJP_PRECO_ATUAL, 2)} → {f1(SJP_PRECO_27, 2)}/pç (~{f1(SJP_DESC_MI)} mi/ano vs preço atual).",
+            f"Preço R$ {f1(SJP_PRECO_ATUAL, 2)} → {f1(SJP_PRECO_27, 2)}/pç (≈ {f1(SJP_DESC_MI)} mi/ano vs preço atual).",
             f"Conseguimos compensar parte: Price/Mix vs R9 de só {f1(dd('SJP', 'Price/ Mix'))}, com volume estável ({fp(R('SJP', 'pcs'), 0)}k pçs)."]),
         (f"MO: maior impacto ({f1(dd('SJP', 'Labour'))})", [
             f"MO {pc(mo_sjp[2] / mo_sjp[0] - 1, signed=True)} vs R9 ({f1(mo_sjp[0])} → {f1(mo_sjp[2])} mi; {pc(mo_sjp[2] / mo_sjp[1] - 1, signed=True)} vs run-rate).",
@@ -752,15 +757,15 @@ def summary_slide():
     s = new_slide("Fitted Units Economics Brasil – Resumo executivo MP'27")
     b = PL['BR']
     e9, e27, e26 = b['ebit'][3], b['ebit'][4], b['ebit'][2]
-    headline(s, f"MP'27 entrega EBIT de R$ {f1(e27)} mi (ROS {pc(b['ros'][4])}): {sg(e27 - e26)} vs MP'26 e {sg(e27 - e9)} vs Fcst R9. "
-                f"O reajuste de preço compensa parte da pressão de MO, 3º turno e ANTT", w=12550000)
+    headline(s, f"MP'27: EBIT de R$ {f1(e27)} mi (ROS {pc(b['ros'][4])}), {sg(e27 - e26)} vs MP'26 e {sg(e27 - e9)} vs Fcst R9. "
+                f"O preço compensa parte da pressão de MO, 3º turno e ANTT", w=11590000)
     tiles = [
         ('Volume (mil peças)', fp(b['pcs'][4], 0), (pc(b['pcs'][4] / b['pcs'][3] - 1, signed=True), ' vs Fcst R9'), GREEN),
         ('Net Sales (mln BRL)', f1(b['ns'][4]), (pc(b['ns'][4] / b['ns'][3] - 1, signed=True), f" vs R9 · NS/pç {f1(b['nspc'][4], 2)}"), GREEN),
         ('EBIT (mln BRL)', f1(e27), (pc((e27 - e9) / e9, signed=True), f" vs R9 · {pc((e27 - e26) / e26, signed=True)} vs MP'26"), RED),
         ('ROS', pc(b['ros'][4]), (f"{f1((b['ros'][4] - b['ros'][3]) * 100)} p.p.", f" vs R9 ({pc(b['ros'][3])})"), RED),
     ]
-    W, G, X, Y, H = 2990000, 200000, 300000, 1230000, 1180000
+    W, G, X, Y, H = 2747500, 200000, 300000, 1230000, 1180000
     for k, (lab, val, sub, col) in enumerate(tiles):
         kpi_tile(s, X + k * (W + G), Y, W, H, lab, val, sub, col, f'KPI {k + 1}')
     # tabela por unidade
@@ -774,9 +779,9 @@ def summary_slide():
                      pc(R(u, 'ros')), pc(R(u, 'ebit') / e27, 0), msg[u]])
     rows.append(["Brasil", fp(b['pcs'][4], 0), f1(b['ns'][4]), fp(e9), fp(e27), fp(e27 - e9), pc(b['ros'][4]), '100%', "R9 inclui 0,2 da SOR (encerrada)"])
     L_, Rt = PP_ALIGN.LEFT, PP_ALIGN.RIGHT
-    simple_table(s, 300000, 2650000, [820000, 820000, 820000, 780000, 900000, 760000, 700000, 700000, 2900000], rows, 330000, 10.5,
+    simple_table(s, 300000, 2650000, [820000, 820000, 820000, 780000, 900000, 760000, 700000, 700000, 5290000], rows, 330000, 10.5,
                  bold_last=True, chips={1 + k: UCOL[u] for k, u in enumerate(UNITS)}, aligns=[L_] + [Rt] * 7 + [L_])
-    footnote(s, "Fonte: Base Book Fitted Units MP27 (19/10) e MENS FITTED MP27 v3. Valores em mln BRL. ROS = EBIT / Net Sales.", y=4750000, w=9200000)
+    footnote(s, "Fonte: Base Book Fitted Units MP27 (19/10) e MENS FITTED MP27 v3. Valores em mln BRL. ROS = EBIT / Net Sales.", y=4720000, w=11590000)
     # painel direito: o que sustenta / o que ameaca
     items = [
         ('O que sustenta o plano', [
@@ -785,7 +790,8 @@ def summary_slide():
             f"GOI estável: custos fixos {sg(dd('GOI', 'Cost Fix.'))} compensam MO e frete."]),
         ('O que pressiona', [
             f"MO {f1(dd('BR', 'Labour'))} ({pc(mo('ALL') / mo('ALL', i=0) - 1, signed=True)} vs R9).",
-            f"3º turno IBI: serviços +{f1(T3_TOT)} mi; ANTT {f1(dd('BR', 'ANTT'))}; Jaguar {f1(dd('BR', 'Encerr. Jaguar'))}."]),
+            f"3º turno IBI: serviços +{f1(T3_TOT)} mi; ANTT {f1(dd('BR', 'ANTT'))}; Jaguar {f1(dd('BR', 'Encerr. Jaguar'))}.",
+            f"Concentração: a Fiat responde por {pc(C_EBIT[0] / 1000 / e27, 0)} do EBIT do Brasil."]),
         ('Para decidir', [
             f"Fechar o reajuste com a Fiat: sem ele o EBIT seria ~{f1(ebit_sem_fiat_br)}.",
             f"ROS de referência {pc(ROS_REF)} (EBIT {f1(EBIT_REF)}): faltam {f1(EBIT_REF - e27)} mi.",
@@ -793,7 +799,7 @@ def summary_slide():
     ]
     sh = s.shapes
     y0 = 5080000
-    colw3 = 4050000
+    colw3 = 3730000
     for k, (lead, bl) in enumerate(items):
         x = 300000 + k * (colw3 + 200000)
         box(sh, x, y0, colw3, 1420000, PANEL, f'Bloco {k + 1}', MSO_SHAPE.ROUNDED_RECTANGLE).adjustments[0] = 0.06
@@ -827,7 +833,7 @@ def set_hole(chart, pct):
 
 
 def donut(s, x, y, dsz, order, vals, big, small):
-    tot = sum(v for v in vals if v > 0)
+    tot = sum(vals)   # mesma base da tabela (inclui RES negativo no R9)
     cd = CategoryChartData()
     cd.categories = order
     cd.add_series('EBIT', [max(v, 0) for v in vals])
@@ -843,7 +849,7 @@ def donut(s, x, y, dsz, order, vals, big, small):
         pt.format.fill.fore_color.rgb = UCOL[u]
         pt.format.line.color.rgb = WHITE
         pt.format.line.width = Pt(2.25)
-        share = max(vals[i], 0) / tot
+        share = vals[i] / tot
         tf = pt.data_label.text_frame
         tf.text = f"{round(share * 100)}%" if share >= 0.09 else ''
         if tf.paragraphs[0].runs:
@@ -865,7 +871,7 @@ def mix_slide():
     sh9, shm = [v / t9 for v in r9], [v / tm for v in mp]
     br9, brm = R('BR', 'ebit', 3), R('BR', 'ebit')
     top2 = shm[0] + shm[1]
-    headline(s, f"IBI e SJP concentram {round(top2 * 100)}% do EBIT do MP'27; GOI ganha peso e a RES passa a contribuir com {round(shm[3] * 100)}%")
+    headline(s, f"IBI e SJP concentram {round(top2 * 100)}% do EBIT do MP'27; GOI ganha peso e a RES passa a contribuir")
     D, X9, XM, Y = 2850000, 700000, 4900000, 1480000
     txt(s.shapes, X9, 1130000, D, 300000, "Fcst R9 – 2026", 14, True, HEAD, anchor=MSO_ANCHOR.MIDDLE, name='Titulo R9')
     txt(s.shapes, XM, 1130000, D, 300000, "MP'27 – 2027", 14, True, HEAD, anchor=MSO_ANCHOR.MIDDLE, name='Titulo MP27')
@@ -973,7 +979,7 @@ def client_slide():
     gy0, gh = 1400000, 2550000
     ymeta = int(gy0 + gh * 0.08 + gh * 0.80 * (1 - ROS_META / 0.22))
     line(s.shapes, 4600000, ymeta, 8400000, ymeta, RED, 1.0, 'dash', name='Meta ROS Fiat')
-    txt(s.shapes, 7350000, ymeta - 200000, 1050000, 180000, f"meta {pc(ROS_META)}", 9, False, RED, PP_ALIGN.RIGHT, name='Meta rotulo')
+    txt(s.shapes, 6480000, ymeta - 190000, 900000, 170000, f"meta {pc(ROS_META)}", 9, True, RED, PP_ALIGN.CENTER, name="Meta rotulo")
     k1 = lambda v: fp(v / 1000.0)
     rows = [["mln BRL", "Fiat", "Iveco", "CNH", "Total IBI"],
             ["Peças (mil)"] + [fp(v, 0) for v in C_PCS],
@@ -987,7 +993,10 @@ def client_slide():
     simple_table(s, 300000, 4080000, [2150000, 1500000, 1500000, 1500000, 1500000], rows, 235000, 10)
     footnote(s, "Fonte: Rentabilidade por Cliente IBI – MP27 v3 (ligada à MENS v3, aba IBI). Faturamento e material de consumo diretos; frete 100% Fiat; "
                 f"demais custos rateados por faturamento. Custos dedicados CNH ({f1(CNH_ESPEC, 2)} mi/ano) e Iveco realocados do total IBI.", 6250000)
-    cnh_neg = [m for m, v in zip(['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'], CNH_MES) if v < -40]
+    MES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
+    cnh_zero = [k for k in range(12) if CNH_VOL[k] == 0]
+    cnh_neg = [MES[k] for k in cnh_zero]
+    cnh_perda = -sum(CNH_MES[k] for k in cnh_zero) / len(cnh_zero)
     draw_comments(s, "Clientes IBI", [
         ('Fiat: escala e margem recuperada', f"{pc(sh_pc[0], 0)} das peças, {pc(sh_ns[0], 0)} do Net Sales e {pc(sh_eb[0], 0)} do EBIT. "
                                              f"ROS {pc(C_ROS[0])} (meta {pc(ROS_META)}) com o preço de R$ {f1(FIAT_PR27, 2)}/pç."),
@@ -995,7 +1004,7 @@ def client_slide():
                                             f"({fp(IVECO_V9 / 1000, 0)}k → {fp(IVECO_V27 / 1000, 0)}k pçs; {f1(IVECO_DF)} mi de faturamento)."),
         ('CNH: o ponto fraco', [
             f"ROS {pc(C_ROS[2])}: custos dedicados de {f1(CNH_ESPEC, 2)} mi/ano (2.470 m², empilhadeira e 2 pessoas).",
-            f"Meses sem volume ({', '.join(cnh_neg)}) geram EBIT de ~−R$ {f1(-min(CNH_MES), 0)}k/mês."]),
+            f"Sem volume em {' e '.join(cnh_neg)}, mas com custo dedicado: EBIT negativo de R$ {f1(cnh_perda, 0)}k em cada mês."]),
         ('Próximo passo', "Rever preço da CNH (R$ 115,46/pç) ou dimensionar o custo dedicado; validar Iveco/CNH com Custos."),
     ])
     return s
@@ -1005,7 +1014,7 @@ def mo_slide():
     s = new_slide("Fitted Units Economics Brasil – Mão de obra MP'27")
     t9, trr, t27 = mo('ALL', i=0), mo('ALL', i=1), mo('ALL')
     ano_cheio, reaj = trr - t9, t27 - trr
-    headline(s, f"MO sobe {pc(t27 / t9 - 1, 0)} vs R9 ({sg(t27 - t9)} mi), mas só {pc(t27 / trr - 1)} vs run-rate: "
+    headline(s, f"MO sobe {pc(t27 / t9 - 1)} vs R9 ({sg(t27 - t9)} mi), mas só {pc(t27 / trr - 1)} vs run-rate: "
                 f"{pc(ano_cheio / (t27 - t9), 0)} do aumento é efeito ano cheio de 2026 (3º turno IBI e RES)")
     txt(s.shapes, 300000, 1130000, 8150000, 260000, "MO por unidade – R$ mi (custo direto, sem rateio da Gerência)", 11, True, HEAD, PP_ALIGN.LEFT, MSO_ANCHOR.MIDDLE, name='Titulo grafico MO')
     cd = CategoryChartData()
@@ -1041,16 +1050,16 @@ def mo_slide():
         dl.font.size = Pt(10)
         dl.font.bold = k == 2
         dl.position = XL_LABEL_POSITION.OUTSIDE_END
-    rows = [["R$ mi", "R9 ano", "Run-rate", "MP'27", "Δ vs R9", "Δ % R9", "Δ % run-rate", "Salários + enc.", "Assist. médica"]]
+    rows = [["R$ mi", "R9 ano", "Run-rate", "MP'27", "Δ vs R9", "Δ % R9", "Δ % run-rate", "Sal. + enc. vs RR", "Assist. méd. vs RR"]]
     for u in UNITS + ['GER', 'ALL']:
         a, b_, c = mo(u, i=0), mo(u, i=1), mo(u)
-        sal = (mo(u, 'Salarios e PPR') + mo(u, 'Encargos')) / (mo(u, 'Salarios e PPR', i=0) + mo(u, 'Encargos', i=0)) - 1
-        med = mo(u, 'Assistencia medica') / mo(u, 'Assistencia medica', i=0) - 1
+        sal = (mo(u, 'Salarios e PPR') + mo(u, 'Encargos')) / (mo(u, 'Salarios e PPR', i=1) + mo(u, 'Encargos', i=1)) - 1
+        med = mo(u, 'Assistencia medica') / mo(u, 'Assistencia medica', i=1) - 1
         rows.append(['Total Fitted' if u == 'ALL' else u, f1(a), f1(b_), f1(c), sg(c - a), pc(c / a - 1, signed=True),
                      pc(c / b_ - 1, signed=True), pc(sal, signed=True), pc(med, signed=True)])
     simple_table(s, 300000, 4120000, [1300000, 800000, 850000, 800000, 800000, 850000, 950000, 950000, 850000], rows, 255000, 10, bold_last=True)
     footnote(s, "Fonte: Variação MO FITTED MP27 v2 x R9 x run-rate (Labour Cost FITTED MP27 v2 e R9). Run-rate = média set–dez/26 × 12. "
-                "Δ % de RES vs R9 reflete a rampa de 2026. Colunas 'Salários + enc.' e 'Assist. médica' = crescimento vs R9 ano.", 6000000)
+                "Δ % de RES vs R9 reflete a rampa de 2026. RR = run-rate.", 6000000)
     med_all = mo('ALL', 'Assistencia medica') / mo('ALL', 'Assistencia medica', i=0) - 1
     draw_comments(s, "Mão de obra", [
         (f"Efeito ano cheio {sg(ano_cheio)} mi", "3º turno de IBI e RES operando o ano todo: já está no run-rate de set–dez/26."),
@@ -1069,13 +1078,14 @@ def mo_slide():
 
 def qa_slide():
     s = new_slide("Fitted Units Economics Brasil – Perguntas-chave do MP'27")
-    headline(s, "O que o plano precisa responder: preço, custo, volume e risco", w=12550000)
+    headline(s, "O que o plano precisa responder: preço, custo, volume e risco", w=11590000)
     b = PL['BR']
     cost_push = -(dd('BR', 'Labour') + dd('BR', 'Cost Fix.') + dd('BR', 'ANTT') + dd('BR', 'Encerr. Jaguar') + dd('BR', 'Cost Var.'))
     qa = [
         (f"Por que o EBIT cai se o faturamento sobe {pc(b['ns'][4] / b['ns'][3] - 1, 1)}?",
-         f"Preço e volume somam {sg(dd('BR', 'Price/ Mix') + dd('BR', 'Volume'))}, mas os custos crescem {f1(cost_push)}: "
-         f"MO {f1(-dd('BR', 'Labour'))}, fixos {f1(-dd('BR', 'Cost Fix.'))} (3º turno), ANTT {f1(-dd('BR', 'ANTT'))} e Jaguar {f1(-dd('BR', 'Encerr. Jaguar'))}."),
+         f"Preço e volume somam {sg(dd('BR', 'Price/ Mix') + dd('BR', 'Volume'))}, mas os custos crescem ≈ {f1(cost_push)}: "
+         f"MO {f1(-dd('BR', 'Labour'))}, fixos {f1(-dd('BR', 'Cost Fix.'))} (3º turno), ANTT {f1(-dd('BR', 'ANTT'))}, Jaguar {f1(-dd('BR', 'Encerr. Jaguar'))} "
+         f"e variáveis {f1(-dd('BR', 'Cost Var.'))}."),
         ("Quanto do plano depende de preço novo?",
          f"Price/Mix de {sg(dd('BR', 'Price/ Mix'))}. Só o reajuste Fiat ({pc(FIAT_PR27 / FIAT_PR9 - 1, signed=True)}) vale {f1(FIAT_PRECO)} mi: "
          f"sem ele o EBIT seria ~{f1(ebit_sem_fiat_br)} (ROS ~{pc(ros_sem_fiat_br, 0)})."),
@@ -1092,7 +1102,7 @@ def qa_slide():
          "Provisão de férias do horista (até −0,95 mi), assistência médica GOI (até −0,36 mi) e CC 8289 SJP (0,46 mi a validar)."),
     ]
     sh = s.shapes
-    W, H, G = 4050000, 2350000, 200000
+    W, H, G = 3730000, 2350000, 200000
     for k, (q, a) in enumerate(qa):
         col, row = k % 3, k // 3
         x, y = 300000 + col * (W + G), 1350000 + row * (H + G)
@@ -1108,8 +1118,8 @@ def qa_slide():
         r.font.size = Pt(16)
         r.font.bold = True
         r.font.color.rgb = WHITE
-        tq = txt(sh, x + 680000, y + 130000, W - 820000, 520000, q, 12.5, True, HEAD, PP_ALIGN.LEFT, MSO_ANCHOR.MIDDLE, f'Card {k + 1} pergunta', wrap=True)
-        ta = txt(sh, x + 180000, y + 760000, W - 360000, H - 880000, a, 11, False, BLACK, PP_ALIGN.LEFT, MSO_ANCHOR.TOP, f'Card {k + 1} resposta', wrap=True)
+        tq = txt(sh, x + 680000, y + 130000, W - 820000, 520000, q, 14, True, HEAD, PP_ALIGN.LEFT, MSO_ANCHOR.MIDDLE, f'Card {k + 1} pergunta', wrap=True)
+        ta = txt(sh, x + 180000, y + 760000, W - 360000, H - 880000, a, 13.5, False, BLACK, PP_ALIGN.LEFT, MSO_ANCHOR.TOP, f'Card {k + 1} resposta', wrap=True)
     s.notes_slide.notes_text_frame.text = ("Perguntas prováveis do presidente. Sensibilidade = (Net Sales − materiais − frete − outros variáveis)/100, "
                                            "MENS TOTAL; MO e handling tratados como fixos (elasticidade MO/peças 0,01–0,12 no plano). "
                                            "Riscos de MO: Auditoria Labour FITTED MP27 (achados 1, 3 e 7) – hipóteses a confirmar com o RH.")

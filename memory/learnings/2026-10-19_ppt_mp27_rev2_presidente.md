@@ -1,0 +1,9 @@
+# 2026-10-19 — PPT MP27 Fitted "v2" para o presidente (pós Base Book 19/10 20:03)
+
+- Saída: `EO_FITTED\BU FITTED\Forecast\MP\MP 2027\Fitted_Units_Meeting_Budget'27_v2.pptx` (11 slides; cópia em data/processed). Base = `Fitted_Units_Meeting_Budget'27.pptx` da raiz (é a v5 renomeada por ela, com edições dela; as v2–v4 antigas estão em `Testes\PPT`).
+- Script: `scripts/fitted/gerar_ppt_mp27_rev2.py` (7 args: deck base, Base Book, MENS v3, Rentabilidade cliente IBI v3, Variação MO, Detalhe Despesas V3, saída). Tem asserts de conciliação (bridge = tabela, soma unidades = Brasil, MENS TOTAL = Base Book, cliente = IBI, MO = Labour do bridge).
+- **Base Book novo não tem mais abas "com target"**: o target saiu e entrou preço (Fiat 13,16 → 15,12/pç, +14,9%, +5,65 mi). Por isso a seção duplicada "sem target" foi removida.
+- **Clipboard bloqueado na sessão** (Range.CopyPicture falha, Set-Clipboard falha, mesmo sem sandbox) → tabelas de P&L recriadas como tabelas nativas (valores AK38:AT60 das abas de unidade / Month_FY_LC). Gotcha python-pptx: célula vazia herda 18pt no endParaRPr e estica a linha → setar `endParaRPr sz`.
+- Fontes úteis achadas na varredura: MENS `Impacto JLR` (volume/preço/mix por cliente vs R9), MENS `Ajustes IBI` (reduções 0,94 mi), MENS TOTAL Y43:Z44 "EBIT ESPERADO" = NS × 13,8% (11,48; plano 10,97), Detalhe `Comparativo` (serviços do 3T IBI: empilhadeiras +0,72, alimentação +0,36, transporte +0,18, limpeza +0,10 = 1,36 mi), SJP preço atual = Base Book SJP!BA45 (23,92).
+- Sensibilidade: (NS − materiais − frete − outros variáveis)/100 = 0,63 mi de EBIT por 1% de volume (MO e handling fixos no plano).
+- Pontos para ela validar: (1) "1,1 mi da MO IBI = 3T ano cheio" é inferência (run-rate − R9); (2) desconto SJP: rótulo −3,5% (dela), cálculo 23,92→23,05 dá −3,6%; (3) ROS 13,8% da MENS é referência/meta?; (4) riscos de MO vêm da auditoria (hipóteses RH).
