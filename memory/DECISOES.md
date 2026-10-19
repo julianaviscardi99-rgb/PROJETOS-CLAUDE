@@ -890,3 +890,9 @@ apresentação (título/tooltip/estilo) e a estrutura de abas.
 ## 2026-10-19 — TLM MP27: previdência 4247100 e duplicidades
 - **Decisão (Juliana):** previdência 4247100 segue a regra do Caetano ("VAR. como veio", fica fora/sem trocar V→F). As três bases (áreas + RH fixo + Mão de Obra) continuam somadas mesmo onde CC × classe repete (duplicidades 6,81 mi), até a Rafaela/Jefferson responderem.
 - **Motivo:** manter a regra "nada entra que não tenha vindo das bases recebidas" do Caetano (15/10).
+
+## 2026-10-19 — TLM MP27: qual base de despesas das áreas vale
+- **Decisão (Juliana):** vale o `20261009 - MP'27 Custos TLM_envio - Sem RH.xlsx` do **Jefferson** (e-mail de 16/10 07:27, sem os itens de RH). O arquivo que a Rafaela encaminhou em 19/10 14:55 (`20261009 - MP'27 Custos TLM_envio.xlsx`, com RH, R$ 34,25 mi) é a versão **desatualizada** — não usar.
+- **Motivo:** o RH das áreas era R09 só para comparativo; vale o RH oficial (Iana + Labour Cost Pyplan). Com isso as duplicidades CC × classe caíram de 23 (R$ 6,81 mi) para 5 (R$ 0,71 mi).
+- **Estado:** Resultado/Resumo MP27 de 19/10 16:41 já usam a base Sem RH (despesas das áreas R$ 29,35 mi; custo total R$ 85,37 mi; PBIT R$ 1.605 mil).
+- **Labour Cost:** vale o do Pyplan de 16/10 18:03 (R$ 53.390.513,03). Ela cita R$ 53.950.513,03 no arquivo da área — diferença de R$ 560.000,00 ainda sem explicação.
