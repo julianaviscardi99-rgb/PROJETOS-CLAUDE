@@ -903,3 +903,13 @@ apresentação (título/tooltip/estilo) e a estrutura de abas.
 ## 2026-10-19 — PPT MP27 v3: partir da v2 dela, MO sem run-rate
 **Decisão:** a v3 edita a v2 salva pela Juliana (com as tabelas recoladas por ela como imagem) em vez de regerar do zero; comentários curtos (uma ideia por bullet); barras de variação dos bridges em cinza; slide de MO compara só R9 x MP'27.
 **Motivo:** ela prefere as tabelas coladas do Base Book, achou os comentários longos/truncados para o presidente e não quer expor o conceito de run-rate (pode não estar "certo").
+
+## 2026-10-20 — TLM MP27: versão MP27 Inf da Rafaela prevalece em divergências internas do arquivo
+- Decisão (Juliana): quando a versão MP27 e a MP27 Inf do arquivo da Rafaela divergem (ex.: "Locação de veículo para transporte interno" CP/7900 na MP27 x BA/7200 na Inf, R$ 36 mil), manter o que está na ÚLTIMA versão dela (MP27 Inf). Não perguntar nem ajustar.
+- Também decidido: sobreposição CC x classe Iana x Rafaela (5 combos BA, R$ 705 mil) NÃO é duplicidade (Rafaela confirmou por telefone) — fica como está.
+- Motivo: a MP27 Inf é a versão que entra no Resultado e é a mais recente enviada pela área.
+
+## 2026-10-20 — TLM MP27: IFRS16 de Barueri fica como a Rafaela mandou; aprendizes da Iana em Prestados - Serviços
+- IFRS16: blocos +X/-X/-X/+Y são o mecanismo IFRS16 (tira aluguel, põe amortização); líquido dos 3 blocos MP27 R$ 58 mil x R09 R$ 52 mil. Não mexer; só ajustar se a Rafaela apontar linha sobrando. Juliana: "ok, está certo".
+- Aprendizes da Iana (N14215M001/N14219M000, R$ 695.940): reclassificados no mp27_resultado.py para N14211S001 / 4236020 "Prestados - Serviços", fixo, como no Actual 2026. Motivo: estavam fora do P&L por falta de conta gestorial.
+- HC do MP27: Resultado passa a usar `TLM_Automation\20260930 - Base Geral HC_draft MP27.xlsx` (versão 10. MP27_v0) numa aba interna "HC MP27"; coluna O das abas = total MP27 (N) - total R09 (AB). Pedido dela.

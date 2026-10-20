@@ -19,6 +19,7 @@ Pede Excel instalado (win32com) -- a gravacao com openpyxl quebraria os 24 links
 """
 import glob
 import os
+import re
 import shutil
 import sys
 from datetime import datetime
@@ -73,9 +74,31 @@ LIGACOES_FATURAMENTO = [
     (195, ("Pneus", "HEVEA", "Valor Liq."), 1000), (199, ("Pneus", "Q.A", "Valor Liq."), 1000),
     (203, ("Pneus", "FS.Check", "Valor Liq."), 1000), (212, ("Pneus", "Fitted", "Valor Liq."), 1000),
 ]
+AJUSTES_FLASH_HERDADOS = [("BAADM", "J105"), ("BALog", "D24")]
+
+# Aprendizes do RH (Iana) vem em classes de fabrica (M) sem conta gestorial na TLM e ficavam fora do P&L.
+# No Actual 2026 (Base_KSB1) a TLM lanca aprendiz em N14211S001 -> 4236020 "Prestados - Servicos", fixo
+# (decisao da Juliana, 20/10/2026).
+CLASSES_APRENDIZ_IANA = ["N14215M001", "N14219M000"]
+APRENDIZ_COMO_ACTUAL = {"Conta Fiscal": "N14211S001", "Classe Desc": "COM DESP Mao de obra (aprendiz)",
+                        "Conta Gestorial": "4236020", "Conta Gestorial Desc": "Prestados - Serviços", "VAR.": "F"}
+
 # Cabreuva (82-127) e MP Barueri (180-184) nao existem em 2027: zera o que alimenta os blocos.
 # (181/184 e nao 182: a Area zerada vira divisor das formulas de custo e faturamento do MP BA)
 ZERAR_FATURAMENTO = [82, 87, 92, 97, 106, 111, 119, 124, 181, 184]
+
+# HC do MP (linha 19 das abas de WH): o Flash le o HC R09 (e agosto do HC R07) por SUMIF em pasta externa,
+# que da #VALUE! com a pasta fechada. O HC do MP vai para a aba interna "HC MP27"; a chave da aba (WH2:
+# BAADM, BALog, CPFab...) sai do CC pelo HC R09, que e onde o Flash ja fazia esse de-para.
+PADRAO_HC_MP = "* - Base Geral HC*MP%d*.xlsx" % AA_MP
+VERSAO_HC_MP = "10. MP%d_v0" % AA_MP
+HC_R09 = os.path.join(REDE, str(ANO_BASE), "1. FCST", "R09", "HC R09 TLM.xlsx")
+ABA_HC = "HC MP%d" % AA_MP
+MESES_HC = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"]
+
+# Coluna O (MP x R09): o Flash deixou diferencas de UM mes (ex. =I19-W19); no MP vale total N x total AB.
+ABAS_SEM_COL_O = ("Faturamento", "Resumo", "Resumo Resultado", "Delta Armazém", "Parametros")
+O_DE_UM_MES = re.compile(r"^=(SUM\()?[B-M]\d+(:[B-M]\d+\))?-(SUM\()?([P-Z]|AA)\d+(:([P-Z]|AA)\d+\))?$")
 FIRST_COL_MP = 19          # coluna S = MP27 Jan na planilha de preenchimento (5 chaves + 12 meses de 2026 + total)
 
 
@@ -114,6 +137,11 @@ def desc_resultado_por_gestorial():
 def montar_base(draft):
     d = pd.read_excel(draft, sheet_name="Draft_%s" % CENARIO, header=LINHA_CABECALHO - 1,
                       dtype={"Centro de Custo": str, "Conta Gestorial": str, "Conta Fiscal": str})
+    apr = d["Conta Fiscal"].isin(CLASSES_APRENDIZ_IANA)
+    for col, val in APRENDIZ_COMO_ACTUAL.items():
+        d.loc[apr, col] = val
+    print("  aprendizes da Iana reclassificados para %s / %s: %d linhas, R$ %.0f"
+          % (APRENDIZ_COMO_ACTUAL["Conta Fiscal"], APRENDIZ_COMO_ACTUAL["Conta Gestorial"], apr.sum(), d.loc[apr, MESES].astype(float).sum().sum()))
     mapa = pd.read_excel(BASE_ACT_FLASH, sheet_name="Parametros", usecols=[0, 1], dtype=str).dropna()
     mapa = dict(zip(mapa.iloc[:, 0].str.strip(), mapa.iloc[:, 1]))
     desc_res = d["Conta Fiscal"].map(mapa)
@@ -170,11 +198,65 @@ def linhas_da_planilha(fat):
     return {(r["Unidade / Cliente"], r["BU / Atividade"], r["Linha"]): LINHA_CABECALHO + 1 + i for i, r in f.iterrows()}
 
 
+def hc_mp():
+    """Linhas do HC do MP (versao MP27_v0) com a chave de aba WH2 pelo CC (de-para do HC R09)."""
+    arq = _ultimo(PASTA_SAIDA, PADRAO_HC_MP)
+    r09 = pd.read_excel(HC_R09, sheet_name="Base dados", header=1).dropna(subset=["WH2"])
+    mapa = r09.groupby("CC")["WH2"].agg(lambda s: sorted(set(s)))
+    if (mapa.str.len() > 1).any():
+        raise RuntimeError("CC com mais de um WH2 no HC R09: %s" % mapa[mapa.str.len() > 1].to_dict())
+    hc = pd.read_excel(arq, sheet_name="Base")
+    hc.columns = [str(c).strip() for c in hc.columns]
+    hc = hc[hc["VERSÃO"] == VERSAO_HC_MP].copy()
+    hc.insert(0, "WH2", hc["CC"].map(mapa.str[0]))
+    if hc["WH2"].isna().any():
+        raise RuntimeError("CC do HC %s sem aba no HC R09: %s" % (CENARIO, sorted(hc.loc[hc["WH2"].isna(), "CC"].unique())))
+    hc[MESES_HC] = hc[MESES_HC].fillna(0)
+    return arq, hc[["WH2", "WH", "CC", "Descrição CC", "F/V", "Serviço", "Categoria", "Cargo"] + MESES_HC]
+
+
+def gravar_hc(wb, arq, hc):
+    """Aba interna com o HC do MP e a linha 19 (HC) das abas de WH somando dela, no lugar do SUMIF externo."""
+    ws = wb.Worksheets.Add(After=wb.Worksheets(wb.Worksheets.Count))
+    ws.Name = ABA_HC
+    dados = [list(hc.columns)] + [[None if pd.isna(x) else (x.item() if hasattr(x, "item") else x) for x in r]
+                                  for r in hc.itertuples(index=False)]
+    ws.Range(ws.Cells(1, 1), ws.Cells(len(dados), len(hc.columns))).Value = dados
+    ws.Cells(1, len(hc.columns) + 2).Value = "Fonte: %s (versão %s); WH2 pelo CC do %s" % (
+        os.path.basename(arq), VERSAO_HC_MP, os.path.basename(HC_R09))
+    ult = len(dados)
+    trocadas = 0
+    for aba in wb.Worksheets:
+        if aba.Range("A19").Value != "HC" or "SUMIF(" not in str(aba.Range("B19").Formula):
+            continue
+        for j in range(12):                         # B..M da aba <- I..T (Jan..Dez) da aba do HC
+            col = get_column_letter(9 + j)
+            aba.Cells(19, 2 + j).Formula = "=SUMIF('%s'!$A$2:$A$%d,$A$3,'%s'!%s$2:%s$%d)" % (ABA_HC, ult, ABA_HC, col, col, ult)
+        trocadas += 1
+    print("  HC %s: %d linhas de %s na aba '%s'; linha 19 religada em %d abas" % (
+        CENARIO, len(hc), os.path.basename(arq), ABA_HC, trocadas))
+
+
+def coluna_o_total(wb):
+    """Coluna O = total MP (N) - total R09 (AB) onde o Flash deixou a diferenca de um mes so."""
+    trocadas = 0
+    for aba in wb.Worksheets:
+        if aba.Name in ABAS_SEM_COL_O:
+            continue
+        ult = aba.UsedRange.Row + aba.UsedRange.Rows.Count - 1
+        for i, (f,) in enumerate(aba.Range("O1:O%d" % ult).Formula, 1):
+            if isinstance(f, str) and O_DE_UM_MES.match(f.replace("$", "")):
+                aba.Cells(i, 15).Formula = "=N%d-AB%d" % (i, i)
+                trocadas += 1
+    print("  coluna O: %d formulas de um mes trocadas por total N - AB" % trocadas)
+
+
 def montar_resultado(fat):
     import win32com.client
     mp27_tarifa.guardar_versao(RESULTADO)
     shutil.copy2(FLASH_ORIGEM, RESULTADO)
     linhas = linhas_da_planilha(fat)
+    arq_hc, hc = hc_mp()
     ref_fat = "'%s\\[%s]Faturamento'" % (os.path.dirname(fat), os.path.basename(fat))
 
     xl = mp27_tarifa.abrir_excel()
@@ -187,6 +269,16 @@ def montar_resultado(fat):
             raise RuntimeError("link da Base Total_Act_Flash_Fct nao encontrado no Resultado")
         wb.ChangeLink(antigo[0], BASE_MP, 1)
         print("  link trocado:", os.path.basename(antigo[0]), "->", os.path.basename(BASE_MP))
+
+        # ajustes digitados no fim da formula (herdados do Flash Set): BAADM!J105 "-390", BALog!D24 "-0,98"
+        for aba, cel in AJUSTES_FLASH_HERDADOS:
+            rng = wb.Worksheets(aba).Range(cel)
+            nova = re.sub(r"(/1000\))\s*[+-]\s*\d+(\.\d+)?\s*$", r"\1", rng.Formula)
+            if nova != rng.Formula:
+                rng.Formula = nova
+                print("  ajuste do Flash removido: %s!%s" % (aba, cel))
+        gravar_hc(wb, arq_hc, hc)
+        coluna_o_total(wb)
 
         pl = wb.Worksheets("P&L - TLM")
         pl.Range("B5:M5").Value = CENARIO
