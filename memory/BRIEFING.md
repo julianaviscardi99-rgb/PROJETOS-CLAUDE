@@ -1,6 +1,10 @@
 # BRIEFING — Documento Vivo da Sessão
 > Atualizado por Claude em tempo real. Lido no início de cada sessão.
 
+> **20/10 (~11:45) — CP MP'27: `Bridge CP_v7.pptx` (a dela, slides 1–4 intocados) ganhou os slides 5–7 NO LUGAR:** 5 = principais linhas de custo por voz (Base de Custo, sem deltas vs R9 porque o R9 da Base de Custo 9.791 ≠ MENS 9.740); 6 = riscos e oportunidades do CP (sensibilidades que EU propus: eventos ±10%, contrato R&D −817, inflação, OEM, labour — validar com ela); 7 = estrutura vazia de investimentos. Script `scripts/circuito/atualizar_ppt_cp_mp27_v7_slides5a7.py`; cópia da v7 recebida em `data/processed/circuito/20261020_fontes/Bridge CP_v7_ORIG_recebida.pptx`.
+>
+> **20/10 (10:58) — CP MP'27: `Bridge CP_v6.pptx` ATUALIZADA NO LUGAR (pedido dela, sem v7)** com a nova rentabilidade (EBIT 2.845, custo fixo 10.692, fonte = MENS aba LOCAL). Script `scripts/circuito/atualizar_ppt_cp_mp27_v6.py`; backup da v6 dela em `data/processed/circuito/20261020_fontes/`. Aberto: detalhar o que é a "redução de despesas −150". Detalhe: `memory/learnings/2026-10-20_cp_mp27_deck_v6_ajustes.md`.
+>
 > **20/10 (08:35) — PPT Fitted v5 = `MP 2027\Fitted_Units_Meeting_Budget'27_v5.pptx`** (sobre a v4 dela): novo EBIT IBI 6,6 / Brasil 11,5 nos slides 5–9 e 14–16; slides 2–4 intocados (divergem do Base Book — avisada). Script `scripts/fitted/atualizar_ppt_mp27_ebit_ibi.py`. Detalhe: `memory/learnings/2026-10-20_ppt_mp27_v5_ebit_ibi.md`.
 >
 > **20/10 — RETOMAR FITTED (deck presidente):** versão atual = `EO_FITTED\...\MP 2027\Fitted_Units_Meeting_Budget'27_v3.pptx` (22:14, 13 slides; backup da v3 dela de 22:02 em data/processed). Script dos últimos ajustes: `scripts/fitted/gerar_ppt_mp27_v3_ajustes.py` (roda sobre a versão salva por ela; logos em data/raw/logos). **Perguntar primeiro** o que ela achou da v3 e se editou o arquivo depois das 22:14 (se sim, partir da versão dela). **Pontos em aberto com ela:** (1) CNH com ROS 38% após rateio por volume — é a leitura para o presidente?; (2) pipeline/propostas para o slide New Business (hoje: Nissan RES, Tukan SJP, CNH IBI; saídas Jaguar e Sorocaba); (3) riscos de MO (férias horista 0,95, CC 8289 SJP 0,46, assist. GOI 0,36) a validar com o RH; (4) reajuste Fiat 5,7 ainda em negociação?; (5) premissa dela 3º turno Fiat = MO 2,5 + demais 2,0 mi/ano; (6) lembrar o #VALUE! no Resultado TLM (testar abrir Base Total MP27 antes).
@@ -127,3 +131,12 @@ em `memory/long_term/*_briefing_snapshot.md`.
 - Se RH confirmar férias horista 11,1% (hoje 5,5%), MP27 sobe ~R$ 1 mi (+6,0% → ~+9,5%).
 - Auditoria Labour também copiada para `MP 2027` (já estava em `Custos Fitted Units`).
 - Fórmulas dos deltas não foram conferidas no Excel (sem LibreOffice na máquina).
+
+## 2026-10-20 — Variação da MO do Circuito: MP27 v1/v2 x R9 x run-rate (CONCLUÍDO)
+- Arquivo `Variacao MO CP MP27 v1 v2 x R9 x run-rate - 20261020.xlsx` (data/processed + cópia em `Circuito Panamericano\2027\MP'27`; ela confirmou que ajudou muito). Script `scripts/sap/circuito_panamericano/variacao_mo_cp_mp27_r9.py`. Learning: `memory/learnings/2026-10-20_variacao_mo_cp_mp27_r9.md`.
+- R9 usado = `Labour Cost CP - R09 2026` (pasta do Circuito 2026\09 - Sep\01. Forecast), NÃO o da pasta Fitted que ela citou (só tem CC 8xxx). Confirmar se era isso que ela queria.
+- R$ mil (R9 ano | run-rate set-dez x3 | v1 | v2 | v2 vs R9 ano | v2 vs run-rate):
+  Salários+PPR 603 | 723 | 729 | 713 | +18,2% | -1,4%; Encargos 167 | 194 | 204 | 204 | +22,2% | +5,0%; Assist. médica 57 | 59 | 63 | 63 | +10,1% | +8,0%; Outros 7 | 7 | 7 | 7 | +3,8% | +2,9%; **Total 834 | 982 | 1.003 | 987 | +18,3% | +0,5%**.
+- v2 vs v1: -16 (provisão de férias: gerente -11, horista -5). Gerente = 83% da MO (v2 819 de 987).
+- Ponto a validar: no v2 as provisões de férias caíram mas os encargos sobre elas (4200170P/4201170P) não mudaram; encargos/salários v2 = 28,6% vs 26,8% no run-rate R9 (+5% de encargos com salário -1,4%).
+- Pendências: (1) confirmar o R9 usado; (2) validar a premissa de encargos acima; (3) existe também `Delta Labour Cost CP - MP27 vs R9.xlsx` (15/10, só v1, com comentários por conta) — decidir se atualiza para o v2.
