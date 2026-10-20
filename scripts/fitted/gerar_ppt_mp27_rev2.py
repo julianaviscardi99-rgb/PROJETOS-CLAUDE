@@ -1151,39 +1151,44 @@ def clean_unit_slide(s):
     return len(rem)
 
 
-for idx, u in UNIT_SLIDES.items():
-    s = slides[idx]
-    n = clean_unit_slide(s)
-    for shp in s.shapes:
-        if shp.has_text_frame and shp.text_frame.text.strip() == 'Result Variant Fitted Units':
-            shp.left = Emu(int((X0 + X1) / 2 - shp.width / 2))
-            shp.top = Emu(3980000)
-    pl_table(s, u)
-    draw_bridge(s, BRG[u])
-    title, blocks = COMMENTS[u]
-    draw_comments(s, title, blocks)
-    spec = BRG[u]
-    rows = [('Fcst R9', spec['start'])] + [(l.replace('\n', ' '), v) for l, v in spec['deltas']] + [("MP'27", spec['end'])]
-    s.notes_slide.notes_text_frame.text = (
-        "Dados do bridge (Base_Book_Fitted Units_MP27.xlsx de 19/10, abas 'Tabela Variantes s targ' / 'CM s targ'), mln BRL:\n"
-        + "\n".join(f"{l}\t{v:.3f}" for l, v in rows)
-        + "\nTabela: valores do Base Book (AK38:AT60 da aba da unidade / Month_FY_LC para o Brasil).")
-    print(idx + 1, u, 'removidos', n, [(l, f1(v)) for l, v in rows])
+def main():
+    for idx, u in UNIT_SLIDES.items():
+        s = slides[idx]
+        n = clean_unit_slide(s)
+        for shp in s.shapes:
+            if shp.has_text_frame and shp.text_frame.text.strip() == 'Result Variant Fitted Units':
+                shp.left = Emu(int((X0 + X1) / 2 - shp.width / 2))
+                shp.top = Emu(3980000)
+        pl_table(s, u)
+        draw_bridge(s, BRG[u])
+        title, blocks = COMMENTS[u]
+        draw_comments(s, title, blocks)
+        spec = BRG[u]
+        rows = [('Fcst R9', spec['start'])] + [(l.replace('\n', ' '), v) for l, v in spec['deltas']] + [("MP'27", spec['end'])]
+        s.notes_slide.notes_text_frame.text = (
+            "Dados do bridge (Base_Book_Fitted Units_MP27.xlsx de 19/10, abas 'Tabela Variantes s targ' / 'CM s targ'), mln BRL:\n"
+            + "\n".join(f"{l}\t{v:.3f}" for l, v in rows)
+            + "\nTabela: valores do Base Book (AK38:AT60 da aba da unidade / Month_FY_LC para o Brasil).")
+        print(idx + 1, u, 'removidos', n, [(l, f1(v)) for l, v in rows])
 
-sumS, mixS, cliS, moS, qaS = summary_slide(), mix_slide(), client_slide(), mo_slide(), qa_slide()
+    sumS, mixS, cliS, moS, qaS = summary_slide(), mix_slide(), client_slide(), mo_slide(), qa_slide()
 
-lst = prs.slides._sldIdLst
-ids = list(lst)
-o, new = ids[:16], ids[16:]
-final = [o[0], new[0], o[1], new[1], o[3], new[2], o[5], o[6], o[7], new[3], new[4]]
-drop = [e for e in ids if e not in final]
-for el in ids:
-    lst.remove(el)
-for el in final:
-    lst.append(el)
-for el in drop:   # solta as relacoes dos slides removidos
-    prs.part.drop_rel(el.get(qn('r:id')))
+    lst = prs.slides._sldIdLst
+    ids = list(lst)
+    o, new = ids[:16], ids[16:]
+    final = [o[0], new[0], o[1], new[1], o[3], new[2], o[5], o[6], o[7], new[3], new[4]]
+    drop = [e for e in ids if e not in final]
+    for el in ids:
+        lst.remove(el)
+    for el in final:
+        lst.append(el)
+    for el in drop:   # solta as relacoes dos slides removidos
+        prs.part.drop_rel(el.get(qn('r:id')))
 
-prs.save(OUT)
-print('salvo', OUT, len(final), 'slides')
-print('SENS', round(SENS, 3), 'T3', T3, 'FIAT', FIAT_PR9, FIAT_PR27, FIAT_PRECO, 'SJP', SJP_PRECO_ATUAL, SJP_DESC, SJP_DESC_MI)
+    prs.save(OUT)
+    print('salvo', OUT, len(final), 'slides')
+    print('SENS', round(SENS, 3), 'T3', T3, 'FIAT', FIAT_PR9, FIAT_PR27, FIAT_PRECO, 'SJP', SJP_PRECO_ATUAL, SJP_DESC, SJP_DESC_MI)
+
+
+if __name__ == '__main__':
+    main()
