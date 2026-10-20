@@ -899,3 +899,7 @@ apresentação (título/tooltip/estilo) e a estrutura de abas.
 
 ## 2026-10-19 — PPT MP27 v2 (presidente): só versão sem target, tabelas nativas
 **Decisão:** a v2 do deck usa só o bridge "s targ" (o Base Book de 19/10 não tem mais a versão com target) e remove a seção duplicada; as tabelas de P&L passam a ser tabelas nativas do PowerPoint com os valores do Base Book (não foi possível colar como imagem: clipboard bloqueado). Slides novos: resumo executivo, mão de obra e perguntas-chave do CEO. **Motivo:** pedido dela de deck "padrão ouro" para o presidente, com tudo atualizado e respostas às perguntas prováveis.
+
+## 2026-10-19 — PPT MP27 v3: partir da v2 dela, MO sem run-rate
+**Decisão:** a v3 edita a v2 salva pela Juliana (com as tabelas recoladas por ela como imagem) em vez de regerar do zero; comentários curtos (uma ideia por bullet); barras de variação dos bridges em cinza; slide de MO compara só R9 x MP'27.
+**Motivo:** ela prefere as tabelas coladas do Base Book, achou os comentários longos/truncados para o presidente e não quer expor o conceito de run-rate (pode não estar "certo").
