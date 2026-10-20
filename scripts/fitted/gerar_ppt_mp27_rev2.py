@@ -332,7 +332,7 @@ def draw_bridge(slide, spec):
         top, h = y(hi), max(y(lo) - y(hi), 12700)
         r = sh.add_shape(MSO_SHAPE.RECTANGLE, Emu(x), Emu(top), Emu(bw), Emu(h))
         r.fill.solid()
-        r.fill.fore_color.rgb = DARK if kind == 'tot' else (LIGHT if v < 0 else ACC)
+        r.fill.fore_color.rgb = DARK if kind == 'tot' else LIGHT
         r.line.color.rgb = BLACK
         r.line.width = Pt(0.75)
         r.shadow.inherit = False
@@ -346,7 +346,7 @@ def draw_bridge(slide, spec):
         else:
             ly = top - 25000 - LBL_D
             new.append(txt(sh, cx(i) - int(slot / 2), ly, int(slot), LBL_D, sg(v), 10, name=f'Valor {lab.replace(chr(10), " ")}'))
-        new.append(txt(sh, cx(i) - int(slot / 2), 6500000, int(slot), 300000, lab, 9, anchor=MSO_ANCHOR.TOP,
+        new.append(txt(sh, cx(i) - int(slot / 2), YB + 80000, int(slot), 300000, lab, 9, anchor=MSO_ANCHOR.TOP,
                        name=f'Categoria {lab.replace(chr(10), " ")}'))
         if i < n - 1:
             new.append(line(sh, x + bw, y(lvl), cx(i + 1) - bw // 2, y(lvl), BLACK, 0.25, 'lgDash', name='Conector'))
