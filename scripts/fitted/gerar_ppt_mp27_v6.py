@@ -986,7 +986,7 @@ def main():
                f"Bridge SJP (Base Book): {b_str('SJP')}")
     for u, nm in (('GOI', 'Goiana (GOI)'), ('RES', 'Resende (RES)')):
         if u == 'GOI':
-            hl = f"GOI mantém o EBIT de R$ {f1(R('GOI', 'ebit'))} mi: preço e redução de fixos compensam menor volume e pressão de custos"
+            hl = f"GOI mantém o EBIT de R$ {f1(R('GOI', 'ebit'))} mi: preço e menores fixos compensam volume e custos"
             blocks = [(f"EBIT {f1(R('GOI', 'ebit'))}  |  ROS {pc(R('GOI', 'ros'))}",
                        f"{sg(R('GOI', 'ebit') - R('GOI', 'ebit', 3))} vs R9 ({pc(R('GOI', 'ebit') / R('GOI', 'ebit', 3) - 1, 1, True)})  ·  {sg(R('GOI', 'ebit') - R('GOI', 'ebit', 2))} vs MP'26"),
                       ("Preço compensa o volume", [f"Preço por peça {pc(R('GOI', 'nspc') / R('GOI', 'nspc', 3) - 1, 1, True)}: Price/Mix {sg(DD('GOI', 'Price/ Mix'))}",
