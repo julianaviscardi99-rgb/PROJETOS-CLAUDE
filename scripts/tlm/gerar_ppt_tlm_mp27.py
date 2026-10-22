@@ -417,9 +417,13 @@ def entity_slide(prs, layout, title, key, items, note="", extra_notes=""):
     bridge(sl, 40, 640, yb + 14, 512, pbit(e["R09"]), st, "R9", "MP’27", bracket=fmt(d, sign=True))
     panel_blocks(sl, 652, 44, 296, 468, "Mensagens-chave", items, size=9.5)
     footer(sl, note)
+    rank = sorted(st, key=lambda x: -abs(x[1]))
+    efeitos = "; ".join(f"{l} {fmt(v, sign=True)} ({'ganho' if v > 0 else 'perda'})" for l, v in rank if abs(v) >= 0.5)
     sl.notes_slide.notes_text_frame.text = (
-        f"Bridge PBIT (BRL mil): R9 {pbit(e['R09']):,.1f} | " + " | ".join(f"{l} {v:+,.1f}" for l, v in st) +
-        f" | MP'27 {pbit(e['MP27']):,.1f}\n" + extra_notes)
+        f"PRINCIPAIS EFEITOS MP'27 vs R9 (PBIT {fmt(pbit(e['R09']))} -> {fmt(pbit(e['MP27']))}, "
+        f"{fmt(d, sign=True)}), do maior para o menor: {efeitos or 'sem variação'}.\n" + extra_notes +
+        f"\nBridge PBIT (BRL mil): R9 {pbit(e['R09']):,.1f} | " + " | ".join(f"{l} {v:+,.1f}" for l, v in st) +
+        f" | MP'27 {pbit(e['MP27']):,.1f}")
     return sl
 
 
@@ -492,18 +496,21 @@ items = [
     (f"Net Sales {fmt(tm['net'])}  |  {p1(pct(tm['net'], tr['net']))}% vs R9",
      f"Barueri {fmt(net_ba, sign=True)} (tarifa média por tonelada R$ {fmt(tarifa(D['BATotal'], 'MP27'))} vs "
      f"{fmt(tarifa(D['BATotal'], 'R09'))}, volume estável) e Cabreúva {fmt(net_cb, sign=True)} (sem operação no MP’27) "
-     f"superam Campinas {fmt(net_cp, sign=True)} e Feira {fmt(net_fs, sign=True)}. Outras Atividades {fmt(net_oa, sign=True)}."),
+     f"(desconto de tarifa em Barueri é decisão de eficiência para a Pirelli) superam Campinas {fmt(net_cp, sign=True)} e Feira {fmt(net_fs, sign=True)}. Outras Atividades {fmt(net_oa, sign=True)}."),
     (f"Custo total {fmt(-cost(tm))}  |  {p1(pct(cost(tm), cost(tr)))}% vs R9",
      f"Trabalho {fmt(tm['lab'] - tr['lab'], sign=True)} (HC {fmt(tm['hc'])} vs {fmt(tr['hc'])}). "
-     f"Atenção: D&A {fmt(da_d, sign=True)} vs R9 – armazém de Barueri (CC 7287) sem aluguel/amortização no MP’27, "
-     f"em validação com Rafaela/Jefferson."),
+     f"D&A {fmt(da_d, sign=True)} vs R9: fim do contrato IFRS16 do armazém de Barueri (CC 7287) em jul/26, "
+     f"sem aluguel/amortização na base MP’27."),
     (f"Volume {fmt(tm['tons'] / 1000, dec=1)} mil t  |  {p1(pct(tm['tons'], tr['tons']))}% vs R9",
      f"Campinas {fmt(D['CPLog']['MP27']['tons'] / 1000 - D['CPLog']['R09']['tons'] / 1000, sign=True, dec=1)} mil t; "
      f"Cabreúva {fmt(-D['CBTotal']['R09']['tons'] / 1000, sign=True, dec=1)} mil t (sem operação)."),
 ]
 s2 = entity_slide(prs, layout, "TLM Economics MP’27 – Total", "P&L - TLM", items,
                   note="Ecolabel/Outras Atividades com premissas de simulação (sem volume oficial).",
-                  extra_notes="Total = Logística + Outras Atividades + Fábricas. Net Sales R9 = Resumo FY do R9 (R$ 93.023,97 mil).")
+                  extra_notes="Roteiro: (1) a queda do PBIT vem do desconto de tarifa em Barueri, decisão de eficiência para a Pirelli; "
+                            "(2) Trabalho piora pelo HC e reajuste; (3) D&A melhora pelo fim do IFRS16 do armazém de Barueri, sem custo novo na base; "
+                            "(4) a saída de Cabreúva melhora o PBIT, mas tira faturamento; (5) lay-off fica abaixo do PBIT.\n"
+                            "Total = Logística + Outras Atividades + Fábricas. Net Sales R9 = Resumo FY do R9 (R$ 93.023,97 mil).")
 
 # ---------------- slide 3: consolidado por unidade (bridge de PBIT por unidade + tabela com mensagem)
 s3 = new_slide(prs, layout, "TLM | Bridge consolidado por unidade R9 vs MP’27")
@@ -616,9 +623,9 @@ entity_slide(prs, layout, "TLM Economics MP’27 – Barueri (BA)", "BATotal", i
     "net": f"Tarifa média por tonelada R$ {fmt(tarifa(D_ba, 'MP27'))} vs R$ {fmt(tarifa(D_ba, 'R09'))} no R9 "
            f"({p1(pct(tarifa(D_ba, 'MP27'), tarifa(D_ba, 'R09')))}%) com volume praticamente estável "
            f"({p1(pct(D_ba['MP27']['tons'], D_ba['R09']['tons']))}%).",
-    "cost": "D&A inclui todo o efeito: armazém de Barueri (CC 7287) sem aluguel/amortização no MP’27 (em validação).",
+    "cost": "D&A inclui todo o efeito: fim do contrato IFRS16 do armazém (CC 7287) em jul/26, sem aluguel/amortização na base MP’27.",
     "h4": f"Volume {fmt(D_ba['MP27']['tons'] / 1000, dec=1)} mil t  |  HC {fmt(D_ba['MP27']['hc'])}",
-    "b4": f"HC {fmt(D_ba['MP27']['hc'])} vs {fmt(D_ba['R09']['hc'])} no R9. Validar a premissa de tarifa antes de fechar a leitura da unidade."}))
+    "b4": f"HC {fmt(D_ba['MP27']['hc'])} vs {fmt(D_ba['R09']['hc'])} no R9. Desconto de tarifa deliberado: ganho de eficiência para a Pirelli, com o TLM buscando o menor resultado."}))
 entity_slide(prs, layout, "TLM Economics MP’27 – Campinas (CP)", "CPLog", items_gen(D_cp, "Campinas", {
     "net": f"Volume {p1(pct(D_cp['MP27']['tons'], D_cp['R09']['tons']))}% ({fmt(D_cp['MP27']['tons'] / 1000, dec=1)} mil t). "
            f"Faturamento fecha com o custo da unidade.",
