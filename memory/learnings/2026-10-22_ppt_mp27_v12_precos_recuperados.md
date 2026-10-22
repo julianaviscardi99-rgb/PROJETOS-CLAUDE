@@ -1,0 +1,6 @@
+# 2026-10-22 (noite) — PPT MP27 Fitted v12 (v11 dela + MENS v4 / Rentab v3 de 19:16)
+
+- Pedido: só bridges e números; NÃO mexer em comentários nem substituir as tabelas dela. Partiu da v11 EDITADA por ela (19:20; tabela slide 2 SJP e comentários já ajustados por ela). Saída: `Fitted_Units_Meeting_Budget'27_v12.pptx` na rede; v11 intacta.
+- Mudança nas fontes (19:16): preços recuperados -> EBIT Brasil **12,999** (R09 13,001, Δ ≈ 0; ROS 16,2%, NS 80,1, vol 5.198 +4,5%), IBI **7,136**, SJP **4,039** (PM +0,5), GOI 1,438 e RES 0,386 iguais. Rentab IBI: Fiat 91% receita / 71% EBIT / ROS 12,9%; Iveco ROS 53,1% (44k pçs, EBIT 0,9); CNH ROS 53,7% (19k, EBIT 1,2; 17% do EBIT).
+- Script `scripts/fitted/ajustar_ppt_mp27_v12.py` (args: v11, MENS v4, saída, Rentab v3): bridges (slides 2,3,6,7,9,10), KPIs soltos slide 2 (agora inclui volume e net sales), % variação, cards/barras/mensagem principal do slide 8, dados do gráfico nas notas. Backup em `data/processed/fitted_v12/` (fora do Git).
+- **Pendente dela (não tocado):** tabela do slide 2 (IBI 6,6/−0,8; SJP 3,4/−0,7 -> 7,1/−0,3; 4,0/0,0; msgs), comentários slides 3/6/7/8, tabela do slide 8 (Peças, NS, CM, EBIT, ROS por cliente), slide 4 sem dependência. Δ EBIT Brasil aparece como "R$ 0,0 mi" (texto fica vermelho).
