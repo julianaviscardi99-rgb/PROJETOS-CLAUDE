@@ -48,7 +48,13 @@ def baixar_ultimo():
             yield from pastas(s)
 
     melhor = None
-    for f in pastas(ns.GetDefaultFolder(6)):
+    raizes = []
+    for st in ns.Stores:                     # todas as caixas (a padrao pode ser a pasta pessoal)
+        try:
+            raizes.append(st.GetRootFolder())
+        except Exception:
+            pass
+    for f in (x for r in raizes for x in pastas(r)):
         try:
             itens = f.Items.Restrict("[ReceivedTime] >= '10/01/%d 00:00'" % datetime.now().year)
         except Exception:
