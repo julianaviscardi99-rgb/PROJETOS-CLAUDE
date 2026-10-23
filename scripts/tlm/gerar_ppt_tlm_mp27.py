@@ -508,7 +508,7 @@ items = [
 s2 = entity_slide(prs, layout, "TLM Economics MP’27 – Total", "P&L - TLM", items,
                   note="Ecolabel/Outras Atividades com premissas de simulação (sem volume oficial).",
                   extra_notes="Roteiro: (1) a queda do PBIT vem do desconto de tarifa em Barueri, decisão de eficiência para a Pirelli; "
-                            "(2) Trabalho piora pelo HC e reajuste; (3) D&A melhora pelo fim do IFRS16 do armazém de Barueri, sem custo novo na base; "
+                            "(2) Trabalho piora pelo reajuste e custo médio por pessoa, com o HC em linha com o R9; (3) D&A melhora pelo fim do IFRS16 do armazém de Barueri, sem custo novo na base; "
                             "(4) a saída de Cabreúva melhora o PBIT, mas tira faturamento; (5) lay-off fica abaixo do PBIT.\n"
                             "Total = Logística + Outras Atividades + Fábricas. Net Sales R9 = Resumo FY do R9 (R$ 93.023,97 mil).")
 
