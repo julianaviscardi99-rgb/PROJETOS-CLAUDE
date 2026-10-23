@@ -207,7 +207,8 @@ def hc_mp():
         raise RuntimeError("CC com mais de um WH2 no HC R09: %s" % mapa[mapa.str.len() > 1].to_dict())
     hc = pd.read_excel(arq, sheet_name="Base")
     hc.columns = [str(c).strip() for c in hc.columns]
-    hc = hc[hc["VERSÃO"] == VERSAO_HC_MP].copy()
+    versoes = sorted(v for v in hc["VERSÃO"].dropna().unique() if re.search(r"MP%d_v\d+$" % AA_MP, str(v)))
+    hc = hc[hc["VERSÃO"] == (versoes[-1] if versoes else VERSAO_HC_MP)].copy()   # a mais nova (04. MP27_v1 > 03. MP27_v0)
     hc.insert(0, "WH2", hc["CC"].map(mapa.str[0]))
     if hc["WH2"].isna().any():
         raise RuntimeError("CC do HC %s sem aba no HC R09: %s" % (CENARIO, sorted(hc.loc[hc["WH2"].isna(), "CC"].unique())))
@@ -217,8 +218,12 @@ def hc_mp():
 
 def gravar_hc(wb, arq, hc):
     """Aba interna com o HC do MP e a linha 19 (HC) das abas de WH somando dela, no lugar do SUMIF externo."""
-    ws = wb.Worksheets.Add(After=wb.Worksheets(wb.Worksheets.Count))
-    ws.Name = ABA_HC
+    if ABA_HC in [a.Name for a in wb.Worksheets]:      # nova versao do HC sobre a aba ja gravada
+        ws = wb.Worksheets(ABA_HC)
+        ws.Cells.ClearContents()
+    else:
+        ws = wb.Worksheets.Add(After=wb.Worksheets(wb.Worksheets.Count))
+        ws.Name = ABA_HC
     dados = [list(hc.columns)] + [[None if pd.isna(x) else (x.item() if hasattr(x, "item") else x) for x in r]
                                   for r in hc.itertuples(index=False)]
     ws.Range(ws.Cells(1, 1), ws.Cells(len(dados), len(hc.columns))).Value = dados
